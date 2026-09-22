@@ -193,6 +193,9 @@ export async function searchWorks(p: SearchParams): Promise<Page<Work>> {
   if (p.topic) filters.push(`primary_topic.id:${p.topic}`);
   if (p.cites) filters.push(`cites:${p.cites}`);
 
+  // Certaines notices portent une date future erronée : on plafonne à aujourd'hui.
+  filters.push(`to_publication_date:${new Date().toISOString().slice(0, 10)}`);
+
   const q = p.q?.trim();
   return get<Page<Work>>("/works", {
     search: q || undefined,
