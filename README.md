@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Veille
 
-## Getting Started
+Porte d'entrée vers la littérature scientifique : recherche par mots-clés, thématiques, sélection,
+page article avec métadonnées claires, accès au PDF légal, résumé IA optionnel et articles similaires.
+Pas de compte, pas de base de données : tout vient d'[OpenAlex](https://docs.openalex.org) à la volée.
 
-First, run the development server:
+## Stack
+
+- Next.js 16 (App Router, Server Components, streaming) · React 19 · TypeScript
+- Tailwind CSS 4 + [shadcn/ui](https://ui.shadcn.com) (style `base-nova`, icônes Lucide)
+- Données : API OpenAlex (gratuite, sans clé, CC0)
+- Résumé IA : SDK Anthropic (`claude-opus-5` par défaut), activé seulement si `ANTHROPIC_API_KEY` est défini
+
+## Démarrage
 
 ```bash
+npm install
+cp .env.example .env.local   # puis renseigner OPENALEX_MAILTO et, si voulu, ANTHROPIC_API_KEY
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvrir <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Pages
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Route | Rôle |
+|---|---|
+| `/` | Recherche, grille des 16 thématiques, sélection du moment (récents · accès ouvert · revues indexées · les plus cités) |
+| `/search?q=…` | Résultats, filtres (tri, type, accès ouvert, années), pagination. Aussi `topic=T…` (sujet) et `cites=W…` (articles citant) |
+| `/theme/[slug]` | Une thématique (= un *field* OpenAlex) : sous-thèmes cliquables + résultats filtrés |
+| `/article/[id]` | Fiche article (`W…`) : métadonnées, résumé, résumé IA, PDF / éditeur, citation APA & BibTeX, sujets, articles similaires |
+| `POST /api/summary` | Génère le résumé IA (`{ id: "W…" }`), mis en cache en mémoire |
 
-## Learn More
+## Organisation
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+  app/            pages (App Router) + route API
+  components/     composants métier (WorkCard, SearchFilters, Results…) et ui/ (shadcn)
+  lib/openalex.ts client OpenAlex typé (recherche, article, similaires, sujets)
+  lib/format.ts   reconstruction du résumé, auteurs, APA/BibTeX, libellés FR
+  lib/themes.ts   les 16 thématiques mises en avant (slug → field OpenAlex)
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Choix
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Qualité des sources** : filtres globaux `is_paratext:false` et `is_retracted:false` ; la sélection d'accueil
+  se limite aux revues *core* (indexées) ; les rétractations sont signalées sur la fiche.
+- **Similaires** : `related_works` d'OpenAlex, complété par les articles les plus cités du même sujet si besoin.
+- **PDF** : jamais hébergé. On pointe vers `best_oa_location.pdf_url`, sinon l'URL OA, sinon l'éditeur (DOI).
+- **IA** : aide à la lecture, pas de substitution — la synthèse est générée à la demande, signalée comme telle,
+  et la page reste complète sans elle.
 
-## Deploy on Vercel
+## Déploiement
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Compatible Vercel sans configuration. Définir les variables d'environnement de `.env.example`.
