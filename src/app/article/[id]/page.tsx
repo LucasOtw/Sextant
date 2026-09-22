@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockOpenIcon, QuoteIcon } from "lucide-react";
 import { AiSummary } from "@/components/ai-summary";
+import { AuthorChip } from "@/components/author-chip";
 import { TrackView } from "@/components/track-view";
 import { CopyButton } from "@/components/copy-button";
 import { WorkCard } from "@/components/work-card";
@@ -193,7 +194,7 @@ function Authors({ work }: { work: Work }) {
         const inst = a.institutions[0]?.display_name;
         return (
           <span key={`${a.author.id ?? a.author.display_name}-${i}`}>
-            <span className="font-medium" title={inst ?? undefined}>{a.author.display_name}</span>
+            <AuthorChip authorId={a.author.id} name={a.author.display_name} institution={inst} />
             {inst && <span className="text-muted-foreground"> ({inst})</span>}
             {i < shown.length - 1 && ", "}
           </span>

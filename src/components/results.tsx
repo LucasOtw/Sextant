@@ -33,6 +33,7 @@ export function parseSearchParams(sp: RawSearchParams, extra: Partial<SearchPara
     cites: first(sp.cites),
     language: first(sp.lang),
     coreOnly: first(sp.src) !== "all",
+    author: first(sp.author),
     ...extra,
   };
 }

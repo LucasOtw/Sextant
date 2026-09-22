@@ -111,6 +111,8 @@ export interface SearchParams {
   language?: string;
   /** Restreindre aux revues indexées (défaut : oui). Ignoré pour les thèses, hébergées hors revues. */
   coreOnly?: boolean;
+  /** Identifiant d'auteur OpenAlex (ex. "A5101976576"). */
+  author?: string;
 }
 
 /** Champs demandés à l'API pour les listes (réduit la taille des réponses). */
@@ -206,6 +208,7 @@ export async function searchWorks(p: SearchParams): Promise<Page<Work>> {
   if (p.topic) filters.push(`primary_topic.id:${p.topic}`);
   if (p.cites) filters.push(`cites:${p.cites}`);
   if (p.language) filters.push(`language:${p.language}`);
+  if (p.author) filters.push(`authorships.author.id:${p.author}`);
 
   // Certaines notices portent une date future erronée : on plafonne à aujourd'hui.
   filters.push(`to_publication_date:${new Date().toISOString().slice(0, 10)}`);
@@ -307,4 +310,58 @@ export async function getFeaturedWorks(n = 8, fieldId?: string): Promise<Work[]>
     3600,
   );
   return page.results;
+}
+
+export interface AuthorProfile {
+  id: string;
+  name: string;
+  orcid: string | null;
+  worksCount: number;
+  citedByCount: number;
+  hIndex: number | null;
+  institution: { name: string; homepage: string | null; country: string | null } | null;
+}
+
+interface RawAuthor {
+  id: string;
+  display_name: string;
+  orcid: string | null;
+  works_count: number;
+  cited_by_count: number;
+  summary_stats?: { h_index?: number };
+  last_known_institutions?: { id: string; display_name: string; country_code: string | null }[];
+}
+
+/** Profil court d'un auteur + site de sa dernière institution connue. */
+export async function getAuthorProfile(id: string): Promise<AuthorProfile | null> {
+  let a: RawAuthor;
+  try {
+    a = await get<RawAuthor>(
+      `/authors/${shortId(id)}`,
+      { select: "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions" },
+      86400,
+    );
+  } catch (e) {
+    if (e instanceof OpenAlexError && e.status === 404) return null;
+    throw e;
+  }
+  const inst = a.last_known_institutions?.[0];
+  let homepage: string | null = null;
+  if (inst) {
+    try {
+      const i = await get<{ homepage_url: string | null }>(`/institutions/${shortId(inst.id)}`, { select: "homepage_url" }, 86400);
+      homepage = i.homepage_url;
+    } catch {
+      /* institution sans fiche : pas de lien */
+    }
+  }
+  return {
+    id: shortId(a.id),
+    name: a.display_name,
+    orcid: a.orcid,
+    worksCount: a.works_count,
+    citedByCount: a.cited_by_count,
+    hIndex: a.summary_stats?.h_index ?? null,
+    institution: inst ? { name: inst.display_name, homepage, country: inst.country_code } : null,
+  };
 }
