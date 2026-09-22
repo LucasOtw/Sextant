@@ -143,7 +143,9 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             placeholder={hero ? "Mots-clés, titre, auteur…" : "Rechercher…"}
             autoComplete="off"
             aria-label="Rechercher des articles"
+            role="combobox"
             aria-autocomplete="list"
+            aria-haspopup="listbox"
             aria-expanded={showList}
             aria-controls={listId}
             aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
