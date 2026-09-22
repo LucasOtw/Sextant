@@ -63,6 +63,11 @@ Un **sextant** trouve des sources. Le logo est sa baguette (le Y) pointée vers 
 - **IA** : aide à la lecture, pas de substitution — la synthèse est générée à la demande, signalée comme telle,
   et la page reste complète sans elle.
 
+## Branches
+
+- `main` : version en ligne, ne reçoit que des merges depuis `dev`.
+- `dev` : intégration ; les fonctionnalités arrivent par `feat/<nom>` et pull request vers `dev`.
+
 ## Déploiement
 
 Compatible Vercel sans configuration. Définir les variables d'environnement de `.env.example`.
