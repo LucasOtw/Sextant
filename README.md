@@ -1,4 +1,4 @@
-# Sourcier
+# Sextant
 
 Porte d'entrée vers la littérature scientifique : recherche par mots-clés, thématiques, sélection,
 page article avec métadonnées claires, accès au PDF légal, résumé IA optionnel et articles similaires.
@@ -47,12 +47,17 @@ src/
 
 ## Nom
 
-Un **sourcier** trouve des sources. Le logo est sa baguette (le Y) pointée vers la source (le point bleu).
+Un **sextant** trouve des sources. Le logo est sa baguette (le Y) pointée vers la source (le point bleu).
 
 ## Choix
 
-- **Qualité des sources** : filtres globaux `is_paratext:false` et `is_retracted:false` ; la sélection d'accueil
-  se limite aux revues *core* (indexées) ; les rétractations sont signalées sur la fiche.
+- **Qualité des sources** : seuls les documents « vérifiés » sont servis — articles et revues de littérature
+  (évalués par les pairs), thèses, livres et chapitres (`type:article|review|book|book-chapter|dissertation`).
+  Préprints, éditoriaux, lettres, errata, rapports et jeux de données sont exclus. Par défaut, les résultats se
+  limitent aux revues indexées (`primary_location.source.is_core:true`, liste proche de Scopus / Web of Science) ;
+  le filtre « Sources » permet d'élargir, et les thèses en sont exemptées (hébergées hors revues). Paratextes et
+  rétractés sont toujours exclus, les rétractations signalées sur la fiche. Les suggestions de la barre de
+  recherche suivent les mêmes règles.
 - **Similaires** : `related_works` d'OpenAlex, complété par les articles les plus cités du même sujet si besoin.
 - **PDF** : jamais hébergé. On pointe vers `best_oa_location.pdf_url`, sinon l'URL OA, sinon l'éditeur (DOI).
 - **IA** : aide à la lecture, pas de substitution — la synthèse est générée à la demande, signalée comme telle,

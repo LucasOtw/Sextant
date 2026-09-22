@@ -27,7 +27,7 @@ import {
 } from "@/lib/format";
 import { getWork, getWorksByIds, getWorksBySameTopic, shortId, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
-import { isAiEnabled } from "@/lib/ai";
+import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
 
 interface Props {
@@ -52,7 +52,8 @@ export default async function ArticlePage({ params }: Props) {
   const publisher = publisherUrl(work);
   const venue = venueName(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
-  const aiEnabled = isAiEnabled() && Boolean(abstract);
+  const provider = activeProvider();
+  const aiEnabled = provider !== null && Boolean(abstract);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -136,19 +137,19 @@ export default async function ArticlePage({ params }: Props) {
         <Separator className="my-8" />
 
         <section aria-labelledby="abstract">
-          <h2 id="abstract" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Résumé</h2>
+          <h2 id="abstract" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+            Résumé original
+            {work.language && <span className="ml-2 font-normal normal-case tracking-normal">· {work.language.toUpperCase()}</span>}
+          </h2>
           {abstract ? (
             <p className="mt-3 text-[17px] leading-relaxed">{abstract}</p>
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
+          {aiEnabled && provider && (
+            <AiSummary workId={shortId(work.id)} providerLabel={providerLabel(provider)} model={modelFor(provider)} />
+          )}
         </section>
-
-        {aiEnabled && (
-          <div className="mt-6">
-            <AiSummary workId={shortId(work.id)} />
-          </div>
-        )}
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">

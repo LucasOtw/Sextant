@@ -32,6 +32,17 @@ export function activeProvider(): Provider | null {
   return null;
 }
 
+const LABELS: Record<Provider, string> = {
+  mistral: "Mistral AI",
+  groq: "Groq",
+  openrouter: "OpenRouter",
+  anthropic: "Anthropic",
+};
+
+export function providerLabel(provider: Provider): string {
+  return LABELS[provider];
+}
+
 export function isAiEnabled(): boolean {
   return activeProvider() !== null;
 }
@@ -62,7 +73,7 @@ export async function completeOpenAiCompatible(
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${key}`,
-      ...(provider === "openrouter" ? { "x-title": "Sourcier" } : {}),
+      ...(provider === "openrouter" ? { "x-title": "Sextant" } : {}),
     },
     body: JSON.stringify({
       model: modelFor(provider),

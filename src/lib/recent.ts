@@ -9,7 +9,7 @@ export interface RecentWork {
   viewedAt: number;
 }
 
-export const RECENT_KEY = "sourcier:recent";
+export const RECENT_KEY = "sextant:recent";
 const MAX = 12;
 
 export function readRecent(): RecentWork[] {

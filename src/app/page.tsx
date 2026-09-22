@@ -14,12 +14,11 @@ export default function HomePage() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <section className="flex flex-col items-center gap-6 py-16 text-center sm:py-24">
         <h1 className="title-display max-w-3xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl">
-          L'article parfait pour votre mémoire<span className="text-accent-brand">.</span>
+          Trouvez votre cap dans la littérature scientifique<span className="text-accent-brand">.</span>
         </h1>
         <p className="max-w-2xl text-balance text-lg text-muted-foreground">
-          Pensé pour les étudiants de master : des sources reconnues, des métadonnées lisibles, le PDF
-          quand il est libre, et pour chaque article des pistes pour nourrir votre bibliographie.
-          Sans compte, sans bruit.
+          Des articles évalués par les pairs, des thèses et des ouvrages universitaires. Cherchez par
+          mots-clés, filtrez, et laissez chaque lecture vous mener à la suivante.
         </p>
         <SearchBox size="hero" className="max-w-2xl" autoFocus />
         <p className="text-sm text-muted-foreground">

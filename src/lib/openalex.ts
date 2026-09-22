@@ -109,6 +109,8 @@ export interface SearchParams {
   cites?: string;
   /** Code langue ISO 639-1 (ex. "fr"). */
   language?: string;
+  /** Restreindre aux revues indexées (défaut : oui). Ignoré pour les thèses, hébergées hors revues. */
+  coreOnly?: boolean;
 }
 
 /** Champs demandés à l'API pour les listes (réduit la taille des réponses). */
@@ -142,6 +144,15 @@ const DETAIL_SELECT = [
 
 /** Filtres appliqués partout : pas de paratexte (couvertures, sommaires…), pas de rétractés. */
 const BASE_FILTERS = ["is_paratext:false", "is_retracted:false"];
+
+/**
+ * Types de documents « vérifiés » : articles et revues de littérature (évalués par les pairs),
+ * thèses et ouvrages universitaires. Exclut préprints, éditoriaux, lettres, errata, rapports, jeux de données…
+ */
+export const VERIFIED_TYPES = "article|review|book|book-chapter|dissertation";
+
+/** Revues et collections indexées (liste « core » d'OpenAlex, proche de Scopus / Web of Science). */
+const CORE_SOURCE = "primary_location.source.is_core:true";
 
 class OpenAlexError extends Error {
   constructor(message: string, public status: number) {
@@ -185,8 +196,8 @@ function sortParam(sort: SortKey | undefined, hasQuery: boolean): string | undef
 }
 
 export async function searchWorks(p: SearchParams): Promise<Page<Work>> {
-  const filters = [...BASE_FILTERS];
-  if (p.type) filters.push(`type:${p.type}`);
+  const filters = [...BASE_FILTERS, `type:${p.type || VERIFIED_TYPES}`];
+  if (p.coreOnly !== false && p.type !== "dissertation") filters.push(CORE_SOURCE);
   if (p.oaOnly) filters.push("open_access.is_oa:true");
   if (p.yearFrom || p.yearTo) {
     filters.push(`publication_year:${p.yearFrom ?? ""}-${p.yearTo ?? ""}`);
@@ -226,7 +237,7 @@ export async function getWorksByIds(ids: string[]): Promise<Work[]> {
   const page = await get<Page<Work>>(
     "/works",
     {
-      filter: [...BASE_FILTERS, `ids.openalex:${short.join("|")}`].join(","),
+      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, `ids.openalex:${short.join("|")}`].join(","),
       "per-page": short.length,
       select: LIST_SELECT,
     },
@@ -241,7 +252,7 @@ export async function getWorksBySameTopic(topicId: string, excludeId: string, n 
   const page = await get<Page<Work>>(
     "/works",
     {
-      filter: [...BASE_FILTERS, `primary_topic.id:${shortId(topicId)}`, "has_abstract:true"].join(","),
+      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, "has_abstract:true"].join(","),
       sort: "cited_by_count:desc",
       "per-page": n + 1,
       select: LIST_SELECT,
@@ -287,7 +298,7 @@ export async function getFeaturedWorks(n = 8, fieldId?: string): Promise<Work[]>
     "type:article|review",
     "open_access.is_oa:true",
     "has_abstract:true",
-    "primary_location.source.is_core:true",
+    CORE_SOURCE,
   ];
   if (fieldId) filters.push(`primary_topic.field.id:fields/${fieldId}`);
   const page = await get<Page<Work>>(

@@ -15,12 +15,16 @@ const SORTS = [
 ];
 
 const TYPES = [
-  { value: "all", label: "Tous les types" },
+  { value: "all", label: "Tous les documents vérifiés" },
   { value: "article", label: "Articles" },
   { value: "review", label: "Revues de littérature" },
-  { value: "preprint", label: "Préprints" },
-  { value: "conference-paper", label: "Conférences" },
-  { value: "book-chapter", label: "Chapitres" },
+  { value: "dissertation", label: "Thèses" },
+  { value: "book|book-chapter", label: "Livres et chapitres" },
+];
+
+const SOURCES = [
+  { value: "all", label: "Revues indexées uniquement" },
+  { value: "any", label: "Toutes les sources vérifiées" },
 ];
 
 const LANGS = [
@@ -63,7 +67,7 @@ export function SearchFilters({ className, defaults }: Props) {
     [params, pathname, router],
   );
 
-  const hasFilters = ["type", "oa", "from", "to", "sort", "lang"].some((k) => params.has(k));
+  const hasFilters = ["type", "oa", "from", "to", "sort", "lang", "src"].some((k) => params.has(k));
 
   return (
     <div className={cn("flex flex-col gap-3", pending && "opacity-70", className)} aria-busy={pending}>
@@ -81,6 +85,15 @@ export function SearchFilters({ className, defaults }: Props) {
           <SelectTrigger className="w-full" aria-label="Type de document"><SelectValue /></SelectTrigger>
           <SelectContent>
             {TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field label="Sources">
+        <Select items={SOURCES} value={params.get("src") === "all" ? "any" : "all"} onValueChange={(v) => update({ src: v === "any" ? "all" : null })}>
+          <SelectTrigger className="w-full" aria-label="Sources"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {SOURCES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </Field>
@@ -132,7 +145,7 @@ export function SearchFilters({ className, defaults }: Props) {
       </Field>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" className="self-start" onClick={() => update({ type: null, oa: null, from: null, to: null, sort: null, lang: null })}>
+        <Button variant="ghost" size="sm" className="self-start" onClick={() => update({ type: null, oa: null, from: null, to: null, sort: null, lang: null, src: null })}>
           <XIcon /> Réinitialiser
         </Button>
       )}

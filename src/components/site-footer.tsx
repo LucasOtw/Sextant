@@ -7,7 +7,7 @@ export function SiteFooter() {
           <a href="https://openalex.org" className="underline underline-offset-2 hover:text-foreground" target="_blank" rel="noreferrer">
             OpenAlex
           </a>{" "}
-          (CC0). Sourcier n'héberge aucun PDF : les liens pointent vers l'éditeur ou une archive ouverte.
+          (CC0). Sextant n'héberge aucun PDF : les liens pointent vers l'éditeur ou une archive ouverte.
         </p>
         <p>Les résumés IA sont indicatifs — la source fait foi.</p>
       </div>

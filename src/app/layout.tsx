@@ -7,9 +7,9 @@ import { SiteFooter } from "@/components/site-footer";
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Sourcier — l'article parfait pour votre mémoire", template: "%s · Sourcier" },
+  title: { default: "Sextant — la littérature scientifique, sans détour", template: "%s · Sextant" },
   description:
-    "L'article parfait pour votre mémoire : recherche d'articles scientifiques de qualité, métadonnées claires, accès ouvert, articles similaires. Sans compte.",
+    "Articles évalués par les pairs, thèses et ouvrages universitaires : recherche par mots-clés, métadonnées claires, accès ouvert, articles similaires.",
 };
 
 /** Applique le thème mémorisé (ou celui du système) avant le premier rendu, pour éviter le flash blanc. */
