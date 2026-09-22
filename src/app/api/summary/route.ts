@@ -55,7 +55,8 @@ export async function POST(req: Request) {
     .join("\n");
 
   try {
-    const text = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
+    const raw = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
+    const text = stripMarkdown(raw);
     cache.set(cacheKey, text);
     return NextResponse.json({ summary: text, model });
   } catch (e) {
@@ -65,6 +66,14 @@ export async function POST(req: Request) {
     if (e instanceof Anthropic.APIError) return NextResponse.json({ error: `Erreur du service IA (${e.status}).` }, { status: 502 });
     throw e;
   }
+}
+
+/** Les petits modèles glissent parfois du gras/italique ou des puces malgré la consigne. */
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*?([^*\n]+)\*\*?/g, "$1")
+    .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
+    .trim();
 }
 
 async function completeAnthropic(model: string, userContent: string): Promise<string> {

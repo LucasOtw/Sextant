@@ -16,7 +16,7 @@ const CONFIGS: Record<Exclude<Provider, "anthropic">, Omit<ProviderConfig, "key"
   // Gratuit avec quotas généreux, modèles open-weight (Llama, gpt-oss…). https://console.groq.com
   groq: { baseUrl: "https://api.groq.com/openai/v1", envKey: "GROQ_API_KEY", defaultModel: "llama-3.3-70b-versatile" },
   // Offre « Experiment » gratuite, modèles ouverts français. https://console.mistral.ai
-  mistral: { baseUrl: "https://api.mistral.ai/v1", envKey: "MISTRAL_API_KEY", defaultModel: "mistral-small-latest" },
+  mistral: { baseUrl: "https://api.mistral.ai/v1", envKey: "MISTRAL_API_KEY", defaultModel: "ministral-8b-latest" },
   // Modèles suffixés « :free » sans coût. https://openrouter.ai
   openrouter: { baseUrl: "https://openrouter.ai/api/v1", envKey: "OPENROUTER_API_KEY", defaultModel: "meta-llama/llama-3.3-70b-instruct:free" },
 };
