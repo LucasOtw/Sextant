@@ -165,3 +165,22 @@
 @media (prefers-reduced-motion: reduce) {
   .shimmer { animation: none; }
 }
+
+/* Pages de texte */
+.prose-sextant {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+}
+.prose-sextant h2 {
+  margin-top: 2.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.prose-sextant h2:first-child { margin-top: 0; }
+.prose-sextant p { margin-bottom: 1rem; }
+.prose-sextant ul { margin: 0 0 1rem 1.25rem; list-style: disc; }
+.prose-sextant li { margin-bottom: 0.35rem; }
+.prose-sextant a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, currentColor, transparent 60%); }
+.prose-sextant a:hover { color: var(--accent-brand); }
