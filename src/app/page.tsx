@@ -6,18 +6,19 @@ import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFeaturedWorks } from "@/lib/openalex";
 
-const EXAMPLES = ["apprentissage automatique santé", "urban heat island", "microplastics ocean", "sleep memory consolidation"];
+const EXAMPLES = ["télétravail et bien-être", "transition énergétique villes", "réseaux sociaux santé mentale adolescents", "fast fashion supply chain"];
 
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <section className="flex flex-col items-center gap-6 py-16 text-center sm:py-24">
         <h1 className="title-display max-w-3xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl">
-          Trouvez l'article qui compte<span className="text-accent-brand">.</span>
+          L'article parfait pour votre mémoire<span className="text-accent-brand">.</span>
         </h1>
         <p className="max-w-2xl text-balance text-lg text-muted-foreground">
-          Une porte d'entrée vers la littérature scientifique : recherche par mots-clés, métadonnées
-          claires, accès au PDF quand il est légal, et des pistes pour aller plus loin.
+          Pensé pour les étudiants de master : des sources reconnues, des métadonnées lisibles, le PDF
+          quand il est libre, et pour chaque article des pistes pour nourrir votre bibliographie.
+          Sans compte, sans bruit.
         </p>
         <SearchBox size="hero" className="max-w-2xl" autoFocus />
         <p className="text-sm text-muted-foreground">
@@ -34,14 +35,14 @@ export default function HomePage() {
       </section>
 
       <section id="themes" className="scroll-mt-20 py-8">
-        <SectionHeading title="Explorer par thématique" subtitle="Seize grands domaines, et leurs sous-thèmes les plus actifs." />
+        <SectionHeading title="Explorer par thématique" subtitle="Vous ne savez pas encore quoi chercher ? Partez de votre discipline." />
         <ThemeGrid />
       </section>
 
       <section id="selection" className="scroll-mt-20 py-8 pb-16">
         <SectionHeading
           title="Sélection du moment"
-          subtitle="Articles récents en accès ouvert, publiés dans des revues indexées, parmi les plus cités."
+          subtitle="Récents, en accès ouvert, publiés dans des revues indexées : ce que la communauté lit et cite en ce moment."
         />
         <Suspense fallback={<FeaturedSkeleton />}>
           <Featured />
