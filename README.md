@@ -1,4 +1,4 @@
-# Veille
+# Sourcier
 
 Porte d'entrée vers la littérature scientifique : recherche par mots-clés, thématiques, sélection,
 page article avec métadonnées claires, accès au PDF légal, résumé IA optionnel et articles similaires.
@@ -9,13 +9,13 @@ Pas de compte, pas de base de données : tout vient d'[OpenAlex](https://docs.op
 - Next.js 16 (App Router, Server Components, streaming) · React 19 · TypeScript
 - Tailwind CSS 4 + [shadcn/ui](https://ui.shadcn.com) (style `base-nova`, icônes Lucide)
 - Données : API OpenAlex (gratuite, sans clé, CC0)
-- Résumé IA : SDK Anthropic (`claude-opus-5` par défaut), activé seulement si `ANTHROPIC_API_KEY` est défini
+- Résumé IA : fournisseurs gratuits à modèles ouverts (Mistral par défaut, Groq, OpenRouter) via l'API « chat/completions », ou Anthropic ; activé seulement si une clé est définie (voir `.env.example`)
 
 ## Démarrage
 
 ```bash
 npm install
-cp .env.example .env.local   # puis renseigner OPENALEX_MAILTO et, si voulu, ANTHROPIC_API_KEY
+cp .env.example .env.local   # puis renseigner OPENALEX_MAILTO et, si voulu, une clé IA (MISTRAL_API_KEY…)
 npm run dev
 ```
 
@@ -30,6 +30,7 @@ Ouvrir <http://localhost:3000>.
 | `/theme/[slug]` | Une thématique (= un *field* OpenAlex) : sous-thèmes cliquables + résultats filtrés |
 | `/article/[id]` | Fiche article (`W…`) : métadonnées, résumé, résumé IA, PDF / éditeur, citation APA & BibTeX, sujets, articles similaires |
 | `POST /api/summary` | Génère le résumé IA (`{ id: "W…" }`), mis en cache en mémoire |
+| `GET /api/suggest?q=` | Suggestions de la barre de recherche (autocomplete OpenAlex re-trié par citations) |
 
 ## Organisation
 
@@ -40,7 +41,13 @@ src/
   lib/openalex.ts client OpenAlex typé (recherche, article, similaires, sujets)
   lib/format.ts   reconstruction du résumé, auteurs, APA/BibTeX, libellés FR
   lib/themes.ts   les 16 thématiques mises en avant (slug → field OpenAlex)
+  lib/ai.ts       fournisseurs de résumé IA (Mistral / Groq / OpenRouter / Anthropic)
+  lib/recent.ts   historique local « Consultés récemment »
 ```
+
+## Nom
+
+Un **sourcier** trouve des sources. Le logo est sa baguette (le Y) pointée vers la source (le point bleu).
 
 ## Choix
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HistoryIcon, LockOpenIcon, Trash2Icon } from "lucide-react";
+import { LockOpenIcon, Trash2Icon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { clearRecent, readRecent, type RecentWork } from "@/lib/recent";
@@ -22,10 +22,7 @@ export function RecentlyViewed() {
     <section id="recents" className="scroll-mt-20 py-8 pb-16 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="title-display flex items-center gap-2.5 text-3xl sm:text-4xl">
-            <HistoryIcon className="size-7 text-accent-brand" aria-hidden />
-            Consultés récemment
-          </h2>
+          <h2 className="title-display text-3xl sm:text-4xl">Consultés récemment</h2>
           <p className="mt-1.5 text-base text-muted-foreground">
             Gardé sur cet appareil uniquement, pour reprendre où vous en étiez.
           </p>

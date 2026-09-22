@@ -27,6 +27,7 @@ import {
 } from "@/lib/format";
 import { getWork, getWorksByIds, getWorksBySameTopic, shortId, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
+import { isAiEnabled } from "@/lib/ai";
 import { cn } from "cn";
 
 interface Props {
@@ -51,7 +52,7 @@ export default async function ArticlePage({ params }: Props) {
   const publisher = publisherUrl(work);
   const venue = venueName(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
-  const aiEnabled = Boolean(process.env.ANTHROPIC_API_KEY) && Boolean(abstract);
+  const aiEnabled = isAiEnabled() && Boolean(abstract);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">

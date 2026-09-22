@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "Veille — recherche d'articles scientifiques", template: "%s · Veille" },
+  title: { default: "Sourcier — l'article parfait pour votre mémoire", template: "%s · Sourcier" },
   description:
     "L'article parfait pour votre mémoire : recherche d'articles scientifiques de qualité, métadonnées claires, accès ouvert, articles similaires. Sans compte.",
 };
