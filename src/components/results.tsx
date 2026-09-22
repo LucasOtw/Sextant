@@ -97,8 +97,12 @@ async function List({ base, sp, params }: Props) {
         {params.q && <> pour « {params.q} »</>}
       </p>
       <ul className="flex flex-col gap-3">
-        {page.results.map((w) => (
-          <li key={w.id}>
+        {page.results.map((w, i) => (
+          <li
+            key={w.id}
+            className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none"
+            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
+          >
             <WorkCard work={w} />
           </li>
         ))}

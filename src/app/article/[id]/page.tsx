@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockOpenIcon, QuoteIcon } from "lucide-react";
 import { AiSummary } from "@/components/ai-summary";
+import { TrackView } from "@/components/track-view";
 import { CopyButton } from "@/components/copy-button";
 import { WorkCard } from "@/components/work-card";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   abstractFromInvertedIndex,
+  formatAuthors,
   formatCount,
   formatDate,
   oaLabel,
@@ -53,6 +55,14 @@ export default async function ArticlePage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      <TrackView
+        id={shortId(work.id)}
+        title={workTitle(work)}
+        authors={formatAuthors(work, 2)}
+        venue={venue}
+        year={work.publication_year}
+        isOa={work.open_access.is_oa}
+      />
       <article className="mx-auto max-w-3xl">
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
@@ -217,8 +227,8 @@ async function Similar({ work }: { work: Work }) {
   if (similar.length === 0) return <p className="mt-4 text-sm text-muted-foreground">Aucune suggestion pour cet article.</p>;
   return (
     <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {similar.slice(0, 9).map((w) => (
-        <li key={w.id}>
+      {similar.slice(0, 9).map((w, i) => (
+        <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
           <WorkCard work={w} variant="compact" />
         </li>
       ))}

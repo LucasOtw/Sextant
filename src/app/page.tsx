@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { ThemeGrid } from "@/components/theme-grid";
 import { WorkCard } from "@/components/work-card";
+import { RecentlyViewed } from "@/components/recently-viewed";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFeaturedWorks } from "@/lib/openalex";
 
@@ -39,7 +40,7 @@ export default function HomePage() {
         <ThemeGrid />
       </section>
 
-      <section id="selection" className="scroll-mt-20 py-8 pb-16">
+      <section id="selection" className="scroll-mt-20 py-8">
         <SectionHeading
           title="Sélection du moment"
           subtitle="Récents, en accès ouvert, publiés dans des revues indexées : ce que la communauté lit et cite en ce moment."
@@ -48,6 +49,8 @@ export default function HomePage() {
           <Featured />
         </Suspense>
       </section>
+
+      <RecentlyViewed />
     </div>
   );
 }
@@ -61,8 +64,8 @@ async function Featured() {
   }
   return (
     <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {works.map((w) => (
-        <li key={w.id}>
+      {works.map((w, i) => (
+        <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
           <WorkCard work={w} variant="compact" />
         </li>
       ))}

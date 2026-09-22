@@ -162,7 +162,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
         <ul
           id={listId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10"
+          className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10 animate-in fade-in zoom-in-98 slide-in-from-top-1 duration-150 motion-reduce:animate-none"
         >
           {items.map((item, i) => (
             <li key={item.href} id={`${listId}-${i}`} role="option" aria-selected={i === active}>

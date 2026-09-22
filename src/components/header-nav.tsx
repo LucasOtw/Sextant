@@ -13,7 +13,7 @@ export function HeaderNav() {
         href="/search"
         aria-current={active ? "page" : undefined}
         className={cn(
-          "rounded-full px-3.5 py-1.5 text-[15px] transition-colors",
+          "rounded-full px-3.5 py-1.5 text-[15px] transition-colors duration-200",
           active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
         )}
       >
