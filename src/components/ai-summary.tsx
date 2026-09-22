@@ -10,12 +10,14 @@ interface Props {
   providerLabel: string;
   /** Identifiant du modèle utilisé (ex. « ministral-8b-latest »). */
   model: string;
+  /** Le résumé original est-il déjà en français ? Change l'intitulé : synthèse seule vs traduction + synthèse. */
+  isFrench: boolean;
 }
 
 type State = { status: "idle" } | { status: "loading" } | { status: "done"; text: string } | { status: "error"; message: string };
 
-/** Synthèse en français du résumé original, générée à la demande. */
-export function AiSummary({ workId, providerLabel, model }: Props) {
+/** Condensé du résumé original en quatre points (traduit si besoin), généré à la demande. */
+export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
   const [state, setState] = useState<State>({ status: "idle" });
 
   async function run() {
@@ -35,6 +37,11 @@ export function AiSummary({ workId, providerLabel, model }: Props) {
   }
 
   const loading = state.status === "loading";
+  const title = isFrench ? "L'essentiel en quatre points" : "L'essentiel en français";
+  const intro = isFrench
+    ? "Question, méthode, résultat, portée : le résumé ci-dessus, condensé."
+    : "Le résumé ci-dessus, traduit et condensé : question, méthode, résultat, portée.";
+  const cta = isFrench ? "Condenser le résumé" : "Traduire et condenser";
 
   return (
     <div className="mt-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
@@ -42,11 +49,9 @@ export function AiSummary({ workId, providerLabel, model }: Props) {
         <div>
           <h3 className="flex items-center gap-2 text-base font-semibold">
             <SparklesIcon className={loading ? "size-4 animate-pulse text-accent-brand" : "size-4 text-accent-brand"} aria-hidden />
-            Synthèse en français
+            {title}
           </h3>
-          <p className="mt-1 text-[15px] text-muted-foreground">
-            Quatre points tirés du résumé ci-dessus : question, méthode, résultat, portée.
-          </p>
+          <p className="mt-1 text-[15px] text-muted-foreground">{intro}</p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground" title={model}>
           <span className="size-1.5 rounded-full bg-accent-brand" aria-hidden />
@@ -57,7 +62,7 @@ export function AiSummary({ workId, providerLabel, model }: Props) {
 
       {state.status === "idle" && (
         <Button size="sm" variant="secondary" onClick={run} className="mt-4">
-          <SparklesIcon /> Générer la synthèse
+          <SparklesIcon /> {cta}
         </Button>
       )}
 

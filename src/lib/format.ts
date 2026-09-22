@@ -154,3 +154,13 @@ export function toApa(w: Work): string {
   const doi = w.doi ? ` ${w.doi}` : "";
   return `${authors} ${year}. ${workTitle(w)}.${venue ? ` ${venue}${vol}${issue}${pages}.` : ""}${doi}`;
 }
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: "anglais", fr: "français", es: "espagnol", de: "allemand", it: "italien", pt: "portugais",
+  nl: "néerlandais", ru: "russe", zh: "chinois", ja: "japonais", ko: "coréen", ar: "arabe", tr: "turc", pl: "polonais",
+};
+
+/** "en" → "anglais" ; code inconnu renvoyé en majuscules. */
+export function languageName(code: string): string {
+  return LANGUAGE_NAMES[code.toLowerCase()] ?? code.toUpperCase();
+}

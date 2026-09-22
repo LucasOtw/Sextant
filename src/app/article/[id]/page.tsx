@@ -17,6 +17,7 @@ import {
   formatAuthors,
   formatCount,
   formatDate,
+  languageName,
   oaLabel,
   openAccessUrl,
   publisherUrl,
@@ -139,8 +140,10 @@ export default async function ArticlePage({ params }: Props) {
 
         <section aria-labelledby="abstract">
           <h2 id="abstract" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Résumé original
-            {work.language && <span className="ml-2 font-normal normal-case tracking-normal">· {work.language.toUpperCase()}</span>}
+            Résumé
+            {work.language && work.language !== "fr" && (
+              <span className="ml-2 font-normal normal-case tracking-normal">· en {languageName(work.language)}</span>
+            )}
           </h2>
           {abstract ? (
             <p className="mt-3 text-[17px] leading-relaxed">{abstract}</p>
@@ -148,7 +151,12 @@ export default async function ArticlePage({ params }: Props) {
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
           {aiEnabled && provider && (
-            <AiSummary workId={shortId(work.id)} providerLabel={providerLabel(provider)} model={modelFor(provider)} />
+            <AiSummary
+              workId={shortId(work.id)}
+              providerLabel={providerLabel(provider)}
+              model={modelFor(provider)}
+              isFrench={work.language === "fr"}
+            />
           )}
         </section>
 
