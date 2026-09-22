@@ -332,8 +332,11 @@ interface RawAuthor {
   last_known_institutions?: { id: string; display_name: string; country_code: string | null }[];
 }
 
-/** Profil court d'un auteur + site de sa dernière institution connue. */
-export async function getAuthorProfile(id: string): Promise<AuthorProfile | null> {
+/**
+ * Profil court d'un auteur + site de sa dernière institution connue.
+ * `fallbackInstitutionId` : institution indiquée sur l'article, utilisée si OpenAlex n'en connaît aucune pour l'auteur.
+ */
+export async function getAuthorProfile(id: string, fallbackInstitutionId?: string | null): Promise<AuthorProfile | null> {
   let a: RawAuthor;
   try {
     a = await get<RawAuthor>(
@@ -345,12 +348,18 @@ export async function getAuthorProfile(id: string): Promise<AuthorProfile | null
     if (e instanceof OpenAlexError && e.status === 404) return null;
     throw e;
   }
-  const inst = a.last_known_institutions?.[0];
+  let inst: { display_name: string; country_code: string | null } | undefined = a.last_known_institutions?.[0];
+  const instId = a.last_known_institutions?.[0]?.id ?? fallbackInstitutionId ?? null;
   let homepage: string | null = null;
-  if (inst) {
+  if (instId) {
     try {
-      const i = await get<{ homepage_url: string | null }>(`/institutions/${shortId(inst.id)}`, { select: "homepage_url" }, 86400);
+      const i = await get<{ display_name: string; homepage_url: string | null; country_code: string | null }>(
+        `/institutions/${shortId(instId)}`,
+        { select: "display_name,homepage_url,country_code" },
+        86400,
+      );
       homepage = i.homepage_url;
+      inst ??= { display_name: i.display_name, country_code: i.country_code };
     } catch {
       /* institution sans fiche : pas de lien */
     }

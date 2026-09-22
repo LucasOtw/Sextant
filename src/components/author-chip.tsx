@@ -11,14 +11,16 @@ interface Props {
   authorId: string | null;
   name: string;
   institution?: string | null;
+  /** Identifiant OpenAlex de l'institution indiquée sur l'article (repli pour le lien vers son site). */
+  institutionId?: string | null;
 }
 
 const cache = new Map<string, Promise<AuthorProfile | null>>();
 
-function load(id: string): Promise<AuthorProfile | null> {
+function load(id: string, instId: string | null): Promise<AuthorProfile | null> {
   let p = cache.get(id);
   if (!p) {
-    p = fetch(`/api/author?id=${id}`)
+    p = fetch(`/api/author?id=${id}${instId ? `&inst=${instId}` : ""}`)
       .then((r) => (r.ok ? (r.json() as Promise<AuthorProfile>) : null))
       .catch(() => null);
     cache.set(id, p);
@@ -27,13 +29,14 @@ function load(id: string): Promise<AuthorProfile | null> {
 }
 
 /** Nom d'auteur avec carte au survol : institution (lien vers son site), ORCID, Wikipédia, tous ses articles. */
-export function AuthorChip({ authorId, name, institution }: Props) {
+export function AuthorChip({ authorId, name, institution, institutionId }: Props) {
   const [open, setOpen] = useState(false);
   const [profile, setProfile] = useState<AuthorProfile | null | undefined>(undefined);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapRef = useRef<HTMLSpanElement>(null);
 
   const id = authorId?.replace(/^.*\//, "") ?? null;
+  const instId = institutionId?.replace(/^.*\//, "") ?? null;
 
   function show() {
     if (timer.current) clearTimeout(timer.current);
@@ -47,11 +50,11 @@ export function AuthorChip({ authorId, name, institution }: Props) {
   useEffect(() => {
     if (!open || !id || profile !== undefined) return;
     let alive = true;
-    load(id).then((p) => alive && setProfile(p));
+    load(id, instId).then((p) => alive && setProfile(p));
     return () => {
       alive = false;
     };
-  }, [open, id, profile]);
+  }, [open, id, instId, profile]);
 
   // Fermer au clic à l'extérieur (mobile : le nom s'ouvre au tap).
   useEffect(() => {

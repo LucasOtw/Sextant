@@ -194,7 +194,7 @@ function Authors({ work }: { work: Work }) {
         const inst = a.institutions[0]?.display_name;
         return (
           <span key={`${a.author.id ?? a.author.display_name}-${i}`}>
-            <AuthorChip authorId={a.author.id} name={a.author.display_name} institution={inst} />
+            <AuthorChip authorId={a.author.id} name={a.author.display_name} institution={inst} institutionId={a.institutions[0]?.id ?? null} />
             {inst && <span className="text-muted-foreground"> ({inst})</span>}
             {i < shown.length - 1 && ", "}
           </span>
