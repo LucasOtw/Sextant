@@ -107,6 +107,8 @@ export interface SearchParams {
   topic?: string;
   /** Travaux qui citent cet identifiant (ex. "W3138516171"). */
   cites?: string;
+  /** Code langue ISO 639-1 (ex. "fr"). */
+  language?: string;
 }
 
 /** Champs demandés à l'API pour les listes (réduit la taille des réponses). */
@@ -192,6 +194,7 @@ export async function searchWorks(p: SearchParams): Promise<Page<Work>> {
   if (p.field) filters.push(`primary_topic.field.id:fields/${p.field}`);
   if (p.topic) filters.push(`primary_topic.id:${p.topic}`);
   if (p.cites) filters.push(`cites:${p.cites}`);
+  if (p.language) filters.push(`language:${p.language}`);
 
   // Certaines notices portent une date future erronée : on plafonne à aujourd'hui.
   filters.push(`to_publication_date:${new Date().toISOString().slice(0, 10)}`);

@@ -28,7 +28,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-shadow hover:shadow-md hover:ring-accent-brand/40",
+        "group relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-shadow hover:shadow-md hover:ring-foreground/25",
         compact ? "h-full" : "sm:p-5",
       )}
     >
@@ -45,7 +45,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
       </div>
 
       <h3 className={cn("title-display leading-snug", compact ? "text-lg" : "text-xl sm:text-[1.4rem]")}>
-        <Link href={href} className="after:absolute after:inset-0 hover:underline hover:underline-offset-3">
+        <Link href={href} className="after:absolute after:inset-0 hover:text-accent-brand">
           {workTitle(work)}
         </Link>
       </h3>
@@ -54,6 +54,9 @@ export function WorkCard({ work, variant = "list" }: Props) {
         {formatAuthors(work, compact ? 2 : 3)}
         {venue && <> · <span className="italic">{venue}</span></>}
         {work.publication_year && <> · {work.publication_year}</>}
+        {work.language && work.language !== "en" && (
+          <> · <span className="font-medium uppercase">{work.language}</span></>
+        )}
       </p>
 
       {!compact && abstract && (

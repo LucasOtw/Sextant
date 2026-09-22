@@ -3,12 +3,12 @@
 import { usePathname } from "next/navigation";
 import { SearchBox } from "@/components/search-box";
 
-/** Recherche du header — masquée sur l'accueil, qui a déjà la sienne. */
+/** Recherche du header — masquée sur les pages qui ont déjà la leur (accueil, résultats, thématiques). */
 export function HeaderSearch() {
   const pathname = usePathname();
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname.startsWith("/search") || pathname.startsWith("/theme/")) return null;
   return (
-    <div className="ml-auto hidden w-full max-w-lg md:block">
+    <div className="hidden w-full max-w-md md:block">
       <SearchBox size="compact" />
     </div>
   );

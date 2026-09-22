@@ -31,6 +31,7 @@ export function parseSearchParams(sp: RawSearchParams, extra: Partial<SearchPara
     yearTo: int(first(sp.to)),
     topic: first(sp.topic),
     cites: first(sp.cites),
+    language: first(sp.lang),
     ...extra,
   };
 }

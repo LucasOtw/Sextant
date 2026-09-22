@@ -23,6 +23,16 @@ const TYPES = [
   { value: "book-chapter", label: "Chapitres" },
 ];
 
+const LANGS = [
+  { value: "all", label: "Toutes les langues" },
+  { value: "fr", label: "Français" },
+  { value: "en", label: "Anglais" },
+  { value: "es", label: "Espagnol" },
+  { value: "de", label: "Allemand" },
+  { value: "pt", label: "Portugais" },
+  { value: "it", label: "Italien" },
+];
+
 const OA = [
   { value: "all", label: "Tous les accès" },
   { value: "1", label: "Accès ouvert uniquement" },
@@ -53,7 +63,7 @@ export function SearchFilters({ className, defaults }: Props) {
     [params, pathname, router],
   );
 
-  const hasFilters = ["type", "oa", "from", "to", "sort"].some((k) => params.has(k));
+  const hasFilters = ["type", "oa", "from", "to", "sort", "lang"].some((k) => params.has(k));
 
   return (
     <div className={cn("flex flex-col gap-3", pending && "opacity-70", className)} aria-busy={pending}>
@@ -71,6 +81,15 @@ export function SearchFilters({ className, defaults }: Props) {
           <SelectTrigger className="w-full" aria-label="Type de document"><SelectValue /></SelectTrigger>
           <SelectContent>
             {TYPES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </Field>
+
+      <Field label="Langue">
+        <Select items={LANGS} value={params.get("lang") ?? "all"} onValueChange={(v) => update({ lang: String(v) })}>
+          <SelectTrigger className="w-full" aria-label="Langue"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {LANGS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
           </SelectContent>
         </Select>
       </Field>
@@ -113,7 +132,7 @@ export function SearchFilters({ className, defaults }: Props) {
       </Field>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" className="self-start" onClick={() => update({ type: null, oa: null, from: null, to: null, sort: null })}>
+        <Button variant="ghost" size="sm" className="self-start" onClick={() => update({ type: null, oa: null, from: null, to: null, sort: null, lang: null })}>
           <XIcon /> Réinitialiser
         </Button>
       )}
