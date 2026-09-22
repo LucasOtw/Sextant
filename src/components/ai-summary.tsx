@@ -33,7 +33,7 @@ export function AiSummary({ workId }: Props) {
   return (
     <section aria-labelledby="ai-summary" className="rounded-xl border border-dashed p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="ai-summary" className="flex items-center gap-2 text-sm font-medium">
+        <h2 id="ai-summary" className="flex items-center gap-2 text-base font-semibold">
           <SparklesIcon className="size-4 text-accent-brand" aria-hidden />
           Résumé IA
         </h2>
@@ -45,7 +45,7 @@ export function AiSummary({ workId }: Props) {
       </div>
 
       {state.status === "idle" && (
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-[15px] text-muted-foreground">
           Une synthèse en français, générée à la demande à partir du résumé original. Indicative : la source fait foi.
         </p>
       )}
@@ -57,7 +57,7 @@ export function AiSummary({ workId }: Props) {
         </div>
       )}
       {state.status === "done" && (
-        <div className="mt-3 space-y-2 text-sm leading-relaxed">
+        <div className="mt-3 space-y-2 text-[15px] leading-relaxed">
           {state.text.split(/\n+/).map((line, i) => <p key={i}>{line}</p>)}
           <p className="pt-1 text-xs text-muted-foreground">Généré par IA à partir du résumé original — vérifiez dans l'article.</p>
         </div>

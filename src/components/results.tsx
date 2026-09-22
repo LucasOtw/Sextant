@@ -91,7 +91,7 @@ async function List({ base, sp, params }: Props) {
   const total = page.meta.count;
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-[15px] text-muted-foreground">
         {new Intl.NumberFormat("fr-FR").format(total)} résultat{total > 1 ? "s" : ""}
         {params.q && <> pour « {params.q} »</>}
       </p>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { SearchForm } from "@/components/search-form";
+import { SearchBox } from "@/components/search-box";
 import { Results, parseSearchParams, type RawSearchParams } from "@/components/results";
 import { getTopic, getWork } from "@/lib/openalex";
 import { workTitle } from "@/lib/format";
@@ -28,7 +28,7 @@ export default async function SearchPage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-3">
-        <SearchForm size="hero" defaultValue={params.q} hidden={{ topic: params.topic, cites: params.cites }} className="max-w-3xl" />
+        <SearchBox size="hero" defaultValue={params.q} hidden={{ topic: params.topic, cites: params.cites }} className="max-w-3xl" />
         {topic && (
           <ContextLine label="Sujet" value={topic.display_name} clearHref={params.q ? `/search?q=${encodeURIComponent(params.q)}` : "/"} />
         )}
@@ -43,7 +43,7 @@ export default async function SearchPage({ searchParams }: Props) {
 
 function ContextLine({ label, value, clearHref }: { label: string; value: string; clearHref: string }) {
   return (
-    <p className="text-sm text-muted-foreground">
+    <p className="text-[15px] text-muted-foreground">
       {label} : <span className="text-foreground">{value}</span>{" "}
       <Link href={clearHref} className="underline underline-offset-2 hover:text-foreground">
         (retirer)

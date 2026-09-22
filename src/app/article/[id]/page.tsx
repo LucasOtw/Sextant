@@ -54,8 +54,8 @@ export default async function ArticlePage({ params }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <article className="mx-auto max-w-3xl">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <Badge variant="outline">{typeLabel(work.type)}</Badge>
+        <div className="flex flex-wrap items-center gap-1.5 text-sm">
+          <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
             {work.open_access.is_oa && <LockOpenIcon aria-hidden />}
             {oaLabel(work.open_access.oa_status)}
@@ -68,11 +68,11 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </div>
 
-        <h1 className="title-serif mt-3 text-3xl leading-tight sm:text-4xl">{workTitle(work)}</h1>
+        <h1 className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
 
         <Authors work={work} />
 
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-3 text-[15px] text-muted-foreground">
           {venue && <span className="italic text-foreground">{venue}</span>}
           {venue && (work.publication_date || work.publication_year) && " · "}
           {formatDate(work.publication_date) ?? work.publication_year}
@@ -84,7 +84,7 @@ export default async function ArticlePage({ params }: Props) {
           {work.language && <> · {work.language.toUpperCase()}</>}
         </p>
 
-        <dl className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
           <Stat icon={<QuoteIcon />} label="Citations">
             <Link href={`/search?cites=${shortId(work.id)}`} className="underline underline-offset-2 hover:text-accent-brand">
               {formatCount(work.cited_by_count)}
@@ -117,7 +117,7 @@ export default async function ArticlePage({ params }: Props) {
           <CopyButton text={toBibtex(work)} label="BibTeX" />
         </div>
         {!oa && (
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             Pas de version en accès ouvert connue. Le lien éditeur peut demander un abonnement institutionnel.
           </p>
         )}
@@ -125,9 +125,9 @@ export default async function ArticlePage({ params }: Props) {
         <Separator className="my-8" />
 
         <section aria-labelledby="abstract">
-          <h2 id="abstract" className="text-sm font-medium text-muted-foreground">Résumé</h2>
+          <h2 id="abstract" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Résumé</h2>
           {abstract ? (
-            <p className="mt-2 text-[15px] leading-relaxed">{abstract}</p>
+            <p className="mt-3 text-[17px] leading-relaxed">{abstract}</p>
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -141,16 +141,16 @@ export default async function ArticlePage({ params }: Props) {
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
-            <h2 id="topics" className="text-sm font-medium text-muted-foreground">Sujets</h2>
+            <h2 id="topics" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Sujets</h2>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {work.topics?.slice(0, 3).map((t) => (
                 <Link key={t.id} href={`/search?topic=${shortId(t.id)}`}>
-                  <Badge variant="secondary" className="h-6 cursor-pointer px-2.5">{t.display_name}</Badge>
+                  <Badge variant="secondary" className="h-7 cursor-pointer px-3 text-sm">{t.display_name}</Badge>
                 </Link>
               ))}
               {work.keywords?.slice(0, 6).map((k) => (
                 <Link key={k.id} href={`/search?q=${encodeURIComponent(k.display_name)}`}>
-                  <Badge variant="outline" className="h-6 cursor-pointer px-2.5">{k.display_name}</Badge>
+                  <Badge variant="outline" className="h-7 cursor-pointer px-3 text-sm">{k.display_name}</Badge>
                 </Link>
               ))}
             </div>
@@ -159,8 +159,8 @@ export default async function ArticlePage({ params }: Props) {
       </article>
 
       <section className="mt-14" aria-labelledby="similar">
-        <h2 id="similar" className="title-serif text-3xl">Pour aller plus loin</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Articles proches par le contenu, selon OpenAlex.</p>
+        <h2 id="similar" className="title-display text-3xl sm:text-4xl">Pour aller plus loin</h2>
+        <p className="mt-1.5 text-base text-muted-foreground">Articles proches par le contenu, selon OpenAlex.</p>
         <Suspense fallback={<SimilarSkeleton />}>
           <Similar work={work} />
         </Suspense>
@@ -176,7 +176,7 @@ function Authors({ work }: { work: Work }) {
   const rest = list.length - shown.length;
   if (list.length === 0) return null;
   return (
-    <p className="mt-3 text-sm leading-relaxed">
+    <p className="mt-4 text-[15px] leading-relaxed">
       {shown.map((a, i) => {
         const inst = a.institutions[0]?.display_name;
         return (
@@ -195,7 +195,7 @@ function Authors({ work }: { work: Work }) {
 function Stat({ icon, label, children }: { icon?: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-1.5">
-      {icon && <span className="text-muted-foreground [&_svg]:size-4" aria-hidden>{icon}</span>}
+      {icon && <span className="text-accent-brand [&_svg]:size-4" aria-hidden>{icon}</span>}
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-medium">{children}</dd>
     </div>

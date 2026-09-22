@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { SearchForm } from "@/components/search-form";
+import { SearchBox } from "@/components/search-box";
 import { ThemeGrid } from "@/components/theme-grid";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,15 +12,15 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <section className="flex flex-col items-center gap-6 py-16 text-center sm:py-24">
-        <h1 className="title-serif max-w-3xl text-5xl leading-[1.05] sm:text-6xl">
+        <h1 className="title-display max-w-3xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl">
           Trouvez l'article qui compte<span className="text-accent-brand">.</span>
         </h1>
-        <p className="max-w-xl text-balance text-muted-foreground">
+        <p className="max-w-2xl text-balance text-lg text-muted-foreground">
           Une porte d'entrée vers la littérature scientifique : recherche par mots-clés, métadonnées
           claires, accès au PDF quand il est légal, et des pistes pour aller plus loin.
         </p>
-        <SearchForm size="hero" className="max-w-2xl" />
-        <p className="text-xs text-muted-foreground">
+        <SearchBox size="hero" className="max-w-2xl" autoFocus />
+        <p className="text-sm text-muted-foreground">
           Essayez :{" "}
           {EXAMPLES.map((q, i) => (
             <span key={q}>
@@ -80,8 +80,8 @@ function FeaturedSkeleton() {
 function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-5">
-      <h2 className="title-serif text-3xl">{title}</h2>
-      {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+      <h2 className="title-display text-3xl sm:text-4xl">{title}</h2>
+      {subtitle && <p className="mt-1.5 text-base text-muted-foreground">{subtitle}</p>}
     </div>
   );
 }

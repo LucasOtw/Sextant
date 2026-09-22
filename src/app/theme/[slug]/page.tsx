@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SearchForm } from "@/components/search-form";
+import { SearchBox } from "@/components/search-box";
 import { Results, parseSearchParams, type RawSearchParams } from "@/components/results";
 import { Badge } from "@/components/ui/badge";
 import { getTopicsForField } from "@/lib/openalex";
@@ -43,15 +43,15 @@ export default async function ThemePage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2 text-[15px] text-muted-foreground">
           <Link href="/#themes" className="hover:text-foreground">Thématiques</Link>
           <span>/</span>
           <span className={cn("size-2 rounded-full", theme.tone)} aria-hidden />
           <span className="text-foreground">{theme.name}</span>
         </div>
-        <h1 className="title-serif text-4xl sm:text-5xl">{theme.name}</h1>
-        <p className="max-w-2xl text-muted-foreground">{theme.description}</p>
-        <SearchForm size="hero" defaultValue={search.q} className="max-w-3xl" />
+        <h1 className="title-display text-4xl sm:text-5xl">{theme.name}</h1>
+        <p className="max-w-2xl text-lg text-muted-foreground">{theme.description}</p>
+        <SearchBox size="hero" defaultValue={search.q} className="max-w-3xl" />
         {topics.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {topics.map((t) => {
@@ -59,7 +59,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
               const active = search.topic === id;
               return (
                 <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`}>
-                  <Badge variant={active ? "default" : "secondary"} className="h-6 cursor-pointer px-2.5">
+                  <Badge variant={active ? "default" : "secondary"} className="h-7 cursor-pointer px-3 text-sm">
                     {t.display_name}
                   </Badge>
                 </Link>
