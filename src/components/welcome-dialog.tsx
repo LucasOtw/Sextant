@@ -32,8 +32,9 @@ export function WelcomeDialog() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent showCloseButton={false} className="overflow-hidden p-0 sm:max-w-md">
+    // Fermeture uniquement par le bouton : ni clic à l'extérieur, ni touche Échap.
+    <Dialog open={open} onOpenChange={() => undefined} disablePointerDismissal>
+      <DialogContent showCloseButton={false} className="overflow-hidden p-0 sm:max-w-md" onKeyDown={(e) => e.key === "Escape" && e.preventDefault()}>
         <WelcomeIllustration />
         <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
           <DialogTitle className="title-display text-2xl">Un compagnon, pas un raccourci</DialogTitle>
