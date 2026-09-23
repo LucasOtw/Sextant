@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
-import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon } from "lucide-react";
+import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
@@ -25,22 +25,79 @@ interface LayoutProps {
   originalUrl: string;
 }
 
-/** Lecteur à gauche, « Mes surlignages » à droite (défilable) ; sur mobile, la liste se replie au-dessus du lecteur. */
+/**
+ * Lecteur à gauche, « Mes surlignages » à droite (défilable) ; sur mobile, la liste se replie au-dessus du lecteur.
+ * « Plein écran » passe le lecteur en plein écran (API du navigateur, ou repli fixe quand elle manque, iPhone par exemple).
+ */
 export function ReaderLayout({ url, originalUrl }: LayoutProps) {
   const { highlights } = useHighlights();
   const [open, setOpen] = useState(false);
+  const [full, setFull] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  /** API Fullscreen disponible ? Décidé après le montage (le rendu serveur ne doit pas en dépendre). */
+  const [nativeFullscreen, setNativeFullscreen] = useState(true);
+
+  useEffect(() => {
+    const onChange = () => setFull(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onChange);
+    if (typeof document.documentElement.requestFullscreen !== "function") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- capacité du navigateur, connue seulement côté client
+      setNativeFullscreen(false);
+    }
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  // Repli sans API : Échap quitte le plein écran.
+  useEffect(() => {
+    if (!full || nativeFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFull(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [full, nativeFullscreen]);
+
+  async function toggleFullscreen() {
+    if (full) {
+      if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
+      setFull(false);
+      return;
+    }
+    if (nativeFullscreen) {
+      try {
+        // Certains environnements acceptent la demande sans basculer : on vérifie, puis on se replie sur le mode fixe.
+        await Promise.race([wrapRef.current?.requestFullscreen(), new Promise((r) => setTimeout(r, 400))]);
+        if (document.fullscreenElement) return;
+      } catch {
+        /* refusé : repli */
+      }
+      setNativeFullscreen(false);
+    }
+    setFull(true);
+  }
+
+  const fallback = full && !nativeFullscreen;
   return (
-    <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-      <div className="lg:hidden">
-        <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
-          Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
-          <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
-        </Button>
-      </div>
-      <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", !open && "hidden")}>
+    <div ref={wrapRef} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
+      {!full && (
+        <div className="lg:hidden">
+          <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
+            Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
+            <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
+          </Button>
+        </div>
+      )}
+      <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", (!open || full) && "hidden", full && "lg:hidden")}>
         <ArticleHighlights compact onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
       </aside>
-      <div className="min-w-0 flex-1 lg:order-1"><PdfReader url={url} originalUrl={originalUrl} /></div>
+      <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
+        <div className="mb-3 flex justify-end">
+          <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()} aria-pressed={full}>
+            {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
+          </Button>
+        </div>
+        <PdfReader url={url} originalUrl={originalUrl} />
+      </div>
     </div>
   );
 }
