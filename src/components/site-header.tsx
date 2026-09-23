@@ -5,6 +5,7 @@ import { LogoMark } from "@/components/logo";
 import { WelcomeDialog } from "@/components/welcome-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButton } from "@/components/auth/auth-button";
+import { FavoritesLink } from "@/components/favorites/favorites-link";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 
 export async function SiteHeader() {
@@ -21,6 +22,7 @@ export async function SiteHeader() {
         </div>
         <div className="flex items-center gap-1">
           <HeaderNav />
+          {isAuthEnabled() && <FavoritesLink />}
           <ThemeToggle />
           {isAuthEnabled() && <AuthButton user={user} />}
         </div>

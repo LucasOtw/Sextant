@@ -1,4 +1,5 @@
 import type { Work } from "./openalex";
+import { bibField } from "./favorites-shared";
 
 /** Reconstruit le texte d'un résumé depuis l'index inversé d'OpenAlex. */
 export function abstractFromInvertedIndex(
@@ -114,12 +115,12 @@ export function toBibtex(w: Work): string {
   const kind = w.type === "book" ? "book" : w.type === "conference-paper" ? "inproceedings" : "article";
   const lines = [
     `@${kind}{${bibKey(w)},`,
-    `  title = {${workTitle(w)}},`,
-    `  author = {${authorNames(w).join(" and ")}},`,
+    `  title = {${bibField(workTitle(w))}},`,
+    `  author = {${authorNames(w).map(bibField).join(" and ")}},`,
   ];
   if (w.publication_year) lines.push(`  year = {${w.publication_year}},`);
   const venue = venueName(w);
-  if (venue) lines.push(`  ${kind === "inproceedings" ? "booktitle" : "journal"} = {${venue}},`);
+  if (venue) lines.push(`  ${kind === "inproceedings" ? "booktitle" : "journal"} = {${bibField(venue)}},`);
   if (w.biblio?.volume) lines.push(`  volume = {${w.biblio.volume}},`);
   if (w.biblio?.issue) lines.push(`  number = {${w.biblio.issue}},`);
   if (w.biblio?.first_page) {
