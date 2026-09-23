@@ -1,12 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
+import WelcomeDialogContent from "@/components/welcome-dialog-content";
 
 const KEY = "sextant:welcomed";
-
-/** Le contenu (Dialog, illustration) n'est téléchargé que si la fenêtre doit s'afficher. */
-const WelcomeDialogContent = dynamic(() => import("@/components/welcome-dialog-content"), { ssr: false });
 
 /** Message d'accueil affiché une seule fois par navigateur : ce que l'outil fait, et ce qu'il ne remplace pas. */
 export function WelcomeDialog() {
