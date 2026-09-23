@@ -47,7 +47,8 @@ export default function AboutPage() {
       <p>Un sextant sert à faire le point et à tenir son cap. C'est ce qu'on aimerait vous offrir dans la littérature scientifique.</p>
 
       <p>
-        Voir aussi : <Link href="/conditions">conditions d'utilisation</Link> et <Link href="/confidentialite">confidentialité</Link>.
+        Voir aussi : <Link href="/mentions-legales">mentions légales</Link>, <Link href="/conditions">conditions d'utilisation</Link> et{" "}
+        <Link href="/confidentialite">confidentialité</Link>.
       </p>
     </ProsePage>
   );

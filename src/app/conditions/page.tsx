@@ -6,7 +6,7 @@ export const metadata: Metadata = { title: "Conditions d'utilisation" };
 
 export default function TermsPage() {
   return (
-    <ProsePage title="Conditions d'utilisation" intro="En clair, et en quelques points." updated="22 septembre 2026">
+    <ProsePage title="Conditions d'utilisation" intro="En clair, et en quelques points." updated="23 septembre 2026">
       <h2>Le service</h2>
       <p>
         Sextant est un moteur de recherche et de découverte d'articles scientifiques, fourni gratuitement et sans création de
@@ -34,6 +34,12 @@ export default function TermsPage() {
       <p>
         Les articles, résumés et métadonnées appartiennent à leurs auteurs et éditeurs respectifs. Les données OpenAlex sont
         publiées sous licence CC0. Le nom, le logo et l'interface de Sextant restent la propriété de leur auteur.
+      </p>
+
+      <h2>Droit applicable</h2>
+      <p>
+        Le site est édité en France et soumis au droit français. L'identité de l'éditeur et de l'hébergeur figure dans les{" "}
+        <Link href="/mentions-legales">mentions légales</Link>.
       </p>
 
       <h2>Évolution</h2>
