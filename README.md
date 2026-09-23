@@ -9,7 +9,7 @@
 Un moteur de recherche et de découverte d'articles scientifiques, simple et soigné.<br/>
 Pour les étudiant·es, les doctorant·es, et toutes les personnes curieuses.
 
-🌐 **[Voir le site en ligne](https://sextant-psi.vercel.app/)** &nbsp;·&nbsp; 🐙 [Code source](https://github.com/lucas-tomexplore/Sextant) &nbsp;·&nbsp; 🗺️ [Feuille de route](#️-feuille-de-route)
+🌐 **[Voir le site en ligne](https://sextant-psi.vercel.app/)** &nbsp;·&nbsp; 🐙 [Code source](https://github.com/LucasOtw/Sextant) &nbsp;·&nbsp; 🗺️ [Feuille de route](#️-feuille-de-route)
 
 <img src="docs/screenshots/01-accueil.png" width="880" alt="Page d'accueil de Sextant" />
 

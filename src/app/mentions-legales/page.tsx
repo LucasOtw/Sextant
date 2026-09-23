@@ -46,7 +46,7 @@ export default function LegalNoticePage() {
       <h2>Propriété intellectuelle</h2>
       <p>
         Le nom « Sextant », son logo, l'interface et les textes du site sont la propriété de l'éditeur. Le code source est publié sur{" "}
-        <a href="https://github.com/lucas-tomexplore/Sextant" target="_blank" rel="noreferrer">GitHub</a> ; les conditions de
+        <a href="https://github.com/LucasOtw/Sextant" target="_blank" rel="noreferrer">GitHub</a> ; les conditions de
         réutilisation du code sont celles indiquées dans le dépôt.
       </p>
 
