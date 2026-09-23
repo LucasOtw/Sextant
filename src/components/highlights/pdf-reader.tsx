@@ -111,7 +111,16 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         const pdfjs = await import("pdfjs-dist");
         if (cancelled) return;
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-        task = pdfjs.getDocument({ url });
+        // Ressources optionnelles de PDF.js servies depuis /public : décodeurs WebAssembly (JBIG2, JPX des scans anciens),
+        // polices standard non embarquées, CMaps (CJK), profils ICC. Sans elles, les images sont ignorées et la page reste blanche.
+        task = pdfjs.getDocument({
+          url,
+          wasmUrl: "/pdfjs/wasm/",
+          iccUrl: "/pdfjs/iccs/",
+          standardFontDataUrl: "/pdfjs/standard_fonts/",
+          cMapUrl: "/pdfjs/cmaps/",
+          cMapPacked: true,
+        });
         task.onProgress = (p: { loaded: number; total?: number }) => {
           if (!cancelled) setProgress({ loaded: p.loaded, total: p.total ?? 0 });
         };
