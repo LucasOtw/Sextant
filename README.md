@@ -116,7 +116,7 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 
 **Stack** : Next.js 16 (App Router, Server Components) · React 19 · TypeScript · Tailwind CSS 4 · [shadcn/ui](https://ui.shadcn.com) · icônes Lucide.
 **Données** : API OpenAlex (gratuite, sans clé, CC0). **IA** : API Mistral (offre gratuite), Groq / OpenRouter / Anthropic possibles.
-**Hébergement** : Vercel.
+**Hébergement** : Vercel, relié au dépôt GitHub `LucasOtw/Sextant` — chaque push sur `main` déploie la production, chaque branche a son aperçu.
 
 ### Démarrer
 
