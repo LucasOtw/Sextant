@@ -123,7 +123,8 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         setLib(pdfjs);
         setDoc(d);
       } catch (e) {
-        console.error("[lecteur PDF] chargement", e);
+        // Cas attendu (hébergeur qui refuse le relais) : on bascule sur l'affichage natif, sans alarmer la console.
+        console.info("[lecteur PDF] repli sur le PDF original :", e instanceof Error ? e.message : e);
         if (!cancelled) setError("Le PDF n'a pas pu être chargé dans le lecteur.");
       }
     })();
@@ -205,12 +206,29 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   }
 
   if (error) {
+    const host = (() => {
+      try {
+        return new URL(originalUrl).host;
+      } catch {
+        return "l'hébergeur";
+      }
+    })();
     return (
-      <div className="rounded-xl border border-dashed p-8 text-center">
-        <p className="text-lg font-medium">{error}</p>
-        <p className="mt-1 text-base text-muted-foreground">
-          Vous pouvez <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</a> et saisir vos citations à la main.
-        </p>
+      <div className="flex flex-col gap-4">
+        <div className="rounded-xl border border-dashed p-5 text-[15px]">
+          <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
+          <p className="mt-1 text-muted-foreground">
+            Il s'affiche ci-dessous avec le lecteur de votre navigateur. Le surlignage n'y est pas possible : notez vos citations à la main, elles seront gardées avec l'article.{" "}
+            <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrir le PDF dans un nouvel onglet</a>
+          </p>
+        </div>
+        <object data={originalUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-foreground/10" aria-label="PDF original">
+          <div className="rounded-xl border border-dashed p-8 text-center">
+            <p className="text-base text-muted-foreground">
+              Votre navigateur n'affiche pas ce PDF ici. <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrez-le dans un nouvel onglet</a>.
+            </p>
+          </div>
+        </object>
       </div>
     );
   }

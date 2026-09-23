@@ -10,6 +10,7 @@ import { CollectionPicker } from "@/components/collections/collection-picker";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
 import { HighlightableAbstract } from "@/components/highlights/highlightable-abstract";
 import { HighlightsProvider } from "@/components/highlights/highlights-provider";
+import { ReadPdfButton } from "@/components/highlights/read-pdf-button";
 import { listHighlights } from "@/lib/highlights";
 import { snapshotFromWork } from "@/lib/favorites-shared";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
@@ -135,11 +136,7 @@ export default async function ArticlePage({ params }: Props) {
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && oa.isPdf && readable && (
-            <Link href={`/article/${shortId(work.id)}/lire`} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
-              <FileTextIcon /> Lire le PDF
-            </Link>
-          )}
+          {oa && oa.isPdf && readable && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
           {oa && oa.isPdf && !readable && (
             <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire le PDF
