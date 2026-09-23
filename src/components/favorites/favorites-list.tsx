@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { CopyIcon, DownloadIcon, FolderIcon, LockOpenIcon, MoreHorizontalIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, Trash2Icon } from "lucide-react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { CopyIcon, DownloadIcon, FolderIcon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { CollectionDialog } from "@/components/collections/collection-dialog";
 import { CollectionPicker } from "@/components/collections/collection-picker";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { useFavorites } from "@/components/favorites/favorites-provider";
+import type { Collection } from "@/lib/collections-shared";
 import { bibtexFromSnapshot, type Favorite } from "@/lib/favorites-shared";
 import { formatCount, typeLabel } from "@/lib/format";
 import { cn } from "cn";
@@ -51,38 +52,52 @@ function slug(name: string) {
   return fold(name).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liste";
 }
 
-interface Props {
-  initial: Favorite[];
-  /** Le serveur n'a pas pu lire les favoris : on l'affiche au lieu d'un faux « vide ». */
-  loadError?: boolean;
-  /** Liste sélectionnée à l'arrivée (paramètre ?liste=). */
-  initialCollectionId?: string | null;
+function deleteHint(n: number) {
+  if (n === 0) return "La liste est vide : rien ne change dans vos favoris.";
+  if (n === 1) return "Son article reste dans vos favoris.";
+  return `Ses ${n} articles restent dans vos favoris.`;
 }
 
-/** Favoris et listes : rendus avec la liste serveur, puis reflètent l'état client (ajouts, retraits, listes). */
-export function FavoritesList({ initial, loadError = false, initialCollectionId = null }: Props) {
+interface Props {
+  initial: Favorite[];
+  /** Listes connues du rendu serveur : affichées sans attendre le chargement client. */
+  initialCollections?: Collection[];
+  /** Le serveur n'a pas pu lire les favoris : on l'affiche au lieu d'un faux « vide ». */
+  loadError?: boolean;
+}
+
+/**
+ * Favoris et listes : rendus avec les données serveur, puis reflètent l'état client (ajouts, retraits, listes).
+ * La liste sélectionnée vit dans l'URL (`?liste=id`) : partageable, rechargeable, et suivie par le bouton Retour.
+ */
+export function FavoritesList({ initial, initialCollections = [], loadError = false }: Props) {
   const favorites = useFavorites();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const selectedId = searchParams.get("liste");
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("added");
-  const [selected, setSelected] = useState<string | null>(initialCollectionId);
   const [creating, setCreating] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { loadCollections } = favorites;
 
-  // À l'arrivée sur la page, on se réaligne avec le serveur (favoris posés depuis un autre appareil).
+  // À l'arrivée sur la page, on se réaligne avec le serveur (favoris et listes posés depuis un autre appareil).
   useEffect(() => {
-    void favorites.refresh();
+    void loadCollections(initialCollections);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une fois au montage
   }, []);
 
-  const collection = favorites.collections.find((c) => c.id === selected) ?? null;
-  // Une liste supprimée ailleurs ne peut pas rester sélectionnée.
-  const effectiveSelected = collection ? selected : null;
+  const collections = favorites.collectionsLoaded ? favorites.collections : initialCollections;
+  const collection = collections.find((c) => c.id === selectedId) ?? null;
 
-  // Routage superficiel : l'URL reste partageable/rechargeable sans re-rendre la page côté serveur.
+  // Une liste supprimée ailleurs ne peut pas rester dans l'URL (seulement une fois l'état serveur connu et sain).
+  useEffect(() => {
+    if (selectedId && favorites.ready && favorites.collectionsLoaded && !favorites.error && !collection) window.history.replaceState(null, "", pathname);
+  }, [selectedId, favorites.ready, favorites.collectionsLoaded, favorites.error, collection, pathname]);
+
+  // Routage superficiel : l'URL change sans re-rendre la page côté serveur, et `useSearchParams` suit.
   function select(id: string | null) {
-    setSelected(id);
     window.history.replaceState(null, "", id ? `${pathname}?liste=${id}` : pathname);
   }
 
@@ -148,17 +163,17 @@ export function FavoritesList({ initial, loadError = false, initialCollectionId 
   }
 
   const chips = (
-    <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Listes">
-      <Chip active={!effectiveSelected} onClick={() => select(null)}>Tous <span className="text-muted-foreground">{all.length}</span></Chip>
-      {favorites.collections.map((c) => (
-        <Chip key={c.id} active={effectiveSelected === c.id} onClick={() => select(c.id)}>
-          <FolderIcon className="size-3.5" aria-hidden /> {c.name} <span className="text-muted-foreground">{c.articleIds.length}</span>
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Listes">
+      <Chip active={!collection} onClick={() => select(null)} count={all.length}>Tous</Chip>
+      {collections.map((c) => (
+        <Chip key={c.id} active={collection?.id === c.id} onClick={() => select(c.id)} count={c.articleIds.length} icon>
+          {c.name}
         </Chip>
       ))}
       <button
         type="button"
         onClick={() => setCreating(true)}
-        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-dashed px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-dashed px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
       >
         <PlusIcon className="size-3.5" aria-hidden /> Nouvelle liste
       </button>
@@ -179,43 +194,38 @@ export function FavoritesList({ initial, loadError = false, initialCollectionId 
           return Boolean(created);
         }}
       />
-      {collection && (
-        <>
-          <CollectionDialog
-            open={renaming}
-            onOpenChange={setRenaming}
-            initialName={collection.name}
-            title="Renommer la liste"
-            submitLabel="Renommer"
-            onSubmit={(name) => favorites.renameCollection(collection.id, name)}
-          />
-          <Dialog open={deleting} onOpenChange={setDeleting}>
-            <DialogContent className="sm:max-w-sm">
-              <DialogTitle className="title-display text-2xl">Supprimer « {collection.name} » ?</DialogTitle>
-              <DialogDescription className="text-[15px] text-muted-foreground">
-                La liste disparaît ; ses {collection.articleIds.length} article{collection.articleIds.length > 1 ? "s" : ""} restent dans vos favoris.
-              </DialogDescription>
-              <div className="mt-2 flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setDeleting(false)}>Annuler</Button>
-                <Button
-                  variant="destructive"
-                  onClick={async () => {
-                    const id = collection.id;
-                    setDeleting(false);
-                    if (await favorites.deleteCollection(id)) select(null);
-                  }}
-                >
-                  <Trash2Icon /> Supprimer la liste
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
+      <CollectionDialog
+        open={renaming && Boolean(collection)}
+        onOpenChange={setRenaming}
+        initialName={collection?.name ?? ""}
+        title="Renommer la liste"
+        submitLabel="Renommer"
+        onSubmit={(name) => (collection ? favorites.renameCollection(collection.id, name) : Promise.resolve(false))}
+      />
+      <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
+          <DialogDescription className="text-[15px] text-muted-foreground">{deleteHint(collection?.articleIds.length ?? 0)}</DialogDescription>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setDeleting(false)}>Annuler</Button>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                if (!collection) return;
+                const id = collection.id;
+                setDeleting(false);
+                if (await favorites.deleteCollection(id)) select(null);
+              }}
+            >
+              <Trash2Icon /> Supprimer la liste
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 
-  if (all.length === 0 && favorites.collections.length === 0) {
+  if (all.length === 0 && collections.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center">
         <p className="text-lg font-medium">Aucun favori pour l'instant.</p>
@@ -235,12 +245,12 @@ export function FavoritesList({ initial, loadError = false, initialCollectionId 
 
       {collection && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="title-display flex items-center gap-2 text-2xl">
-            <FolderIcon className="size-5 text-accent-brand" aria-hidden /> {collection.name}
+          <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
+            <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="truncate">{collection.name}</span>
           </h2>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" aria-label="Actions sur la liste" />}>
-              <MoreHorizontalIcon /> Liste
+            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label="Renommer ou supprimer la liste" />}>
+              <SettingsIcon /> Gérer
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
               <DropdownMenuGroup>
@@ -255,7 +265,13 @@ export function FavoritesList({ initial, loadError = false, initialCollectionId 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={collection ? `Filtrer dans « ${collection.name} »…` : "Filtrer mes favoris…"} aria-label="Filtrer" className="h-10 pl-9 text-base md:text-base" />
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={collection ? `Filtrer dans « ${collection.name} »…` : "Filtrer mes favoris…"}
+            aria-label={collection ? `Filtrer dans la liste ${collection.name}` : "Filtrer mes favoris"}
+            className="h-10 pl-9 text-base md:text-base"
+          />
         </div>
         <Select items={SORTS} value={sort} onValueChange={(v) => setSort(String(v))}>
           <SelectTrigger className="h-10! sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
@@ -275,66 +291,77 @@ export function FavoritesList({ initial, loadError = false, initialCollectionId 
         <div className="rounded-xl border border-dashed p-8 text-center">
           <p className="text-lg font-medium">Cette liste est vide.</p>
           <p className="mt-1 text-base text-muted-foreground">
-            Depuis « Tous » ou une fiche article, l'icône dossier ajoute un article à « {collection.name} ».
+            Depuis « Tous » ou une fiche article, l'icône dossier range un article dans « {collection.name} ».
           </p>
         </div>
       )}
 
       <ul className="flex flex-col gap-3">
-        {shown.map((f, i) => (
-          <li key={f.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-            <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-24 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-28">
-              <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
-                <CollectionPicker snapshot={f} />
-                <FavoriteButton snapshot={f} initialActive />
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                <Badge variant="secondary">{typeLabel(f.type)}</Badge>
-                {f.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
-                {f.topic && <span className="truncate">· {f.topic}</span>}
-              </div>
-              <h3 className="title-display text-xl leading-snug">
-                <Link href={`/article/${f.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{f.title}</Link>
-              </h3>
-              <p className="text-[15px] text-muted-foreground">
-                {f.authors}{f.venue && <> · <span className="italic">{f.venue}</span></>}{f.year && <> · {f.year}</>}
-              </p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1"><QuoteIcon className="size-4 text-accent-brand" aria-hidden />{formatCount(f.citedByCount)} citation{f.citedByCount > 1 ? "s" : ""}</span>
-                {f.addedAt && <span>· ajouté le {DATE.format(new Date(f.addedAt))}</span>}
-                {!collection && favorites.collections.some((c) => c.articleIds.includes(f.id)) && (
-                  <span className="flex flex-wrap items-center gap-1">
-                    ·{" "}
-                    {favorites.collections.filter((c) => c.articleIds.includes(f.id)).map((c) => (
-                      <button key={c.id} type="button" onClick={() => select(c.id)} className="relative z-10 rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground hover:bg-accent">
-                        {c.name}
-                      </button>
-                    ))}
-                  </span>
-                )}
-              </div>
-            </article>
-          </li>
-        ))}
+        {shown.map((f, i) => {
+          const lists = collection ? [] : favorites.listsOf(f.id);
+          return (
+            <li key={f.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+              <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-24 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-28">
+                <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+                  <CollectionPicker snapshot={f} />
+                  <FavoriteButton snapshot={f} initialActive />
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+                  <Badge variant="secondary">{typeLabel(f.type)}</Badge>
+                  {f.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
+                  {f.topic && <span className="truncate">· {f.topic}</span>}
+                </div>
+                <h3 className="title-display text-xl leading-snug">
+                  <Link href={`/article/${f.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{f.title}</Link>
+                </h3>
+                <p className="text-[15px] text-muted-foreground">
+                  {f.authors}{f.venue && <> · <span className="italic">{f.venue}</span></>}{f.year && <> · {f.year}</>}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1"><QuoteIcon className="size-4 text-accent-brand" aria-hidden />{formatCount(f.citedByCount)} citation{f.citedByCount > 1 ? "s" : ""}</span>
+                  {f.addedAt && <span>· ajouté le {DATE.format(new Date(f.addedAt))}</span>}
+                  {lists.length > 0 && (
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      ·{" "}
+                      {lists.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => select(c.id)}
+                          aria-label={`Ouvrir la liste ${c.name}`}
+                          className="relative z-10 inline-flex min-h-7 max-w-48 items-center truncate rounded-full bg-secondary px-2.5 text-xs text-secondary-foreground transition-shadow hover:ring-1 hover:ring-foreground/25"
+                        >
+                          {c.name}
+                        </button>
+                      ))}
+                    </span>
+                  )}
+                </div>
+              </article>
+            </li>
+          );
+        })}
       </ul>
       {dialogs}
     </div>
   );
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({ active, onClick, count, icon = false, children }: { active: boolean; onClick: () => void; count: number; icon?: boolean; children: string }) {
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={active}
+      aria-pressed={active}
       onClick={onClick}
+      title={children}
       className={cn(
-        "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm transition-colors",
+        "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors",
         active ? "bg-primary text-primary-foreground" : "bg-card text-foreground ring-1 ring-foreground/10 hover:ring-foreground/25",
       )}
     >
-      {children}
+      {icon && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
+      <span className="truncate">{children}</span>
+      <span className={active ? "text-primary-foreground/75" : "text-muted-foreground"}>{count}</span>
     </button>
   );
 }

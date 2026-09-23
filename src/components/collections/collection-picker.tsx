@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { FolderIcon, PlusIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FolderCheckIcon, FolderIcon, PlusIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,27 +31,31 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
   const favorites = useFavorites();
   const [creating, setCreating] = useState(false);
   const [signIn, setSignIn] = useState(false);
-  const inLists = favorites.collections.filter((c) => c.articleIds.includes(snapshot.id)).length;
+  const { enabled, loadCollections } = favorites;
+
+  // Les listes ne sont chargées que là où on les montre.
+  useEffect(() => {
+    if (enabled) void loadCollections();
+  }, [enabled, loadCollections]);
+
+  const inLists = favorites.listsOf(snapshot.id).length;
+  const status = inLists ? `Dans ${inLists} liste${inLists > 1 ? "s" : ""}` : "Ajouter à une liste";
+  const label = inLists ? `${status}, modifier` : status;
+  const Icon = inLists ? FolderCheckIcon : FolderIcon;
 
   const trigger =
     variant === "icon" ? (
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label="Ajouter à une liste"
-        title="Ajouter à une liste"
-        className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}
-      >
-        <FolderIcon className={cn("size-[18px]", inLists ? "text-accent-brand" : "text-muted-foreground")} />
+      <Button variant="ghost" size="icon" aria-label={label} title={label} className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}>
+        <Icon className={cn("size-[18px]", inLists ? "text-accent-brand" : "text-muted-foreground")} />
       </Button>
     ) : (
-      <Button variant="outline" size="lg" className={cn("bg-card", className)}>
-        <FolderIcon className={inLists ? "text-accent-brand" : undefined} />
-        {inLists ? `Dans ${inLists} liste${inLists > 1 ? "s" : ""}` : "Ajouter à une liste"}
+      <Button variant="outline" size="lg" className={cn("bg-card", className)} aria-label={label}>
+        <Icon className={inLists ? "text-accent-brand" : undefined} />
+        {status}
       </Button>
     );
 
-  if (!favorites.enabled) {
+  if (!enabled) {
     return (
       <>
         <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSignIn(true); }} className="contents">{trigger}</span>
@@ -60,6 +64,10 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
     );
   }
 
+  const placeholder = !favorites.collectionsLoaded
+    ? favorites.error ? "Listes indisponibles pour le moment." : "Chargement…"
+    : favorites.collections.length === 0 ? "Aucune liste pour l'instant." : null;
+
   return (
     <>
       <DropdownMenu>
@@ -67,9 +75,7 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
         <DropdownMenuContent align="end" className="w-64" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuGroup>
             <DropdownMenuLabel>Mes listes</DropdownMenuLabel>
-            {favorites.collections.length === 0 && (
-              <p className="px-2 pb-2 text-sm text-muted-foreground">Aucune liste pour l'instant.</p>
-            )}
+            {placeholder && <DropdownMenuItem disabled className="text-muted-foreground">{placeholder}</DropdownMenuItem>}
             {favorites.collections.map((c) => {
               const checked = c.articleIds.includes(snapshot.id);
               return (
@@ -94,12 +100,7 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
         title="Nouvelle liste"
         description="L'article sera enregistré dans cette liste."
         submitLabel="Créer et ajouter"
-        onSubmit={async (name) => {
-          const created = await favorites.createCollection(name);
-          if (!created) return false;
-          await favorites.setInCollection(created.id, snapshot, true);
-          return true;
-        }}
+        onSubmit={async (name) => Boolean(await favorites.createCollection(name, snapshot))}
       />
     </>
   );

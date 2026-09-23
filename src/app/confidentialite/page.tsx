@@ -37,7 +37,7 @@ export default function PrivacyPage() {
       <p>
         La connexion se fait avec Google, via le service Firebase Authentication (Google). Nous recevons alors votre nom, votre
         adresse e-mail et votre photo de profil Google, et nous les conservons avec un identifiant technique. Aucun mot de passe
-        n'est stocké chez nous. Vos favoris, collections et notes, lorsqu'ils seront disponibles, seront rattachés à ce compte et
+        n'est stocké chez nous. Vos favoris et vos listes (et les notes, lorsqu'elles seront disponibles) sont rattachés à ce compte et
         conservés dans une base Firestore hébergée en Europe (région Paris).
       </p>
       <ul>

@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { CollectionNotFoundError, deleteCollection, renameCollection } from "@/lib/collections";
 import { sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite } from "@/lib/security";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -11,8 +11,9 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** Même seau que /api/collections : la gestion des listes est plafonnée à 60 par minute. */
 async function guard(req: Request, ctx: Ctx) {
-  const refused = rejectCrossSite(req);
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return { refused };
   const user = await getCurrentUser();
   if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };

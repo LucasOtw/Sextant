@@ -3,10 +3,11 @@ import { getCurrentUser } from "@/lib/auth";
 import { CollectionsLimitError, createCollection, listCollections } from "@/lib/collections";
 import { sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite } from "@/lib/security";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
+/** Gestion des listes (créer, renommer, supprimer, lister) : 60 par minute et par utilisateur. */
 const tooMany = (uid: string) => !rateLimit(`collections:${uid}`, 60, 60_000);
 const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
@@ -23,7 +24,7 @@ export async function GET() {
 
 /** Crée une liste. Corps : { name }. */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req);
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });

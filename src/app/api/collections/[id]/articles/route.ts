@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { addToCollection, CollectionNotFoundError, CollectionsLimitError, removeFromCollection } from "@/lib/collections";
 import { FavoritesLimitError } from "@/lib/favorites";
-import { sanitizeSnapshot } from "@/lib/favorites-shared";
+import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite } from "@/lib/security";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -12,12 +12,13 @@ const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
+/** Seau distinct de la gestion des listes : ranger des articles en série est un usage normal (90 par minute). */
 async function guard(req: Request, ctx: Ctx) {
-  const refused = rejectCrossSite(req);
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return { refused };
   const user = await getCurrentUser();
   if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
-  if (!rateLimit(`collections:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
+  if (!rateLimit(`collections-items:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
   if (!ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
   return { user, id };
@@ -49,7 +50,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
   const g = await guard(req, ctx);
   if (g.refused) return g.refused;
   const workId = new URL(req.url).searchParams.get("workId") ?? "";
-  if (!/^W\d+$/.test(workId)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
+  if (!WORK_ID.test(workId)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
   try {
     return NextResponse.json({ collection: await removeFromCollection(g.user.uid, g.id, workId) }, { headers: PRIVATE });
   } catch (e) {

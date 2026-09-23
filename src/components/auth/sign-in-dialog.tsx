@@ -75,7 +75,7 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
       <DialogContent className="sm:max-w-sm">
         <DialogTitle className="title-display text-2xl">Se connecter</DialogTitle>
         <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
-          {intro ?? "Un compte sert à retrouver vos favoris et vos collections d'un appareil à l'autre. La recherche reste libre sans compte."}
+          {intro ?? "Un compte sert à retrouver vos favoris et vos listes d'un appareil à l'autre. La recherche reste libre sans compte."}
         </DialogDescription>
         <GoogleButton className="mt-2" onClick={signInWithGoogle} busy={busy} />
         {error && <p className="text-sm text-destructive">{error}</p>}

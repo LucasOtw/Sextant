@@ -9,9 +9,10 @@ export interface Collection {
 export const MAX_COLLECTIONS = 50;
 export const MAX_COLLECTION_NAME = 60;
 
-/** Nom nettoyé (espaces, longueur) ou null s'il est vide. */
+/** Nom nettoyé (caractères de contrôle et invisibles retirés, espaces réduits, longueur bornée par points de code) ou null s'il est vide. */
 export function sanitizeCollectionName(input: unknown): string | null {
   if (typeof input !== "string") return null;
-  const name = input.replace(/\s+/g, " ").trim().slice(0, MAX_COLLECTION_NAME);
+  const cleaned = input.replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim();
+  const name = Array.from(cleaned).slice(0, MAX_COLLECTION_NAME).join("").trim();
   return name.length ? name : null;
 }

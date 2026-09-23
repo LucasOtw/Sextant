@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, removeFavorite } from "@/lib/favorites";
-import { sanitizeSnapshot } from "@/lib/favorites-shared";
+import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite } from "@/lib/security";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 import { listCollections } from "@/lib/collections";
 
 export const runtime = "nodejs";
@@ -18,17 +18,20 @@ const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez
 
 /**
  * Par défaut : les identifiants seulement (une lecture Firestore), ce qu'il faut pour les cœurs.
+ * `?collections=1` : ajoute les listes (une lecture par liste), demandé par les écrans qui les affichent.
  * `?full=1` : la liste complète avec métadonnées (jusqu'à 1000 lectures), réservée aux usages qui en ont besoin.
  */
 export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
-  const full = new URL(req.url).searchParams.get("full") === "1";
+  const params = new URL(req.url).searchParams;
   try {
-    if (full) return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: PRIVATE });
-    const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), listCollections(user.uid)]);
-    return NextResponse.json({ ids, count: ids.length, collections }, { headers: PRIVATE });
+    if (params.get("full") === "1") return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: PRIVATE });
+    const withCollections = params.get("collections") === "1";
+    // Les listes n'empêchent pas les cœurs : leur échec renvoie `null`, le client garde ce qu'il sait.
+    const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), withCollections ? listCollections(user.uid).catch(() => null) : undefined]);
+    return NextResponse.json({ ids, count: ids.length, ...(withCollections ? { collections } : {}) }, { headers: PRIVATE });
   } catch {
     return NextResponse.json({ error: "Favoris indisponibles." }, { status: 502 });
   }
@@ -36,7 +39,7 @@ export async function GET(req: Request) {
 
 /** Ajoute (ou rafraîchit) un favori. Corps : l'instantané de l'article. */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req);
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
@@ -65,7 +68,7 @@ export async function DELETE(req: Request) {
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
   const id = new URL(req.url).searchParams.get("id") ?? "";
-  if (!/^W\d+$/.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
+  if (!WORK_ID.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
   try {
     await removeFavorite(user.uid, id);
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
