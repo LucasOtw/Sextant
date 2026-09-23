@@ -12,12 +12,19 @@ interface Props {
   /** Barre latérale du lecteur : plus dense, et la page d'un surlignage fait défiler le PDF. */
   compact?: boolean;
   onGoToPage?: (page: number) => void;
+  /** Ce qu'on peut surligner ici : le résumé de la fiche, le PDF dans le lecteur. Sans les deux, il reste la saisie à la main. */
+  hasAbstract?: boolean;
+  hasPdf?: boolean;
 }
 
 /** « Mes surlignages » pour un article : la liste, l'ajout à la main, le lien vers toutes les citations. */
-export function ArticleHighlights({ compact = false, onGoToPage }: Props) {
+export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = true, hasPdf = compact }: Props) {
   const { enabled, highlights, updateNote, remove, requestSignIn } = useHighlights();
   const [manual, setManual] = useState(false);
+  const where = compact ? "du PDF" : hasAbstract && hasPdf ? "du résumé, ou du PDF dans le lecteur" : hasAbstract ? "du résumé" : hasPdf ? "du PDF dans le lecteur" : null;
+  const howTo = where
+    ? `Sélectionnez une phrase ${where} : un bouton « Surligner » apparaît.`
+    : "Le résumé et le texte intégral ne sont pas disponibles ici : notez vos citations à la main en lisant l'article ailleurs.";
 
   const addButton = (
     <Button variant="outline" size={compact ? "sm" : "default"} onClick={() => (enabled ? setManual(true) : requestSignIn())} className="bg-card">
@@ -39,12 +46,12 @@ export function ArticleHighlights({ compact = false, onGoToPage }: Props) {
 
       {!enabled ? (
         <p className="mt-2 text-[15px] text-muted-foreground">
-          Sélectionnez un passage du résumé {compact ? "ou du PDF " : ""}pour le surligner. Vos citations sont gardées avec leur source, sur tous vos appareils.{" "}
+          {where ? `Sélectionnez un passage ${where} pour le surligner, ou notez une citation à la main.` : "Notez vos citations à la main : le résumé et le texte intégral ne sont pas disponibles ici."} Elles sont gardées avec leur source, sur tous vos appareils.{" "}
           <button type="button" onClick={requestSignIn} className="text-accent-brand underline underline-offset-3">Se connecter</button>
         </p>
       ) : highlights.length === 0 ? (
         <div className="mt-3 flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-[15px] text-muted-foreground">
-          <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. Sélectionnez une phrase du résumé{compact ? " ou du PDF" : ""} : un bouton « Surligner » apparaît.</p>
+          <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. {howTo}</p>
           {addButton}
         </div>
       ) : (
