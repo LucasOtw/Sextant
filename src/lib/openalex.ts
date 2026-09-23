@@ -61,6 +61,8 @@ export interface Work {
   authorships: Authorship[];
   primary_location: Location | null;
   best_oa_location: Location | null;
+  /** Toutes les copies connues (éditeur, PMC, arXiv, HAL…) ; présent sur la fiche détaillée seulement. */
+  locations?: Location[];
   open_access: { is_oa: boolean; oa_status: string; oa_url: string | null };
   primary_topic: TopicRef | null;
   topics?: TopicRef[];
@@ -144,6 +146,7 @@ const DETAIL_SELECT = [
   "keywords",
   "related_works",
   "biblio",
+  "locations",
 ].join(",");
 
 /** Filtres appliqués partout : pas de paratexte (couvertures, sommaires…), pas de rétractés. */

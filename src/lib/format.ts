@@ -50,6 +50,13 @@ export function openAccessUrl(w: Work): { url: string; isPdf: boolean } | null {
   return null;
 }
 
+/** Adresses de PDF en accès ouvert, la meilleure d'abord puis les dépôts (PMC, arXiv, HAL…) : plusieurs chances pour le lecteur. */
+export function openAccessPdfUrls(w: Work): string[] {
+  if (!w.open_access.is_oa) return [];
+  const urls = [w.best_oa_location?.pdf_url, w.primary_location?.pdf_url, ...(w.locations ?? []).filter((l) => l.is_oa).map((l) => l.pdf_url)];
+  return [...new Set(urls.filter((u): u is string => Boolean(u) && /^https?:\/\//.test(u!)))];
+}
+
 export function publisherUrl(w: Work): string | null {
   return w.doi ?? w.primary_location?.landing_page_url ?? null;
 }

@@ -111,3 +111,29 @@ export function bibtexFromSnapshot(s: FavoriteSnapshot): string {
   lines.push("}");
   return lines.join("\n");
 }
+
+function apaName(full: string): string {
+  const parts = full.trim().split(/\s+/);
+  const last = parts.pop() ?? "";
+  const initials = parts.map((x) => x[0]?.toUpperCase() + ".").join(" ");
+  return initials ? `${last}, ${initials}` : last;
+}
+
+/** Référence APA (7e éd.) depuis un instantané : auteurs, année, titre, revue, DOI. */
+export function apaFromSnapshot(s: FavoriteSnapshot): string {
+  const names = s.authorNames.map(apaName);
+  let authors = s.authors || "Anonyme";
+  if (names.length === 1) authors = names[0];
+  else if (names.length > 1 && names.length <= 20) authors = `${names.slice(0, -1).join(", ")}, & ${names[names.length - 1]}`;
+  else if (names.length > 20) authors = `${names.slice(0, 19).join(", ")}, … ${names[names.length - 1]}`;
+  const year = s.year ? `(${s.year})` : "(s. d.)";
+  return `${authors} ${year}. ${s.title}.${s.venue ? ` ${s.venue}.` : ""}${s.doi ? ` ${s.doi}` : ""}`;
+}
+
+/** Appel de citation court : (Piwowar et al., 2018, p. 4). */
+export function citeInline(s: FavoriteSnapshot, page?: number | null): string {
+  const last = (full: string) => full.trim().split(/\s+/).pop() ?? full;
+  const names = s.authorNames.length ? s.authorNames.map(last) : s.authors.split(/,| et /).map((x) => last(x)).filter(Boolean);
+  const who = names.length === 0 ? "Anonyme" : names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} & ${names[1]}` : `${names[0]} et al.`;
+  return `(${who}, ${s.year ?? "s. d."}${page ? `, p. ${page}` : ""})`;
+}
