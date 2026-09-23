@@ -231,6 +231,22 @@ mark[data-highlight] {
   box-decoration-break: clone;
 }
 
+/* Passage cité dans une carte : un trait de surligneur sous la ligne, qui suit les retours à la ligne. */
+.hl-text {
+  background-image: linear-gradient(transparent 52%, color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent) 52%);
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 0.1em;
+  margin: 0 -0.1em;
+}
+
+/* Lecteur en plein écran : fond, défilement et marges gérés ici (Fullscreen API), ou par le repli fixe sur les navigateurs sans API. */
+.pdf-fullscreen:fullscreen {
+  overflow-y: auto;
+  background: var(--background);
+  padding: 1rem 1.5rem 2rem;
+}
+
 /* Lecteur PDF : la couche texte de PDF.js, transparente au-dessus du canevas, sélectionnable. */
 .pdf-page canvas {
   display: block;
