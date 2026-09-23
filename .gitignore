@@ -42,3 +42,4 @@ next-env.d.ts
 
 # Worker PDF.js copié depuis node_modules au postinstall
 /public/pdf.worker.min.mjs
+/public/pdfjs/
