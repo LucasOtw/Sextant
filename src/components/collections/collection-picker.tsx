@@ -100,7 +100,7 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
         title="Nouvelle liste"
         description="L'article sera enregistré dans cette liste."
         submitLabel="Créer et ajouter"
-        onSubmit={async (name) => Boolean(await favorites.createCollection(name, snapshot))}
+        onSubmit={async (name, description) => Boolean(await favorites.createCollection(name, { description, snapshot }))}
       />
     </>
   );

@@ -14,7 +14,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { isAuthEnabled } from "@/lib/auth";
 import { cn } from "cn";
 
 interface Props {
@@ -27,7 +26,8 @@ export function WorkCard({ work, variant = "list" }: Props) {
   const venue = venueName(work);
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const compact = variant === "compact";
-  const favorites = isAuthEnabled();
+  // Le cœur est toujours proposé : sans session, il ouvre la connexion. (Pas d'import serveur ici : la carte sert aussi côté client.)
+  const favorites = true;
 
   return (
     <article

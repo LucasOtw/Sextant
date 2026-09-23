@@ -15,6 +15,7 @@ function toCollection(data: Record<string, unknown>, id: string): Collection {
   return {
     id,
     name: String(data.name ?? ""),
+    description: String(data.description ?? ""),
     articleIds: Array.isArray(data.articleIds) ? (data.articleIds as unknown[]).filter((x): x is string => typeof x === "string") : [],
     createdAt: ts?.toDate?.().toISOString() ?? null,
   };
@@ -34,7 +35,7 @@ export async function countCollections(uid: string): Promise<number> {
   return (await db.collection(`users/${uid}/collections`).count().get()).data().count;
 }
 
-export async function createCollection(uid: string, name: string): Promise<Collection> {
+export async function createCollection(uid: string, name: string, description = ""): Promise<Collection> {
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");
   const col = db.collection(`users/${uid}/collections`);
@@ -42,19 +43,38 @@ export async function createCollection(uid: string, name: string): Promise<Colle
   await db.runTransaction(async (tx) => {
     const n = (await tx.get(col.count())).data().count;
     if (n >= MAX_COLLECTIONS) throw new CollectionsLimitError(`Limite de ${MAX_COLLECTIONS} listes atteinte.`);
-    tx.set(ref, { name, articleIds: [], createdAt: FieldValue.serverTimestamp() });
+    tx.set(ref, { name, description, articleIds: [], createdAt: FieldValue.serverTimestamp() });
   });
-  return { id: ref.id, name, articleIds: [], createdAt: new Date().toISOString() };
+  return { id: ref.id, name, description, articleIds: [], createdAt: new Date().toISOString() };
 }
 
-export async function renameCollection(uid: string, id: string, name: string): Promise<Collection> {
+export class CollectionOrderError extends Error {}
+
+export interface CollectionPatch {
+  name?: string;
+  description?: string;
+  /** Nouvel ordre : doit contenir exactement les articles actuels de la liste. */
+  articleIds?: string[];
+}
+
+/** Renomme, décrit ou réordonne la liste ; l'ordre proposé est vérifié contre le contenu réel. */
+export async function updateCollection(uid: string, id: string, patch: CollectionPatch): Promise<Collection> {
   const db = await adminDb();
   const ref = db.doc(`users/${uid}/collections/${id}`);
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists) throw new CollectionNotFoundError("Liste introuvable.");
-    tx.update(ref, { name });
-    return toCollection({ ...snap.data(), name }, id);
+    const current = toCollection(snap.data() ?? {}, id);
+    const next: Record<string, unknown> = {};
+    if (patch.name !== undefined) next.name = patch.name;
+    if (patch.description !== undefined) next.description = patch.description;
+    if (patch.articleIds) {
+      const same = patch.articleIds.length === current.articleIds.length && new Set(patch.articleIds).size === patch.articleIds.length && patch.articleIds.every((x) => current.articleIds.includes(x));
+      if (!same) throw new CollectionOrderError("La liste a changé entre-temps : rechargez la page avant de la réordonner.");
+      next.articleIds = patch.articleIds;
+    }
+    if (Object.keys(next).length) tx.update(ref, next);
+    return { ...current, ...(next as Partial<Collection>) };
   });
 }
 

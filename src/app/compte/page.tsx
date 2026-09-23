@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookmarkIcon, FolderIcon, HistoryIcon, ShieldCheckIcon, HighlighterIcon } from "lucide-react";
+import { BookmarkIcon, FolderIcon, HistoryIcon, ShieldCheckIcon, HighlighterIcon, NotebookPenIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
@@ -9,6 +9,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import { countFavorites } from "@/lib/favorites";
 import { countCollections } from "@/lib/collections";
 import { countHighlights } from "@/lib/highlights";
+import { countNotes } from "@/lib/notes";
 
 export const metadata: Metadata = { title: "Mon compte" };
 
@@ -28,11 +29,12 @@ export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const [since, favoritesCount, collectionsCount, highlightsCount] = await Promise.all([
+  const [since, favoritesCount, collectionsCount, highlightsCount, notesCount] = await Promise.all([
     memberSince(user.uid),
     countFavorites(user.uid).catch(() => 0),
     countCollections(user.uid).catch(() => 0),
     countHighlights(user.uid).catch(() => 0),
+    countNotes(user.uid).catch(() => 0),
   ]);
   const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 
@@ -57,10 +59,11 @@ export default async function AccountPage() {
 
         <section className="mt-10" aria-labelledby="bibliotheque">
           <h2 id="bibliotheque" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ma bibliothèque</h2>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Tile icon={<BookmarkIcon />} label="Favoris" value={String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
             <Tile icon={<FolderIcon />} label="Listes" value={String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
             <Tile icon={<HighlighterIcon />} label="Citations" value={String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
+            <Tile icon={<NotebookPenIcon />} label="Notes" value={String(notesCount)} hint="Ce que vous retenez d'un article, sur sa fiche." />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>
         </section>

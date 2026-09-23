@@ -12,6 +12,8 @@ import { HighlightableAbstract } from "@/components/highlights/highlightable-abs
 import { HighlightsProvider } from "@/components/highlights/highlights-provider";
 import { ReadPdfButton } from "@/components/highlights/read-pdf-button";
 import { listHighlights } from "@/lib/highlights";
+import { ArticleNote } from "@/components/notes/article-note";
+import { getNote } from "@/lib/notes";
 import { snapshotFromWork } from "@/lib/favorites-shared";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { isFavorite } from "@/lib/favorites";
@@ -71,9 +73,13 @@ export default async function ArticlePage({ params }: Props) {
   const aiEnabled = provider !== null && Boolean(abstract);
   // Cœur déjà dans le bon état au premier rendu pour un utilisateur connecté (une lecture Firestore).
   const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
-  const [initiallyFavorite, initialHighlights] = sessionUser
-    ? await Promise.all([isFavorite(sessionUser.uid, shortId(work.id)).catch(() => false), listHighlights(sessionUser.uid, shortId(work.id)).catch(() => [])])
-    : [false, []];
+  const [initiallyFavorite, initialHighlights, initialNote] = sessionUser
+    ? await Promise.all([
+        isFavorite(sessionUser.uid, shortId(work.id)).catch(() => false),
+        listHighlights(sessionUser.uid, shortId(work.id)).catch(() => []),
+        getNote(sessionUser.uid, shortId(work.id)).catch(() => null),
+      ])
+    : [false, [], null];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -201,6 +207,8 @@ export default async function ArticlePage({ params }: Props) {
         </section>
 
         <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} />
+
+        <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialNote} />
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
