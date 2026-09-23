@@ -159,6 +159,10 @@ docs/             logo, captures d'écran
 - `main` : version en ligne, ne reçoit que des merges depuis `dev`.
 - `dev` : intégration ; les fonctionnalités arrivent par `feat/<nom>` et pull request vers `dev`.
 
+### Firestore
+
+Toutes les lectures et écritures passent par le serveur (SDK Admin, clé de service). `firestore.rules` ferme tout accès direct depuis un navigateur : c'est aussi le réglage par défaut du mode « production » de la console, à conserver. Pour redéployer ces règles après modification : `firebase deploy --only firestore:rules` (CLI Firebase connectée au projet).
+
 ### Variables d'environnement
 
 Voir [`.env.example`](.env.example). Sans clé IA, le bouton de condensé est simplement masqué.

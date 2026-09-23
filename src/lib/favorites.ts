@@ -32,6 +32,11 @@ export async function listFavorites(uid: string): Promise<Favorite[]> {
   return snap.docs.map((d) => toFavorite(d.data(), d.id));
 }
 
+export async function isFavorite(uid: string, id: string): Promise<boolean> {
+  const db = await adminDb();
+  return (await db.doc(`users/${uid}/favorites/${id}`).get()).exists;
+}
+
 export async function countFavorites(uid: string): Promise<number> {
   const db = await adminDb();
   const user = await db.doc(`users/${uid}`).get();

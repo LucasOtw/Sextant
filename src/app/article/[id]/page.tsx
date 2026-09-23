@@ -7,7 +7,8 @@ import { AiSummary } from "@/components/ai-summary";
 import { AuthorChip } from "@/components/author-chip";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { isAuthEnabled } from "@/lib/auth";
+import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
+import { isFavorite } from "@/lib/favorites";
 import { TrackView } from "@/components/track-view";
 import { CopyButton } from "@/components/copy-button";
 import { WorkCard } from "@/components/work-card";
@@ -59,6 +60,9 @@ export default async function ArticlePage({ params }: Props) {
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
   const aiEnabled = provider !== null && Boolean(abstract);
+  // Cœur déjà dans le bon état au premier rendu pour un utilisateur connecté (une lecture Firestore).
+  const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
+  const initiallyFavorite = sessionUser ? await isFavorite(sessionUser.uid, shortId(work.id)).catch(() => false) : false;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -132,7 +136,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           <CopyButton text={toApa(work)} label="Citer (APA)" />
           <CopyButton text={toBibtex(work)} label="BibTeX" />
-          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" />}
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} />}
         </div>
         {!oa && (
           <p className="mt-2 text-sm text-muted-foreground">
