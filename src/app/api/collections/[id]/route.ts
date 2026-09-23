@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { CollectionNotFoundError, deleteCollection, renameCollection } from "@/lib/collections";
-import { sanitizeCollectionName } from "@/lib/collections-shared";
+import { type CollectionPatch, CollectionNotFoundError, CollectionOrderError, deleteCollection, updateCollection } from "@/lib/collections";
+import { MAX_FAVORITES, WORK_ID } from "@/lib/favorites-shared";
+import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
@@ -23,22 +24,39 @@ async function guard(req: Request, ctx: Ctx) {
   return { user, id };
 }
 
-/** Renomme la liste. Corps : { name }. */
+/** Modifie la liste. Corps : { name?, description?, articleIds? } (au moins un champ ; articleIds = nouvel ordre complet). */
 export async function PATCH(req: Request, ctx: Ctx) {
   const g = await guard(req, ctx);
   if (g.refused) return g.refused;
-  let name: string | null = null;
+  let body: Record<string, unknown>;
   try {
-    name = sanitizeCollectionName(((await req.json()) as { name?: unknown }).name);
+    const parsed: unknown = await req.json();
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    body = parsed as Record<string, unknown>;
   } catch {
-    /* corps invalide */
+    return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
-  if (!name) return NextResponse.json({ error: "Donnez un nom à la liste." }, { status: 400 });
+  const patch: CollectionPatch = {};
+  if (body.name !== undefined) {
+    const name = sanitizeCollectionName(body.name);
+    if (!name) return NextResponse.json({ error: "Donnez un nom à la liste." }, { status: 400 });
+    patch.name = name;
+  }
+  if (body.description !== undefined) patch.description = sanitizeCollectionDescription(body.description);
+  if (body.articleIds !== undefined) {
+    const ids = body.articleIds;
+    if (!Array.isArray(ids) || ids.length > MAX_FAVORITES || !ids.every((x) => typeof x === "string" && WORK_ID.test(x))) {
+      return NextResponse.json({ error: "Ordre invalide." }, { status: 400 });
+    }
+    patch.articleIds = ids as string[];
+  }
+  if (Object.keys(patch).length === 0) return NextResponse.json({ error: "Rien à modifier." }, { status: 400 });
   try {
-    return NextResponse.json({ collection: await renameCollection(g.user.uid, g.id, name) }, { headers: PRIVATE });
+    return NextResponse.json({ collection: await updateCollection(g.user.uid, g.id, patch) }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
-    return NextResponse.json({ error: "Le renommage a échoué." }, { status: 502 });
+    if (e instanceof CollectionOrderError) return NextResponse.json({ error: e.message }, { status: 409 });
+    return NextResponse.json({ error: "La modification a échoué." }, { status: 502 });
   }
 }
 

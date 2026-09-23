@@ -59,8 +59,9 @@ interface FavoritesContext {
   /** Listes qui contiennent l'article. */
   listsOf: (id: string) => Collection[];
   /** Crée une liste ; avec `snapshot`, y range aussitôt l'article. */
-  createCollection: (name: string, snapshot?: FavoriteSnapshot) => Promise<Collection | null>;
-  renameCollection: (id: string, name: string) => Promise<boolean>;
+  createCollection: (name: string, options?: { description?: string; snapshot?: FavoriteSnapshot }) => Promise<Collection | null>;
+  /** Renomme, décrit ou réordonne (articleIds = nouvel ordre complet), en optimiste. */
+  updateCollection: (id: string, patch: { name?: string; description?: string; articleIds?: string[] }) => Promise<boolean>;
   deleteCollection: (id: string) => Promise<boolean>;
   /** Met ou retire l'article d'une liste (l'ajout l'enregistre aussi en favori). */
   setInCollection: (id: string, snapshot: FavoriteSnapshot, inList: boolean, options?: { silent?: boolean }) => Promise<boolean>;
@@ -353,14 +354,14 @@ export function FavoritesProvider({ userId, children }: Props) {
   }, [toggle, setInCollection]);
 
   const createCollection = useCallback<FavoritesContext["createCollection"]>(
-    async (name, snapshot) => {
+    async (name, options) => {
       try {
         mutationSeq.current++;
-        const data = await jsonOrError(await fetch("/api/collections", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) }));
+        const data = await jsonOrError(await fetch("/api/collections", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, description: options?.description ?? "" }) }));
         const collection = data.collection as Collection;
         applyCollections((prev) => (prev.some((c) => c.id === collection.id) ? prev : [...prev, collection]));
         // La liste vient d'être posée dans le miroir synchrone : l'ajout la trouve sans attendre un rendu.
-        if (snapshot) await setInCollection(collection.id, snapshot, true);
+        if (options?.snapshot) await setInCollection(collection.id, options.snapshot, true);
         return collection;
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "La liste n'a pas pu être créée.");
@@ -370,18 +371,18 @@ export function FavoritesProvider({ userId, children }: Props) {
     [applyCollections, setInCollection],
   );
 
-  const renameCollection = useCallback<FavoritesContext["renameCollection"]>(
-    async (id, name) => {
-      const previous = collectionsRef.current.find((c) => c.id === id)?.name;
-      if (previous === undefined) return false;
+  const updateCollection = useCallback<FavoritesContext["updateCollection"]>(
+    async (id, patch) => {
+      const previous = collectionsRef.current.find((c) => c.id === id);
+      if (!previous) return false;
       mutationSeq.current++;
-      applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+      applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
       try {
-        await jsonOrError(await fetch(`/api/collections/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) }));
+        await jsonOrError(await fetch(`/api/collections/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) }));
         return true;
       } catch (e) {
-        applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, name: previous } : c)));
-        toast.error(e instanceof Error ? e.message : "Le renommage a échoué.");
+        applyCollections((prev) => prev.map((c) => (c.id === id ? previous : c)));
+        toast.error(e instanceof Error ? e.message : "La modification a échoué.");
         return false;
       }
     },
@@ -432,11 +433,11 @@ export function FavoritesProvider({ userId, children }: Props) {
       loadCollections,
       listsOf: (id) => membership.get(id) ?? NO_LISTS,
       createCollection,
-      renameCollection,
+      updateCollection,
       deleteCollection,
       setInCollection,
     }),
-    [userId, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, renameCollection, deleteCollection, setInCollection],
+    [userId, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, updateCollection, deleteCollection, setInCollection],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

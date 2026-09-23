@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { CollectionsLimitError, createCollection, listCollections } from "@/lib/collections";
-import { sanitizeCollectionName } from "@/lib/collections-shared";
+import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
@@ -22,7 +22,7 @@ export async function GET() {
   }
 }
 
-/** Crée une liste. Corps : { name }. */
+/** Crée une liste. Corps : { name, description? }. */
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
@@ -30,14 +30,17 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
   let name: string | null = null;
+  let description = "";
   try {
-    name = sanitizeCollectionName(((await req.json()) as { name?: unknown }).name);
+    const body = (await req.json()) as { name?: unknown; description?: unknown };
+    name = sanitizeCollectionName(body.name);
+    description = sanitizeCollectionDescription(body.description);
   } catch {
     /* corps invalide */
   }
   if (!name) return NextResponse.json({ error: "Donnez un nom à la liste." }, { status: 400 });
   try {
-    return NextResponse.json({ collection: await createCollection(user.uid, name) }, { status: 201, headers: PRIVATE });
+    return NextResponse.json({ collection: await createCollection(user.uid, name, description) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionsLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
     return NextResponse.json({ error: "La création a échoué." }, { status: 502 });

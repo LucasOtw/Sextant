@@ -4,6 +4,7 @@ import { SearchBox } from "@/components/search-box";
 import { ThemeGrid } from "@/components/theme-grid";
 import { WorkCard } from "@/components/work-card";
 import { RecentlyViewed } from "@/components/recently-viewed";
+import { ForYou } from "@/components/for-you";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFeaturedWorks } from "@/lib/openalex";
 
@@ -48,6 +49,8 @@ export default function HomePage() {
           <Featured />
         </Suspense>
       </section>
+
+      <ForYou />
 
       <RecentlyViewed />
     </div>

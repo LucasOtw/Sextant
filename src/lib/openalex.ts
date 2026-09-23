@@ -291,6 +291,24 @@ export async function getWorksBySameTopic(topicId: string, excludeId: string, n 
   return page.results.filter((w) => shortId(w.id) !== shortId(excludeId)).slice(0, n);
 }
 
+/**
+ * Articles récents (depuis `sinceYear`) les plus cités d'un sujet, hors identifiants déjà vus : matière de « Pour vous ».
+ * Mêmes garde-fous que partout : types vérifiés, revues indexées, résumé présent.
+ */
+export async function getRecentByTopic(topicId: string, sinceYear: number, n = 6): Promise<Work[]> {
+  const page = await get<Page<Work>>(
+    "/works",
+    {
+      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, `publication_year:>${sinceYear - 1}`, "has_abstract:true"].join(","),
+      sort: "cited_by_count:desc",
+      "per-page": n,
+      select: LIST_SELECT,
+    },
+    3600,
+  );
+  return page.results;
+}
+
 /** Sous-thèmes (topics) d'un field, triés par volume. */
 export async function getTopicsForField(fieldId: string, n = 12): Promise<Topic[]> {
   const page = await get<Page<Topic>>(

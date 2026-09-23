@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { CopyIcon, DownloadIcon, FolderIcon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CopyIcon, DownloadIcon, FolderIcon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { cn } from "cn";
 
 const SORTS = [
   { value: "added", label: "Ajout récent" },
+  { value: "list", label: "Ordre de la liste" },
   { value: "year", label: "Année" },
   { value: "cited", label: "Citations" },
   { value: "title", label: "Titre" },
@@ -76,7 +77,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("liste");
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState("added");
+  const [sort, setSort] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -90,6 +91,10 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
 
   const collections = favorites.collectionsLoaded ? favorites.collections : initialCollections;
   const collection = collections.find((c) => c.id === selectedId) ?? null;
+  // Par défaut : ordre manuel dans une liste, ajout récent dans « Tous » ; le choix explicite de l'utilisateur prime.
+  const activeSort = sort ?? (collection ? "list" : "added");
+  const sorts = collection ? SORTS : SORTS.filter((o) => o.value !== "list");
+  const manualOrder = Boolean(collection) && activeSort === "list" && !q.trim();
 
   // Une liste supprimée ailleurs ne peut pas rester dans l'URL (seulement une fois l'état serveur connu et sain).
   useEffect(() => {
@@ -115,7 +120,12 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
     const nq = fold(q.trim());
     const filtered = nq ? scoped.filter((f) => fold(`${f.title} ${f.authors} ${f.venue ?? ""} ${f.topic ?? ""}`).includes(nq)) : scoped;
     const sorted = [...filtered];
-    switch (sort) {
+    switch (activeSort) {
+      case "list": {
+        const rank = new Map((collection?.articleIds ?? []).map((id, i) => [id, i]));
+        sorted.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+        break;
+      }
       case "year":
         sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
         break;
@@ -129,7 +139,18 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
         sorted.sort((a, b) => (b.addedAt ?? "").localeCompare(a.addedAt ?? ""));
     }
     return sorted;
-  }, [scoped, q, sort]);
+  }, [scoped, q, activeSort, collection]);
+
+  /** Déplace un article d'un cran dans l'ordre de la liste. */
+  function move(id: string, delta: -1 | 1) {
+    if (!collection) return;
+    const ids = [...collection.articleIds];
+    const i = ids.indexOf(id);
+    const j = i + delta;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    void favorites.updateCollection(collection.id, { articleIds: ids });
+  }
 
   async function copyBibtex() {
     try {
@@ -188,8 +209,8 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
         title="Nouvelle liste"
         description="Par exemple « Mémoire 2026 », « Santé », « À lire »."
         submitLabel="Créer"
-        onSubmit={async (name) => {
-          const created = await favorites.createCollection(name);
+        onSubmit={async (name, description) => {
+          const created = await favorites.createCollection(name, { description });
           if (created) select(created.id);
           return Boolean(created);
         }}
@@ -198,9 +219,10 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
         open={renaming && Boolean(collection)}
         onOpenChange={setRenaming}
         initialName={collection?.name ?? ""}
-        title="Renommer la liste"
-        submitLabel="Renommer"
-        onSubmit={(name) => (collection ? favorites.renameCollection(collection.id, name) : Promise.resolve(false))}
+        initialDescription={collection?.description ?? ""}
+        title="Modifier la liste"
+        submitLabel="Enregistrer"
+        onSubmit={(name, description) => (collection ? favorites.updateCollection(collection.id, { name, description }) : Promise.resolve(false))}
       />
       <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
         <DialogContent className="sm:max-w-sm">
@@ -244,17 +266,20 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
       {chips}
 
       {collection && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
-            <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="truncate">{collection.name}</span>
-          </h2>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
+              <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="truncate">{collection.name}</span>
+            </h2>
+            {collection.description && <p className="mt-1 text-[15px] text-muted-foreground">{collection.description}</p>}
+          </div>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label="Renommer ou supprimer la liste" />}>
               <SettingsIcon /> Gérer
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => setRenaming(true)}><PencilIcon /> Renommer</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setRenaming(true)}><PencilIcon /> Nom et description</DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}><Trash2Icon /> Supprimer la liste</DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -273,9 +298,9 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
             className="h-10 pl-9 text-base md:text-base"
           />
         </div>
-        <Select items={SORTS} value={sort} onValueChange={(v) => setSort(String(v))}>
+        <Select items={sorts} value={activeSort} onValueChange={(v) => setSort(String(v))}>
           <SelectTrigger className="h-10! sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
-          <SelectContent>{SORTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
+          <SelectContent>{sorts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
         <div className="flex gap-2">
           <Button variant="outline" className="h-10" onClick={copyBibtex} disabled={shown.length === 0}><CopyIcon /> Copier BibTeX</Button>
@@ -285,6 +310,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
 
       <p className="text-[15px] text-muted-foreground" aria-live="polite">
         {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour « {q} »</>}
+        {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
       </p>
 
       {shown.length === 0 && collection && !q && (
@@ -301,8 +327,14 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
           const lists = collection ? [] : favorites.listsOf(f.id);
           return (
             <li key={f.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
-              <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-24 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-28">
+              <article className={cn("relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5", manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28")}>
                 <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+                  {manualOrder && (
+                    <>
+                      <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Monter dans la liste" disabled={i === 0} onClick={() => move(f.id, -1)}><ArrowUpIcon /></Button>
+                      <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Descendre dans la liste" disabled={i === shown.length - 1} onClick={() => move(f.id, 1)}><ArrowDownIcon /></Button>
+                    </>
+                  )}
                   <CollectionPicker snapshot={f} />
                   <FavoriteButton snapshot={f} initialActive />
                 </div>
