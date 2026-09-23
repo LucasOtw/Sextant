@@ -193,13 +193,18 @@
   [role="menuitem"],
   [role="menuitemcheckbox"],
   [role="tab"],
-  [role="combobox"],
+  [role="combobox"]:not(input):not(textarea),
   [data-slot="select-trigger"],
   summary,
   label[for],
   input[type="checkbox"],
   input[type="radio"] {
     cursor: pointer;
+  }
+  /* Les champs de saisie gardent le curseur texte, même quand ils portent un rôle ARIA (recherche à autocomplétion). */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="range"]):not([type="file"]),
+  textarea {
+    cursor: text;
   }
   button:disabled,
   [aria-disabled="true"] {
