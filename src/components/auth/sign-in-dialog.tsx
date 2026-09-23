@@ -15,6 +15,8 @@ interface Props {
   intro?: string;
   /** Appelé après une connexion réussie, avant le rafraîchissement de la page. */
   onSuccess?: () => void;
+  /** Ne pas signaler la fermeture comme un abandon quand la connexion a réussi (favori en attente). */
+  keepPending?: boolean;
 }
 
 /** Après Google, on échange le jeton contre un cookie de session côté serveur, puis on rafraîchit les composants serveur. */
@@ -27,7 +29,7 @@ async function establishSession(idToken: string) {
   if (!res.ok) throw new Error("La session n'a pas pu être ouverte.");
 }
 
-export function SignInDialog({ open, onOpenChange, intro, onSuccess }: Props) {
+export function SignInDialog({ open, onOpenChange, intro, onSuccess, keepPending }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export function SignInDialog({ open, onOpenChange, intro, onSuccess }: Props) {
         throw e;
       }
       await establishSession(await credential.user.getIdToken());
-      onOpenChange(false);
+      if (!keepPending) onOpenChange(false);
       onSuccess?.();
       toast.success(`Bienvenue${credential.user.displayName ? `, ${credential.user.displayName.split(" ")[0]}` : ""} !`, {
         description: "Vous êtes connecté. Vos favoris vous suivront d'un appareil à l'autre.",

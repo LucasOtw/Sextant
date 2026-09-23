@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BookmarkIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { cn } from "cn";
@@ -8,13 +9,16 @@ import { cn } from "cn";
 /** Lien « Mes favoris » du header, avec le compteur, visible connecté. */
 export function FavoritesLink({ className }: { className?: string }) {
   const { enabled, count } = useFavorites();
+  const current = usePathname() === "/favoris";
   if (!enabled) return null;
   return (
     <Link
       href="/favoris"
       aria-label={`Mes favoris${count ? `, ${count}` : ""}`}
+      aria-current={current ? "page" : undefined}
       className={cn(
-        "relative inline-flex size-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground",
+        current ? "bg-muted text-foreground" : "text-muted-foreground",
         className,
       )}
     >

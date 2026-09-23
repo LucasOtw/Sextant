@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { addFavorite, FavoritesLimitError, listFavorites, removeFavorite } from "@/lib/favorites";
 import { sanitizeSnapshot } from "@/lib/favorites-shared";
+import { rateLimit } from "@/lib/rate-limit";
+
+/** 90 requêtes par minute et par utilisateur : large pour un humain, bloquant pour une boucle. */
+function tooMany(uid: string) {
+  return !rateLimit(`favorites:${uid}`, 90, 60_000);
+}
+const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
 export const runtime = "nodejs";
 
@@ -9,6 +16,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (tooMany(user.uid)) return TOO_MANY();
   try {
     return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: { "cache-control": "private, no-store" } });
   } catch {
@@ -20,6 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
   try {
     body = await req.json();
@@ -40,6 +49,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (tooMany(user.uid)) return TOO_MANY();
   const id = new URL(req.url).searchParams.get("id") ?? "";
   if (!/^W\d+$/.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
   try {
