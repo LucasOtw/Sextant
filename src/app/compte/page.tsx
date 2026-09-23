@@ -7,6 +7,7 @@ import { AccountActions } from "@/components/auth/account-actions";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { adminDb } from "@/lib/firebase/admin";
 import { countFavorites } from "@/lib/favorites";
+import { countCollections } from "@/lib/collections";
 
 export const metadata: Metadata = { title: "Mon compte" };
 
@@ -26,7 +27,11 @@ export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const [since, favoritesCount] = await Promise.all([memberSince(user.uid), countFavorites(user.uid).catch(() => 0)]);
+  const [since, favoritesCount, collectionsCount] = await Promise.all([
+    memberSince(user.uid),
+    countFavorites(user.uid).catch(() => 0),
+    countCollections(user.uid).catch(() => 0),
+  ]);
   const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 
   return (
@@ -52,7 +57,7 @@ export default async function AccountPage() {
           <h2 id="bibliotheque" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ma bibliothèque</h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-3">
             <Tile icon={<BookmarkIcon />} label="Favoris" value={String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
-            <Tile icon={<FolderIcon />} label="Collections" value="0" hint="Bientôt : regroupez vos favoris par thème." />
+            <Tile icon={<FolderIcon />} label="Listes" value={String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>
         </section>

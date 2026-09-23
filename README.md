@@ -43,6 +43,7 @@ Des suggestions apparaissent pendant que vous tapez : articles les plus cités c
 
 - 📥 **Lire le PDF** quand une version libre existe, sinon **Voir chez l'éditeur**.
 - 📋 **Citer** en un clic : APA ou BibTeX dans le presse-papiers.
+- ❤️ **Enregistrer** l'article dans vos favoris, puis le ranger dans une **liste** (« Mémoire 2026 », « Santé »…) pour vous y retrouver ; chaque liste s'exporte en BibTeX.
 - 👤 **Auteurs** : survolez un nom pour voir son institution (avec lien vers le site), ses articles, ses citations, son indice h, son ORCID.
 - 🔗 **Pour aller plus loin** : les articles proches par le contenu, pour rebondir de lecture en lecture.
 - 🧠 **L'essentiel en quatre points** : un condensé du résumé, traduit en français si besoin (voir plus bas).
@@ -103,7 +104,8 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 - [x] Carte auteur au survol
 - [x] Mode sombre, historique local, pages légales
 - [x] Comptes (Google) et favoris synchronisés, export BibTeX
-- [ ] Collections et notes
+- [x] Listes de favoris (« Mémoire 2026 », « Santé »…)
+- [ ] Notes personnelles sur un article
 - [ ] Serveur MCP : brancher sa bibliothèque Sextant à Claude ou ChatGPT ([note](docs/handoffs/2026-09-22-idee-mcp-sextant.md))
 - [ ] Alertes sur un sujet ou un auteur
 - [ ] Applications mobiles (après la version web)

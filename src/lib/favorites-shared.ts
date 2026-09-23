@@ -27,6 +27,8 @@ export interface Favorite extends FavoriteSnapshot {
 }
 
 export const MAX_FAVORITES = 1000;
+/** Identifiant OpenAlex d'un article (W + chiffres), borné. */
+export const WORK_ID = /^W\d{1,31}$/;
 
 export function snapshotFromWork(work: Work): FavoriteSnapshot {
   return {
@@ -51,7 +53,7 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
   if (!input || typeof input !== "object") return null;
   const o = input as Record<string, unknown>;
   const id = clip(o.id, 32);
-  if (!/^W\d+$/.test(id)) return null;
+  if (!WORK_ID.test(id)) return null;
   const title = clip(o.title, 500);
   if (!title) return null;
   return {

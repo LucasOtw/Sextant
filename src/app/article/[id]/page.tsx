@@ -6,6 +6,7 @@ import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockOpenIcon, QuoteIcon }
 import { AiSummary } from "@/components/ai-summary";
 import { AuthorChip } from "@/components/author-chip";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
+import { CollectionPicker } from "@/components/collections/collection-picker";
 import { snapshotFromWork } from "@/lib/favorites-shared";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { isFavorite } from "@/lib/favorites";
@@ -137,6 +138,7 @@ export default async function ArticlePage({ params }: Props) {
           <CopyButton text={toApa(work)} label="Citer (APA)" size="lg" className="bg-card px-3.5" />
           <CopyButton text={toBibtex(work)} label="BibTeX" size="lg" className="bg-card px-3.5" />
           {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
+          {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
           <p className="mt-2 text-sm text-muted-foreground">

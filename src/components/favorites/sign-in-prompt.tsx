@@ -16,7 +16,7 @@ export function SignInPrompt() {
         Connectez-vous pour retrouver les articles que vous avez enregistrés, sur tous vos appareils.
       </p>
       <Button size="lg" className="mt-5" onClick={() => setOpen(true)}>Se connecter</Button>
-      <SignInDialog open={open} onOpenChange={setOpen} intro="Connectez-vous pour retrouver vos favoris et vos collections sur tous vos appareils." />
+      <SignInDialog open={open} onOpenChange={setOpen} intro="Connectez-vous pour retrouver vos favoris et vos listes sur tous vos appareils." />
     </div>
   );
 }
