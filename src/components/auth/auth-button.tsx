@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -71,17 +72,21 @@ export function AuthButton({ user }: Props) {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuLabel className="flex flex-col">
-          <span className="truncate font-medium text-foreground">{user.name ?? "Mon compte"}</span>
-          {user.email && <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex flex-col">
+            <span className="truncate font-medium text-foreground">{user.name ?? "Mon compte"}</span>
+            {user.email && <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link href="/compte" />}>
-          <UserRoundIcon /> Mon compte
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={logout}>
-          <LogOutIcon /> Se déconnecter
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem render={<Link href="/compte" />}>
+            <UserRoundIcon /> Mon compte
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={logout}>
+            <LogOutIcon /> Se déconnecter
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
