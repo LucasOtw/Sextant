@@ -9,8 +9,8 @@ export default function TermsPage() {
     <ProsePage title="Conditions d'utilisation" intro="En clair, et en quelques points." updated="23 septembre 2026">
       <h2>Le service</h2>
       <p>
-        Sextant est un moteur de recherche et de découverte d'articles scientifiques, fourni gratuitement et sans création de
-        compte. Il agrège des métadonnées publiques et renvoie vers les sites des éditeurs ou des archives ouvertes. Il
+        Sextant est un moteur de recherche et de découverte d'articles scientifiques, fourni gratuitement. La recherche ne
+        demande aucun compte ; un compte, facultatif, permet de conserver ses favoris et collections. Il agrège des métadonnées publiques et renvoie vers les sites des éditeurs ou des archives ouvertes. Il
         n'héberge, ne reproduit ni ne distribue le texte intégral des publications.
       </p>
 
@@ -21,6 +21,13 @@ export default function TermsPage() {
         <li>aspirer massivement le service ou ses interfaces techniques ;</li>
         <li>présenter les condensés générés par IA comme des citations de l'article ou de ses auteurs.</li>
       </ul>
+
+      <h2>Compte</h2>
+      <p>
+        Le compte est personnel et se crée par connexion Google. Vous pouvez le supprimer à tout moment depuis la page « Mon
+        compte », ce qui efface l'ensemble de vos données. Nous pouvons fermer un compte utilisé pour contourner les règles
+        d'usage ci-dessus.
+      </p>
 
       <h2>Contenus et exactitude</h2>
       <p>
@@ -44,8 +51,7 @@ export default function TermsPage() {
 
       <h2>Évolution</h2>
       <p>
-        Ces conditions peuvent évoluer, notamment lors de l'ajout de fonctionnalités comme les comptes utilisateurs. La date en
-        tête de page indique la dernière version. Voir aussi la <Link href="/confidentialite">politique de confidentialité</Link>.
+        Ces conditions peuvent évoluer avec les fonctionnalités du site. La date en tête de page indique la dernière version. Voir aussi la <Link href="/confidentialite">politique de confidentialité</Link>.
       </p>
     </ProsePage>
   );

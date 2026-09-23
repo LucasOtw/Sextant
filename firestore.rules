@@ -1,0 +1,10 @@
+rules_version = '2';
+// Toutes les lectures et écritures passent par le serveur (SDK Admin), qui ignore ces règles.
+// On ferme donc tout au client : aucune donnée n'est accessible directement depuis un navigateur.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
