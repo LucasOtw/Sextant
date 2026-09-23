@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
-import { ChevronDownIcon, Loader2Icon } from "lucide-react";
+import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
@@ -77,6 +77,11 @@ function markSpans(container: HTMLElement, texts: string[]) {
   }
 }
 
+function formatBytes(n: number): string {
+  if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1).replace(".", ",")} Mo`;
+  return `${Math.max(1, Math.round(n / 1024))} Ko`;
+}
+
 function pageOf(node: Node | null | undefined): string | undefined {
   return (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-page]")?.dataset.page;
 }
@@ -92,6 +97,7 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [width, setWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<(NonNullable<ReturnType<typeof readSelection>> & { page: number }) | null>(null);
@@ -106,6 +112,9 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         if (cancelled) return;
         pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         task = pdfjs.getDocument({ url });
+        task.onProgress = (p: { loaded: number; total?: number }) => {
+          if (!cancelled) setProgress({ loaded: p.loaded, total: p.total ?? 0 });
+        };
         const d = await task.promise;
         if (cancelled) {
           void task.destroy();
@@ -113,7 +122,8 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         }
         setLib(pdfjs);
         setDoc(d);
-      } catch {
+      } catch (e) {
+        console.error("[lecteur PDF] chargement", e);
         if (!cancelled) setError("Le PDF n'a pas pu être chargé dans le lecteur.");
       }
     })();
@@ -209,7 +219,24 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
     <div ref={containerRef} className="flex flex-col gap-5">
       {!doc && (
         <div className="flex flex-col gap-4">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2Icon className="size-4 animate-spin" aria-hidden /> Chargement du PDF…</p>
+          <div className="flex flex-col gap-2" role="status" aria-live="polite">
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2Icon className="size-4 animate-spin" aria-hidden /> Chargement du PDF…
+              {progress && progress.loaded > 0 && (
+                <span>{formatBytes(progress.loaded)}{progress.total > 0 && ` / ${formatBytes(progress.total)}`}</span>
+              )}
+            </p>
+            {progress && progress.total > 0 && (
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary" aria-hidden>
+                <div className="h-full rounded-full bg-accent-brand transition-[width] duration-300" style={{ width: `${Math.min(100, Math.round((progress.loaded / progress.total) * 100))}%` }} />
+              </div>
+            )}
+            {progress && progress.total > 8 * 1024 * 1024 && (
+              <p className="text-sm text-muted-foreground">
+                Gros fichier : vous pouvez aussi <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</a> en attendant.
+              </p>
+            )}
+          </div>
           <Skeleton className="aspect-[1/1.414] w-full rounded-lg" />
         </div>
       )}
@@ -241,6 +268,7 @@ function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
   const [aspect, setAspect] = useState(1.414);
   const [visible, setVisible] = useState(false);
   const [rendered, setRendered] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   // Rendu paresseux : une page se dessine quand elle approche de l'écran, et libère son canevas quand elle s'en éloigne.
   useEffect(() => {
@@ -298,7 +326,12 @@ function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
       await textLayer.render();
       if (cancelled) return;
       setRendered(true);
-    })().catch(() => undefined);
+    })().catch((e: unknown) => {
+      // Rendu annulé par un redimensionnement : le prochain effet reprend ; sinon on le dit au lieu d'une page blanche.
+      if (cancelled) return;
+      console.error("[lecteur PDF] page", pageNumber, e);
+      setFailed(true);
+    });
     return () => {
       cancelled = true;
       renderTask?.cancel();
@@ -314,6 +347,15 @@ function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
     <div ref={ref} data-page={pageNumber} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10" style={{ width, height: rendered ? undefined : width * aspect }}>
       <canvas ref={canvasRef} aria-label={`Page ${pageNumber}`} />
       <div ref={textRef} className="textLayer" />
+      {!rendered && visible && (
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500" aria-live="polite">
+          {failed ? (
+            <span className="flex items-center gap-2 px-4 text-center"><AlertTriangleIcon className="size-4 shrink-0" aria-hidden /> Cette page n'a pas pu être affichée.</span>
+          ) : (
+            <span className="flex items-center gap-2"><Loader2Icon className="size-4 animate-spin" aria-hidden /> Page {pageNumber}…</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
