@@ -13,10 +13,10 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   /** Texte d'explication contextuel (ex. depuis un cœur de favori). */
   intro?: string;
-  /** Appelé après une connexion réussie, avant le rafraîchissement de la page. */
+  /** Appelé juste avant de lancer la connexion Google (ex. mémoriser l'article à enregistrer). */
+  onBeforeSignIn?: () => void;
+  /** Appelé après une connexion réussie, juste avant la fermeture et le rafraîchissement de la page. */
   onSuccess?: () => void;
-  /** Ne pas signaler la fermeture comme un abandon quand la connexion a réussi (favori en attente). */
-  keepPending?: boolean;
 }
 
 /** Après Google, on échange le jeton contre un cookie de session côté serveur, puis on rafraîchit les composants serveur. */
@@ -29,7 +29,7 @@ async function establishSession(idToken: string) {
   if (!res.ok) throw new Error("La session n'a pas pu être ouverte.");
 }
 
-export function SignInDialog({ open, onOpenChange, intro, onSuccess, keepPending }: Props) {
+export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSuccess }: Props) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export function SignInDialog({ open, onOpenChange, intro, onSuccess, keepPending
   async function signInWithGoogle() {
     setBusy(true);
     setError(null);
+    onBeforeSignIn?.();
     try {
       const auth = firebaseAuth();
       let credential;
@@ -45,6 +46,7 @@ export function SignInDialog({ open, onOpenChange, intro, onSuccess, keepPending
       } catch (e) {
         const code = (e as { code?: string }).code;
         if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+          onSuccess?.(); // la page va être quittée : ce n'est pas un abandon
           await signInWithRedirect(auth, googleProvider());
           return;
         }
@@ -55,8 +57,8 @@ export function SignInDialog({ open, onOpenChange, intro, onSuccess, keepPending
         throw e;
       }
       await establishSession(await credential.user.getIdToken());
-      if (!keepPending) onOpenChange(false);
       onSuccess?.();
+      onOpenChange(false);
       toast.success(`Bienvenue${credential.user.displayName ? `, ${credential.user.displayName.split(" ")[0]}` : ""} !`, {
         description: "Vous êtes connecté. Vos favoris vous suivront d'un appareil à l'autre.",
       });

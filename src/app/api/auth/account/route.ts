@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
+import { rejectCrossSite } from "@/lib/security";
 
 export const runtime = "nodejs";
 
 /** Supprime le compte de l'utilisateur connecté : données Firestore puis compte Firebase Auth. */
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const refused = rejectCrossSite(req);
+  if (refused) return refused;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
 

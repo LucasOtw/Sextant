@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { HeartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
-import { PENDING_FAVORITE_KEY, useFavorites } from "@/components/favorites/favorites-provider";
+import { clearPendingFavorite, useFavorites, writePendingFavorite } from "@/components/favorites/favorites-provider";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { cn } from "cn";
 
@@ -12,20 +12,29 @@ interface Props {
   snapshot: FavoriteSnapshot;
   /** `icon` : cœur seul (cartes) ; `button` : cœur + libellé (fiche article). */
   variant?: "icon" | "button";
-  /** État connu côté serveur (page /favoris) : évite un cœur vide pendant le premier chargement client. */
+  /** État connu côté serveur (page /favoris, fiche article) : évite un cœur vide pendant le premier chargement client. */
   initialActive?: boolean;
   className?: string;
 }
 
 /**
- * Cœur d'enregistrement. Sans compte, mémorise l'article visé puis propose de se connecter :
- * l'enregistrement se fait dès que la session est ouverte (fenêtre ou redirection).
+ * Cœur d'enregistrement. Sans compte, propose de se connecter ; l'article visé est mémorisé au moment
+ * où l'utilisateur lance la connexion et enregistré dès que la session est ouverte (fenêtre ou redirection).
  */
 export function FavoriteButton({ snapshot, variant = "icon", initialActive = false, className }: Props) {
   const favorites = useFavorites();
   const [signIn, setSignIn] = useState(false);
   const [pending, setPending] = useState(false);
+  /** Vrai quand la fenêtre se ferme parce que la connexion a réussi : l'intention doit survivre. */
+  const succeeded = useRef(false);
   const active = favorites.ready ? favorites.has(snapshot.id) : favorites.enabled ? initialActive : false;
+
+  // Si l'utilisateur quitte la page pendant que la fenêtre est ouverte, on n'enregistre rien à son insu plus tard.
+  useEffect(() => {
+    return () => {
+      if (!succeeded.current) clearPendingFavorite();
+    };
+  }, []);
 
   async function onClick(e: React.MouseEvent) {
     e.preventDefault();
@@ -35,11 +44,7 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
     const result = await favorites.toggle(snapshot);
     setPending(false);
     if (result === "signin") {
-      try {
-        sessionStorage.setItem(PENDING_FAVORITE_KEY, JSON.stringify(snapshot));
-      } catch {
-        /* stockage indisponible : la connexion reste possible, sans enregistrement automatique */
-      }
+      succeeded.current = false;
       setSignIn(true);
     }
   }
@@ -76,16 +81,14 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
           open={signIn}
           onOpenChange={(open) => {
             setSignIn(open);
-            if (!open) {
-              try {
-                sessionStorage.removeItem(PENDING_FAVORITE_KEY);
-              } catch {
-                /* rien */
-              }
-            }
+            // Fermeture par abandon (croix, Échap, clic dehors) : on oublie l'intention.
+            if (!open && !succeeded.current) clearPendingFavorite();
           }}
           intro="Connectez-vous pour enregistrer cet article et le retrouver sur tous vos appareils."
-          keepPending
+          onBeforeSignIn={() => writePendingFavorite(snapshot)}
+          onSuccess={() => {
+            succeeded.current = true;
+          }}
         />
       )}
     </>

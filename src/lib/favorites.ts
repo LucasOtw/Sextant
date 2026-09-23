@@ -4,8 +4,10 @@ import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favor
 
 /**
  * Favoris d'un utilisateur : `users/{uid}/favorites/{workId}`, écrits uniquement côté serveur.
- * Un compteur `favoritesCount` sur `users/{uid}` est tenu dans la même transaction que chaque
- * ajout ou retrait : lecture du total en un seul document, limite appliquée sans course.
+ * Le document `users/{uid}` porte, tenus dans la même transaction que chaque ajout ou retrait :
+ * - `favoriteIds` : la liste des identifiants (≤ 1000, quelques Ko) → l'état des cœurs en UNE lecture ;
+ * - `favoritesCount` : le total.
+ * Si ces champs manquent (favoris antérieurs à leur introduction), ils sont reconstruits depuis la sous-collection.
  */
 
 function toFavorite(data: Record<string, unknown>, id: string): Favorite {
@@ -32,9 +34,17 @@ export async function listFavorites(uid: string): Promise<Favorite[]> {
   return snap.docs.map((d) => toFavorite(d.data(), d.id));
 }
 
-export async function isFavorite(uid: string, id: string): Promise<boolean> {
+/** Identifiants des favoris (une lecture), reconstruits et persistés une fois si le champ manque. */
+export async function listFavoriteIds(uid: string): Promise<string[]> {
   const db = await adminDb();
-  return (await db.doc(`users/${uid}/favorites/${id}`).get()).exists;
+  const userRef = db.doc(`users/${uid}`);
+  const user = await userRef.get();
+  const ids = user.get("favoriteIds");
+  if (Array.isArray(ids)) return ids.filter((x): x is string => typeof x === "string");
+  const snap = await userRef.collection("favorites").select().get();
+  const rebuilt = snap.docs.map((d) => d.id);
+  await userRef.set({ favoriteIds: rebuilt, favoritesCount: rebuilt.length }, { merge: true }).catch(() => undefined);
+  return rebuilt;
 }
 
 export async function countFavorites(uid: string): Promise<number> {
@@ -42,8 +52,11 @@ export async function countFavorites(uid: string): Promise<number> {
   const user = await db.doc(`users/${uid}`).get();
   const n = user.get("favoritesCount");
   if (typeof n === "number") return Math.max(0, n);
-  const agg = await db.collection(`users/${uid}/favorites`).count().get();
-  return agg.data().count;
+  return (await listFavoriteIds(uid)).length;
+}
+
+export async function isFavorite(uid: string, id: string): Promise<boolean> {
+  return (await listFavoriteIds(uid)).includes(id);
 }
 
 export class FavoritesLimitError extends Error {}
@@ -56,11 +69,16 @@ export async function addFavorite(uid: string, s: FavoriteSnapshot): Promise<Fav
 
   await db.runTransaction(async (tx) => {
     const [user, existing] = await Promise.all([tx.get(userRef), tx.get(favRef)]);
-    if (!existing.exists) {
-      const current = typeof user.get("favoritesCount") === "number" ? (user.get("favoritesCount") as number) : 0;
-      if (current >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
-      tx.set(userRef, { favoritesCount: current + 1 }, { merge: true });
+    const known = user.get("favoriteIds");
+    // Liste de référence : le champ s'il existe, sinon la sous-collection (rattrapage des anciens favoris).
+    const ids: string[] = Array.isArray(known)
+      ? known.filter((x): x is string => typeof x === "string")
+      : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
+    if (!existing.exists && !ids.includes(s.id)) {
+      if (ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
+      ids.push(s.id);
     }
+    tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
     // L'instantané est rafraîchi à chaque ajout ; la date d'ajout d'origine est conservée.
     tx.set(favRef, { ...s, addedAt: existing.exists ? existing.get("addedAt") : FieldValue.serverTimestamp() }, { merge: true });
   });
@@ -75,9 +93,12 @@ export async function removeFavorite(uid: string, id: string): Promise<void> {
   const favRef = userRef.collection("favorites").doc(id);
   await db.runTransaction(async (tx) => {
     const [user, existing] = await Promise.all([tx.get(userRef), tx.get(favRef)]);
-    if (!existing.exists) return;
-    const current = typeof user.get("favoritesCount") === "number" ? (user.get("favoritesCount") as number) : 1;
-    tx.set(userRef, { favoritesCount: Math.max(0, current - 1) }, { merge: true });
-    tx.delete(favRef);
+    const known = user.get("favoriteIds");
+    const ids: string[] = Array.isArray(known)
+      ? known.filter((x): x is string => typeof x === "string")
+      : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
+    const next = ids.filter((x) => x !== id);
+    tx.set(userRef, { favoriteIds: next, favoritesCount: next.length }, { merge: true });
+    if (existing.exists) tx.delete(favRef);
   });
 }

@@ -69,6 +69,29 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
   };
 }
 
+/** Échappe un champ BibTeX : caractères spéciaux LaTeX et accolades déséquilibrées. */
+export function bibField(value: string): string {
+  let depth = 0;
+  let out = "";
+  for (const ch of value) {
+    if (ch === "{") {
+      depth++;
+      out += ch;
+    } else if (ch === "}") {
+      if (depth === 0) continue; // accolade fermante orpheline
+      depth--;
+      out += ch;
+    } else if (ch === "\\") {
+      out += "\\textbackslash{}";
+    } else if ("%&_$#".includes(ch)) {
+      out += "\\" + ch;
+    } else {
+      out += ch;
+    }
+  }
+  return out + "}".repeat(depth);
+}
+
 function bibKey(s: FavoriteSnapshot): string {
   const last = s.authorNames[0]?.split(" ").pop() ?? "anon";
   const word = s.title.split(/\s+/).find((w) => w.length > 3) ?? "work";
@@ -78,10 +101,10 @@ function bibKey(s: FavoriteSnapshot): string {
 /** BibTeX depuis un instantané (export de la liste des favoris). */
 export function bibtexFromSnapshot(s: FavoriteSnapshot): string {
   const kind = s.type === "book" ? "book" : s.type === "dissertation" ? "phdthesis" : "article";
-  const lines = [`@${kind}{${bibKey(s)},`, `  title = {${s.title}},`];
-  if (s.authorNames.length) lines.push(`  author = {${s.authorNames.join(" and ")}},`);
+  const lines = [`@${kind}{${bibKey(s)},`, `  title = {${bibField(s.title)}},`];
+  if (s.authorNames.length) lines.push(`  author = {${s.authorNames.map(bibField).join(" and ")}},`);
   if (s.year) lines.push(`  year = {${s.year}},`);
-  if (s.venue) lines.push(`  ${kind === "book" ? "publisher" : kind === "phdthesis" ? "school" : "journal"} = {${s.venue}},`);
+  if (s.venue) lines.push(`  ${kind === "book" ? "publisher" : kind === "phdthesis" ? "school" : "journal"} = {${bibField(s.venue)}},`);
   if (s.doi) lines.push(`  doi = {${s.doi.replace(/^https?:\/\/doi\.org\//, "")}},`);
   lines.push("}");
   return lines.join("\n");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CopyIcon, DownloadIcon, LockOpenIcon, QuoteIcon, RefreshCwIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -53,7 +53,19 @@ export function FavoritesList({ initial, loadError = false }: Props) {
   const [q, setQ] = useState("");
   const [sort, setSort] = useState("added");
 
-  const list = favorites.ready ? favorites.items : initial;
+  // À l'arrivée sur la page, on se réaligne avec le serveur (favoris posés depuis un autre appareil).
+  useEffect(() => {
+    void favorites.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- une fois au montage
+  }, []);
+
+  // Base = liste serveur ; une fois l'état client chargé : on retire ce qui a été décoché, on ajoute ce qui a été coché ici.
+  const list = useMemo(() => {
+    if (!favorites.ready) return initial;
+    const kept = initial.filter((f) => favorites.has(f.id));
+    const known = new Set(kept.map((f) => f.id));
+    return [...kept, ...favorites.added.filter((f) => !known.has(f.id))];
+  }, [initial, favorites]);
 
   const shown = useMemo(() => {
     const nq = fold(q.trim());

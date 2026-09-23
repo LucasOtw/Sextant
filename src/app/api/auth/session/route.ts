@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
+import { rejectCrossSite } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ const cookieOptions = {
 
 /** Échange un jeton Firebase (obtenu côté client après Google) contre un cookie de session HttpOnly. */
 export async function POST(req: Request) {
+  const refused = rejectCrossSite(req);
+  if (refused) return refused;
   if (!isAuthEnabled()) return NextResponse.json({ error: "Comptes désactivés." }, { status: 503 });
   let idToken: string | undefined;
   try {
@@ -61,7 +64,9 @@ export async function POST(req: Request) {
 }
 
 /** Déconnexion : efface le cookie de session. */
-export async function DELETE() {
+export async function DELETE(req: Request) {
+  const refused = rejectCrossSite(req);
+  if (refused) return refused;
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, "", { ...cookieOptions, maxAge: 0 });
   return res;

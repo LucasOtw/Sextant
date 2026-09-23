@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { addFavorite, FavoritesLimitError, listFavorites, removeFavorite } from "@/lib/favorites";
+import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, removeFavorite } from "@/lib/favorites";
 import { sanitizeSnapshot } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
+import { rejectCrossSite } from "@/lib/security";
+
+export const runtime = "nodejs";
+
+const PRIVATE = { "cache-control": "private, no-store" };
 
 /** 90 requêtes par minute et par utilisateur : large pour un humain, bloquant pour une boucle. */
 function tooMany(uid: string) {
@@ -10,15 +15,19 @@ function tooMany(uid: string) {
 }
 const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
-export const runtime = "nodejs";
-
-/** Liste des favoris de l'utilisateur connecté. */
-export async function GET() {
+/**
+ * Par défaut : les identifiants seulement (une lecture Firestore), ce qu'il faut pour les cœurs.
+ * `?full=1` : la liste complète avec métadonnées (jusqu'à 1000 lectures), réservée aux usages qui en ont besoin.
+ */
+export async function GET(req: Request) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
+  const full = new URL(req.url).searchParams.get("full") === "1";
   try {
-    return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: { "cache-control": "private, no-store" } });
+    if (full) return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: PRIVATE });
+    const ids = await listFavoriteIds(user.uid);
+    return NextResponse.json({ ids, count: ids.length }, { headers: PRIVATE });
   } catch {
     return NextResponse.json({ error: "Favoris indisponibles." }, { status: 502 });
   }
@@ -26,6 +35,8 @@ export async function GET() {
 
 /** Ajoute (ou rafraîchit) un favori. Corps : l'instantané de l'article. */
 export async function POST(req: Request) {
+  const refused = rejectCrossSite(req);
+  if (refused) return refused;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
@@ -38,7 +49,7 @@ export async function POST(req: Request) {
   const snapshot = sanitizeSnapshot(body);
   if (!snapshot) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
   try {
-    return NextResponse.json({ favorite: await addFavorite(user.uid, snapshot) }, { status: 201 });
+    return NextResponse.json({ favorite: await addFavorite(user.uid, snapshot) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
     return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
@@ -47,6 +58,8 @@ export async function POST(req: Request) {
 
 /** Retire un favori : `?id=W…`. */
 export async function DELETE(req: Request) {
+  const refused = rejectCrossSite(req);
+  if (refused) return refused;
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
@@ -54,7 +67,7 @@ export async function DELETE(req: Request) {
   if (!/^W\d+$/.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
   try {
     await removeFavorite(user.uid, id);
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true }, { headers: PRIVATE });
   } catch {
     return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
   }
