@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
+import { toast } from "sonner";
 import { Loader2Icon, LogOutIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +23,7 @@ export function AccountActions() {
     } catch {
       /* rien */
     }
+    toast("Vous êtes déconnecté.", { description: "À bientôt sur Sextant." });
     router.push("/");
     router.refresh();
   }
@@ -41,6 +43,7 @@ export function AccountActions() {
     } catch {
       /* rien */
     }
+    toast.success("Compte supprimé.", { description: "Votre profil et vos données ont été effacés." });
     router.push("/");
     router.refresh();
   }

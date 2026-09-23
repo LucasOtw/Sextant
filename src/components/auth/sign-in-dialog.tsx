@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { getRedirectResult, signInWithPopup, signInWithRedirect } from "firebase/auth";
+import { toast } from "sonner";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
@@ -49,6 +50,9 @@ export function SignInDialog({ open, onOpenChange }: Props) {
       }
       await establishSession(await credential.user.getIdToken());
       onOpenChange(false);
+      toast.success(`Bienvenue${credential.user.displayName ? `, ${credential.user.displayName.split(" ")[0]}` : ""} !`, {
+        description: "Vous êtes connecté. Vos favoris vous suivront d'un appareil à l'autre.",
+      });
       router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Connexion impossible.");
@@ -80,6 +84,9 @@ export async function completeRedirectSignIn(): Promise<boolean> {
     const result = await getRedirectResult(firebaseAuth());
     if (!result) return false;
     await establishSession(await result.user.getIdToken());
+    toast.success(`Bienvenue${result.user.displayName ? `, ${result.user.displayName.split(" ")[0]}` : ""} !`, {
+      description: "Vous êtes connecté.",
+    });
     return true;
   } catch {
     return false;
