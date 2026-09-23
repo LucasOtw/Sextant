@@ -71,7 +71,7 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
           {icon}
         </Button>
       ) : (
-        <Button variant={active ? "secondary" : "outline"} size="lg" onClick={onClick} className={className}>
+        <Button variant={active ? "secondary" : "outline"} size="lg" onClick={onClick} className={cn(!active && "bg-card", className)}>
           {icon}
           {active ? "Enregistré" : "Enregistrer"}
         </Button>

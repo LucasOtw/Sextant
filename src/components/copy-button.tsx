@@ -8,14 +8,17 @@ interface Props {
   text: string;
   label: string;
   variant?: "outline" | "ghost" | "secondary";
+  size?: "sm" | "default" | "lg";
+  className?: string;
 }
 
-export function CopyButton({ text, label, variant = "outline" }: Props) {
+export function CopyButton({ text, label, variant = "outline", size = "sm", className }: Props) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       variant={variant}
-      size="sm"
+      size={size}
+      className={className}
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(text);

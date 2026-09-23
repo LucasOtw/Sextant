@@ -125,18 +125,18 @@ export default async function ArticlePage({ params }: Props) {
 
         <div className="mt-5 flex flex-wrap gap-2">
           {oa && (
-            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg" })}>
+            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> {oa.isPdf ? "Lire le PDF" : "Lire en accès ouvert"}
             </a>
           )}
           {publisher && (
-            <a href={publisher} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <a href={publisher} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
               <ExternalLinkIcon /> Voir chez l'éditeur
             </a>
           )}
-          <CopyButton text={toApa(work)} label="Citer (APA)" />
-          <CopyButton text={toBibtex(work)} label="BibTeX" />
-          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} />}
+          <CopyButton text={toApa(work)} label="Citer (APA)" size="lg" className="bg-card px-3.5" />
+          <CopyButton text={toBibtex(work)} label="BibTeX" size="lg" className="bg-card px-3.5" />
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
         </div>
         {!oa && (
           <p className="mt-2 text-sm text-muted-foreground">
