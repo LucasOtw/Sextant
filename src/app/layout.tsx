@@ -26,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <SiteHeader />
         <main className="flex-1">{children}</main>
         <SiteFooter />
-        <Toaster position="bottom-center" duration={3500} />
+        <Toaster position="bottom-right" duration={3500} />
       </body>
     </html>
   );
