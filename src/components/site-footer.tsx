@@ -3,6 +3,7 @@ import { LogoMark } from "@/components/logo";
 
 const LINKS = [
   { href: "/a-propos", label: "À propos" },
+  { href: "/mentions-legales", label: "Mentions légales" },
   { href: "/conditions", label: "Conditions d'utilisation" },
   { href: "/confidentialite", label: "Confidentialité" },
 ];
