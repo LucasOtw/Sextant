@@ -102,7 +102,8 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 - [x] Condensé par IA (Mistral)
 - [x] Carte auteur au survol
 - [x] Mode sombre, historique local, pages légales
-- [ ] Comptes utilisateurs et listes de lecture
+- [x] Comptes (Google) et favoris synchronisés, export BibTeX
+- [ ] Collections et notes
 - [ ] Serveur MCP : brancher sa bibliothèque Sextant à Claude ou ChatGPT ([note](docs/handoffs/2026-09-22-idee-mcp-sextant.md))
 - [ ] Alertes sur un sujet ou un auteur
 - [ ] Applications mobiles (après la version web)

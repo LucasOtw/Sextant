@@ -12,6 +12,9 @@ import {
   workTitle,
 } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
+import { FavoriteButton } from "@/components/favorites/favorite-button";
+import { snapshotFromWork } from "@/lib/favorites-shared";
+import { isAuthEnabled } from "@/lib/auth";
 import { cn } from "cn";
 
 interface Props {
@@ -24,6 +27,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
   const venue = venueName(work);
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const compact = variant === "compact";
+  const favorites = isAuthEnabled();
 
   return (
     <article
@@ -32,7 +36,12 @@ export function WorkCard({ work, variant = "list" }: Props) {
         compact ? "h-full" : "sm:p-5",
       )}
     >
-      <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+      {favorites && (
+        <div className="absolute right-3 top-3 z-10">
+          <FavoriteButton snapshot={snapshotFromWork(work)} />
+        </div>
+      )}
+      <div className={cn("flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground", favorites && "pr-10")}>
         <Badge variant="secondary">{typeLabel(work.type)}</Badge>
         {work.open_access.is_oa && (
           <Badge className="bg-oa text-oa-foreground">

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { adminDb } from "@/lib/firebase/admin";
+import { countFavorites } from "@/lib/favorites";
 
 export const metadata: Metadata = { title: "Mon compte" };
 
@@ -25,7 +26,7 @@ export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
-  const since = await memberSince(user.uid);
+  const [since, favoritesCount] = await Promise.all([memberSince(user.uid), countFavorites(user.uid).catch(() => 0)]);
   const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 
   return (
@@ -50,7 +51,7 @@ export default async function AccountPage() {
         <section className="mt-10" aria-labelledby="bibliotheque">
           <h2 id="bibliotheque" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ma bibliothèque</h2>
           <ul className="mt-3 grid gap-3 sm:grid-cols-3">
-            <Tile icon={<BookmarkIcon />} label="Favoris" value="0" hint="Bientôt : un cœur sur chaque article." />
+            <Tile icon={<BookmarkIcon />} label="Favoris" value={String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
             <Tile icon={<FolderIcon />} label="Collections" value="0" hint="Bientôt : regroupez vos favoris par thème." />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>
@@ -80,12 +81,21 @@ export default async function AccountPage() {
   );
 }
 
-function Tile({ icon, label, value, hint }: { icon: React.ReactNode; label: string; value: string; hint: string }) {
-  return (
-    <li className="flex flex-col gap-1 rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+function Tile({ icon, label, value, hint, href }: { icon: React.ReactNode; label: string; value: string; hint: string; href?: string }) {
+  const body = (
+    <>
       <span className="flex items-center gap-2 text-sm text-muted-foreground [&_svg]:size-4">{icon}{label}</span>
       <span className="text-3xl font-semibold tracking-tight">{value}</span>
       <span className="text-xs text-muted-foreground">{hint}</span>
+    </>
+  );
+  return (
+    <li className="rounded-xl bg-card ring-1 ring-foreground/10">
+      {href ? (
+        <Link href={href} className="flex h-full flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-muted/60">{body}</Link>
+      ) : (
+        <div className="flex h-full flex-col gap-1 p-4">{body}</div>
+      )}
     </li>
   );
 }

@@ -5,6 +5,9 @@ import { Suspense } from "react";
 import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockOpenIcon, QuoteIcon } from "lucide-react";
 import { AiSummary } from "@/components/ai-summary";
 import { AuthorChip } from "@/components/author-chip";
+import { FavoriteButton } from "@/components/favorites/favorite-button";
+import { snapshotFromWork } from "@/lib/favorites-shared";
+import { isAuthEnabled } from "@/lib/auth";
 import { TrackView } from "@/components/track-view";
 import { CopyButton } from "@/components/copy-button";
 import { WorkCard } from "@/components/work-card";
@@ -129,6 +132,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           <CopyButton text={toApa(work)} label="Citer (APA)" />
           <CopyButton text={toBibtex(work)} label="BibTeX" />
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" />}
         </div>
         {!oa && (
           <p className="mt-2 text-sm text-muted-foreground">
