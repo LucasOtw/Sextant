@@ -5,9 +5,9 @@ import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
 
 /**
  * Firebase côté navigateur. La config est publique (clé d'API restreinte par domaine).
- * `authDomain` = l'hôte courant en https : les pages d'aide de connexion sont servies via un rewrite
- * (voir next.config.ts), ce qui évite les blocages de cookies tiers sur Safari et Chrome.
- * En http (développement local), le SDK force https:// devant ce domaine, donc on retombe sur le domaine Firebase.
+ * `authDomain` = l'hôte du site en production (NEXT_PUBLIC_SITE_HOST, autorisé côté Firebase) : les pages d'aide
+ * de connexion sont servies via un rewrite (voir next.config.ts), ce qui évite les blocages de cookies tiers.
+ * Partout ailleurs (localhost en http, URL d'aperçu Vercel non autorisée…), on retombe sur le domaine Firebase.
  */
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,6 +16,16 @@ export const firebaseConfig = {
 };
 
 export const isFirebaseConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
+
+/** Hôte de production, seul domaine « à nous » déclaré dans les domaines autorisés Firebase. */
+const SITE_HOST = process.env.NEXT_PUBLIC_SITE_HOST ?? "sextant-psi.vercel.app";
+
+function authDomain(): string {
+  const fallback = `${firebaseConfig.projectId}.firebaseapp.com`;
+  if (typeof window === "undefined") return fallback;
+  const { protocol, host } = window.location;
+  return protocol === "https:" && host === SITE_HOST ? host : fallback;
+}
 
 let app: FirebaseApp | undefined;
 
@@ -26,10 +36,7 @@ export function firebaseAuth(): Auth {
       getApps()[0] ??
       initializeApp({
         ...firebaseConfig,
-        authDomain:
-          typeof window !== "undefined" && window.location.protocol === "https:"
-            ? window.location.host
-            : `${firebaseConfig.projectId}.firebaseapp.com`,
+        authDomain: authDomain(),
       });
   }
   return getAuth(app);
