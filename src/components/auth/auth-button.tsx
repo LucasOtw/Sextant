@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { toast } from "sonner";
-import { BookmarkIcon, LogOutIcon, UserRoundIcon } from "lucide-react";
+import { BookmarkIcon, LogOutIcon, UserRoundIcon, HighlighterIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +82,9 @@ export function AuthButton({ user }: Props) {
         <DropdownMenuGroup>
           <DropdownMenuItem render={<Link href="/favoris" />}>
             <BookmarkIcon /> Mes favoris
+          </DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/citations" />}>
+            <HighlighterIcon /> Mes citations
           </DropdownMenuItem>
           <DropdownMenuItem render={<Link href="/compte" />}>
             <UserRoundIcon /> Mon compte

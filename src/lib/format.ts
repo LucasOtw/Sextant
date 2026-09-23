@@ -50,6 +50,32 @@ export function openAccessUrl(w: Work): { url: string; isPdf: boolean } | null {
   return null;
 }
 
+/**
+ * Une adresse de PDF relayable : http(s) public, sans IP littérale, sans hôte local ni port exotique.
+ * Les adresses viennent d'OpenAlex (moissonnées chez des milliers de dépôts) : on ne relaie jamais vers l'intérieur.
+ */
+export function isPublicPdfUrl(raw: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+  if (u.port && u.port !== "80" && u.port !== "443") return false;
+  const h = u.hostname.toLowerCase();
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal") || h.endsWith(".arpa")) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.startsWith("[") || h.includes(":")) return false;
+  return h.includes(".");
+}
+
+/** Adresses de PDF en accès ouvert, la meilleure d'abord puis les dépôts (PMC, arXiv, HAL…) : plusieurs chances pour le lecteur. */
+export function openAccessPdfUrls(w: Work): string[] {
+  if (!w.open_access.is_oa) return [];
+  const urls = [w.best_oa_location?.pdf_url, w.primary_location?.pdf_url, ...(w.locations ?? []).filter((l) => l.is_oa).map((l) => l.pdf_url)];
+  return [...new Set(urls.filter((u): u is string => Boolean(u) && isPublicPdfUrl(u!)))];
+}
+
 export function publisherUrl(w: Work): string | null {
   return w.doi ?? w.primary_location?.landing_page_url ?? null;
 }

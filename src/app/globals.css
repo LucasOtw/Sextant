@@ -206,3 +206,97 @@
     cursor: not-allowed;
   }
 }
+
+/* Surlignages : un jaune de fluo discret, lisible sur crème comme sur sombre. */
+:root {
+  --highlight: oklch(0.92 0.17 96);
+  --highlight-foreground: oklch(0.6 0.13 80);
+  --highlight-alpha: 55%;
+}
+.dark {
+  --highlight: oklch(0.78 0.16 92);
+  --highlight-foreground: oklch(0.86 0.15 92);
+  /* 30 % : le texte blanc reste au-dessus de 4,5:1 sur le fond sombre. */
+  --highlight-alpha: 30%;
+}
+@theme inline {
+  --color-highlight: var(--highlight);
+  --color-highlight-foreground: var(--highlight-foreground);
+}
+mark[data-highlight] {
+  background: color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent);
+  color: inherit;
+  border-radius: 2px;
+  padding: 0 1px;
+  box-decoration-break: clone;
+}
+
+/* Lecteur PDF : la couche texte de PDF.js, transparente au-dessus du canevas, sélectionnable. */
+.pdf-page canvas {
+  display: block;
+}
+.pdf-page .textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  z-index: 2;
+  /* La couche est transparente hors surlignage : multipliée au canevas, l'encre reste noire et seul le papier jaunit. */
+  mix-blend-mode: multiply;
+  /* Variables attendues par PDF.js 6 (reprises de web/pdf_viewer.css) : taille et étirement des fragments. */
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.pdf-page::after {
+  content: attr(data-page);
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0;
+  transform: translateY(100%);
+  padding-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+.textLayer span.markedContent {
+  top: 0;
+  height: 0;
+}
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+.textLayer ::selection {
+  background: color-mix(in oklch, var(--accent-brand) 35%, transparent);
+}
+.textLayer .hl {
+  /* Jaune fixe : le papier du PDF est blanc quel que soit le thème. */
+  background: oklch(0.92 0.17 96);
+  border-radius: 2px;
+}

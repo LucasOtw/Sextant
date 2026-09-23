@@ -1,0 +1,319 @@
+"use client";
+
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import { ChevronDownIcon, Loader2Icon } from "lucide-react";
+import { ArticleHighlights } from "@/components/highlights/article-highlights";
+import { useHighlights } from "@/components/highlights/highlights-provider";
+import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Highlight } from "@/lib/highlights-shared";
+import { cn } from "cn";
+
+type PdfLib = typeof import("pdfjs-dist");
+
+const GOTO_EVENT = "sextant:goto-page";
+const NO_HIGHLIGHTS: Highlight[] = [];
+
+function goToPage(page: number) {
+  window.dispatchEvent(new CustomEvent(GOTO_EVENT, { detail: page }));
+}
+
+interface LayoutProps {
+  url: string;
+  originalUrl: string;
+}
+
+/** Lecteur à gauche, « Mes surlignages » à droite (défilable) ; sur mobile, la liste se replie au-dessus du lecteur. */
+export function ReaderLayout({ url, originalUrl }: LayoutProps) {
+  const { highlights } = useHighlights();
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="lg:hidden">
+        <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
+          Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
+          <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
+        </Button>
+      </div>
+      <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", !open && "hidden")}>
+        <ArticleHighlights compact onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
+      </aside>
+      <div className="min-w-0 flex-1 lg:order-1"><PdfReader url={url} originalUrl={originalUrl} /></div>
+    </div>
+  );
+}
+
+function normalize(s: string) {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Marque les fragments de la couche texte couverts par un passage retenu (toutes les occurrences sur la page). */
+function markSpans(container: HTMLElement, texts: string[]) {
+  const spans = [...container.querySelectorAll<HTMLSpanElement>("span")].filter((s) => (s.textContent ?? "").trim() && !s.classList.contains("markedContent"));
+  spans.forEach((s) => s.classList.remove("hl"));
+  if (texts.length === 0) return;
+  let full = "";
+  const bounds: [number, number][] = [];
+  for (const s of spans) {
+    const t = normalize(s.textContent ?? "");
+    if (full) full += " ";
+    bounds.push([full.length, full.length + t.length]);
+    full += t;
+  }
+  for (const raw of texts) {
+    const t = normalize(raw);
+    if (!t) continue;
+    let idx = full.indexOf(t);
+    while (idx >= 0) {
+      const end = idx + t.length;
+      spans.forEach((s, i) => {
+        const [a, b] = bounds[i];
+        if (a < end && b > idx) s.classList.add("hl");
+      });
+      idx = full.indexOf(t, end);
+    }
+  }
+}
+
+function pageOf(node: Node | null | undefined): string | undefined {
+  return (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-page]")?.dataset.page;
+}
+
+interface ReaderProps {
+  url: string;
+  originalUrl: string;
+}
+
+/** Affiche le PDF page par page (PDF.js) avec une couche texte sélectionnable ; une sélection propose « Surligner ». */
+export function PdfReader({ url, originalUrl }: ReaderProps) {
+  const { highlights, add } = useHighlights();
+  const [lib, setLib] = useState<PdfLib | null>(null);
+  const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [width, setWidth] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [selection, setSelection] = useState<(NonNullable<ReturnType<typeof readSelection>> & { page: number }) | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    let task: PDFDocumentLoadingTask | null = null;
+    (async () => {
+      try {
+        const pdfjs = await import("pdfjs-dist");
+        if (cancelled) return;
+        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        task = pdfjs.getDocument({ url });
+        const d = await task.promise;
+        if (cancelled) {
+          void task.destroy();
+          return;
+        }
+        setLib(pdfjs);
+        setDoc(d);
+      } catch {
+        if (!cancelled) setError("Le PDF n'a pas pu être chargé dans le lecteur.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+      void task?.destroy();
+    };
+  }, [url]);
+
+  // Largeur de rendu : celle du conteneur, mesurée dès la mise en page (un onglet en arrière-plan ne reçoit pas de frames), puis suivie.
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const w = Math.floor(el.clientWidth);
+      if (w > 0) setWidth(w);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Sélection contenue dans une seule page → bouton flottant.
+  useEffect(() => {
+    let clearTimer: ReturnType<typeof setTimeout> | undefined;
+    const update = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const read = readSelection(el);
+      const sel = window.getSelection();
+      const a = pageOf(sel?.anchorNode);
+      const page = Number(a);
+      const ok = read && page > 0 && a === pageOf(sel?.focusNode);
+      if (!ok) {
+        clearTimer = setTimeout(() => setSelection(null), 300);
+        return;
+      }
+      clearTimeout(clearTimer);
+      setSelection({ ...read, text: cleanSelectionText(read.text), page });
+    };
+    document.addEventListener("selectionchange", update);
+    window.addEventListener("scroll", update, { passive: true });
+    return () => {
+      clearTimeout(clearTimer);
+      document.removeEventListener("selectionchange", update);
+      window.removeEventListener("scroll", update);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onGoto = (e: Event) => {
+      const page = (e as CustomEvent<number>).detail;
+      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    window.addEventListener(GOTO_EVENT, onGoto);
+    return () => window.removeEventListener(GOTO_EVENT, onGoto);
+  }, []);
+
+  /** Passages par page, avec une référence stable par page : la mise en surbrillance ne se rejoue qu'aux vrais changements. */
+  const byPage = useMemo(() => {
+    const m = new Map<number, Highlight[]>();
+    for (const h of highlights) {
+      if (h.source !== "pdf" || !h.page) continue;
+      m.set(h.page, [...(m.get(h.page) ?? []), h]);
+    }
+    return m;
+  }, [highlights]);
+
+  async function save() {
+    if (!selection) return;
+    setBusy(true);
+    const created = await add({ source: "pdf", text: selection.text, page: selection.page, prefix: "", suffix: "", note: "" });
+    setBusy(false);
+    if (created) {
+      window.getSelection()?.removeAllRanges();
+      setSelection(null);
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-xl border border-dashed p-8 text-center">
+        <p className="text-lg font-medium">{error}</p>
+        <p className="mt-1 text-base text-muted-foreground">
+          Vous pouvez <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</a> et saisir vos citations à la main.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="flex flex-col gap-5">
+      {!doc && (
+        <div className="flex flex-col gap-4">
+          <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2Icon className="size-4 animate-spin" aria-hidden /> Chargement du PDF…</p>
+          <Skeleton className="aspect-[1/1.414] w-full rounded-lg" />
+        </div>
+      )}
+      {doc && lib && width > 0 && (
+        <>
+          <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner.</p>
+          {Array.from({ length: doc.numPages }, (_, i) => (
+            <PdfPage key={i + 1} doc={doc} lib={lib} pageNumber={i + 1} width={width} highlights={byPage.get(i + 1) ?? NO_HIGHLIGHTS} />
+          ))}
+        </>
+      )}
+      <SelectionButton rect={selection?.rect ?? null} onClick={() => void save()} busy={busy} />
+    </div>
+  );
+}
+
+interface PageProps {
+  doc: PDFDocumentProxy;
+  lib: PdfLib;
+  pageNumber: number;
+  width: number;
+  highlights: Highlight[];
+}
+
+function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [aspect, setAspect] = useState(1.414);
+  const [visible, setVisible] = useState(false);
+  const [rendered, setRendered] = useState(false);
+
+  // Rendu paresseux : une page se dessine quand elle approche de l'écran, et libère son canevas quand elle s'en éloigne.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          setVisible(e.isIntersecting);
+          if (e.isIntersecting) continue;
+          const canvas = canvasRef.current;
+          if (canvas) {
+            canvas.width = 0;
+            canvas.height = 0;
+          }
+          textRef.current?.replaceChildren();
+          setRendered(false);
+        }
+      },
+      { rootMargin: "1200px 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!visible || !width) return;
+    let cancelled = false;
+    let renderTask: RenderTask | null = null;
+    let textLayer: InstanceType<PdfLib["TextLayer"]> | null = null;
+    (async () => {
+      const page = await doc.getPage(pageNumber);
+      const base = page.getViewport({ scale: 1 });
+      const scale = width / base.width;
+      const viewport = page.getViewport({ scale });
+      const canvas = canvasRef.current;
+      const textDiv = textRef.current;
+      if (cancelled || !canvas || !textDiv) return;
+      setAspect(base.height / base.width);
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(viewport.width * dpr);
+      canvas.height = Math.floor(viewport.height * dpr);
+      canvas.style.width = `${viewport.width}px`;
+      canvas.style.height = `${viewport.height}px`;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      renderTask = page.render({ canvas, canvasContext: ctx, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined });
+      await renderTask.promise;
+      if (cancelled) return;
+      textDiv.replaceChildren();
+      textDiv.style.setProperty("--scale-factor", String(scale));
+      textDiv.style.width = `${viewport.width}px`;
+      textDiv.style.height = `${viewport.height}px`;
+      textLayer = new lib.TextLayer({ textContentSource: page.streamTextContent(), container: textDiv, viewport });
+      await textLayer.render();
+      if (cancelled) return;
+      setRendered(true);
+    })().catch(() => undefined);
+    return () => {
+      cancelled = true;
+      renderTask?.cancel();
+      textLayer?.cancel();
+    };
+  }, [visible, width, doc, lib, pageNumber]);
+
+  useEffect(() => {
+    if (rendered && textRef.current) markSpans(textRef.current, highlights.map((h) => h.text));
+  }, [rendered, highlights]);
+
+  return (
+    <div ref={ref} data-page={pageNumber} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10" style={{ width, height: rendered ? undefined : width * aspect }}>
+      <canvas ref={canvasRef} aria-label={`Page ${pageNumber}`} />
+      <div ref={textRef} className="textLayer" />
+    </div>
+  );
+}

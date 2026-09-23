@@ -7,6 +7,10 @@ import { AiSummary } from "@/components/ai-summary";
 import { AuthorChip } from "@/components/author-chip";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { CollectionPicker } from "@/components/collections/collection-picker";
+import { ArticleHighlights } from "@/components/highlights/article-highlights";
+import { HighlightableAbstract } from "@/components/highlights/highlightable-abstract";
+import { HighlightsProvider } from "@/components/highlights/highlights-provider";
+import { listHighlights } from "@/lib/highlights";
 import { snapshotFromWork } from "@/lib/favorites-shared";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { isFavorite } from "@/lib/favorites";
@@ -24,6 +28,7 @@ import {
   formatDate,
   languageName,
   oaLabel,
+  openAccessPdfUrls,
   openAccessUrl,
   publisherUrl,
   toApa,
@@ -56,6 +61,8 @@ export default async function ArticlePage({ params }: Props) {
 
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const oa = openAccessUrl(work);
+  // Le lecteur intégré ne s'ouvre que si une copie libre est relayable ; sinon le PDF s'ouvre chez son hébergeur.
+  const readable = openAccessPdfUrls(work).length > 0;
   const publisher = publisherUrl(work);
   const venue = venueName(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
@@ -63,7 +70,9 @@ export default async function ArticlePage({ params }: Props) {
   const aiEnabled = provider !== null && Boolean(abstract);
   // Cœur déjà dans le bon état au premier rendu pour un utilisateur connecté (une lecture Firestore).
   const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
-  const initiallyFavorite = sessionUser ? await isFavorite(sessionUser.uid, shortId(work.id)).catch(() => false) : false;
+  const [initiallyFavorite, initialHighlights] = sessionUser
+    ? await Promise.all([isFavorite(sessionUser.uid, shortId(work.id)).catch(() => false), listHighlights(sessionUser.uid, shortId(work.id)).catch(() => [])])
+    : [false, []];
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -76,6 +85,7 @@ export default async function ArticlePage({ params }: Props) {
         isOa={work.open_access.is_oa}
       />
       <article className="mx-auto max-w-3xl">
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialHighlights}>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
@@ -125,9 +135,19 @@ export default async function ArticlePage({ params }: Props) {
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && (
+          {oa && oa.isPdf && readable && (
+            <Link href={`/article/${shortId(work.id)}/lire`} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+              <FileTextIcon /> Lire le PDF
+            </Link>
+          )}
+          {oa && oa.isPdf && !readable && (
             <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
-              <FileTextIcon /> {oa.isPdf ? "Lire le PDF" : "Lire en accès ouvert"}
+              <FileTextIcon /> Lire le PDF
+            </a>
+          )}
+          {oa && !oa.isPdf && (
+            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+              <FileTextIcon /> Lire en accès ouvert
             </a>
           )}
           {publisher && (
@@ -156,7 +176,7 @@ export default async function ArticlePage({ params }: Props) {
             )}
           </h2>
           {abstract ? (
-            <p className="mt-3 text-[17px] leading-relaxed">{abstract}</p>
+            <HighlightableAbstract text={abstract} className="mt-3 text-[17px] leading-relaxed" />
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -169,6 +189,8 @@ export default async function ArticlePage({ params }: Props) {
             />
           )}
         </section>
+
+        <ArticleHighlights />
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
@@ -187,6 +209,7 @@ export default async function ArticlePage({ params }: Props) {
             </div>
           </section>
         )}
+      </HighlightsProvider>
       </article>
 
       <section className="mt-14" aria-labelledby="similar">
