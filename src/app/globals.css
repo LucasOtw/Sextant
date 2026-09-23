@@ -184,3 +184,25 @@
 .prose-sextant li { margin-bottom: 0.35rem; }
 .prose-sextant a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, currentColor, transparent 60%); }
 .prose-sextant a:hover { color: var(--accent-brand); }
+
+/* Tailwind 4 laisse le curseur par défaut sur les boutons : tout ce qui se clique montre la main. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="option"],
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="tab"],
+  [role="combobox"],
+  [data-slot="select-trigger"],
+  summary,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}

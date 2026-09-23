@@ -4,6 +4,7 @@ import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, remov
 import { sanitizeSnapshot } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
+import { listCollections } from "@/lib/collections";
 
 export const runtime = "nodejs";
 
@@ -26,8 +27,8 @@ export async function GET(req: Request) {
   const full = new URL(req.url).searchParams.get("full") === "1";
   try {
     if (full) return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: PRIVATE });
-    const ids = await listFavoriteIds(user.uid);
-    return NextResponse.json({ ids, count: ids.length }, { headers: PRIVATE });
+    const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), listCollections(user.uid)]);
+    return NextResponse.json({ ids, count: ids.length, collections }, { headers: PRIVATE });
   } catch {
     return NextResponse.json({ error: "Favoris indisponibles." }, { status: 502 });
   }

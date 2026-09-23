@@ -8,8 +8,14 @@ import type { Favorite } from "@/lib/favorites-shared";
 
 export const metadata: Metadata = { title: "Mes favoris" };
 
-export default async function FavoritesPage() {
+interface Props {
+  searchParams: Promise<{ liste?: string | string[] }>;
+}
+
+export default async function FavoritesPage({ searchParams }: Props) {
   if (!isAuthEnabled()) redirect("/");
+  const { liste } = await searchParams;
+  const initialCollectionId = typeof liste === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(liste) ? liste : null;
   const user = await getCurrentUser();
 
   let favorites: Favorite[] = [];
@@ -27,9 +33,9 @@ export default async function FavoritesPage() {
       <div className="max-w-4xl">
         <h1 className="title-display text-4xl sm:text-5xl">Mes favoris</h1>
         <p className="mt-3 text-lg text-muted-foreground">
-          Les articles que vous avez enregistrés, sur tous vos appareils. Exportez-les en BibTeX pour votre gestionnaire de références.
+          Les articles que vous avez enregistrés, sur tous vos appareils. Classez-les en listes, exportez-les en BibTeX.
         </p>
-        <div className="mt-8">{user ? <FavoritesList initial={favorites} loadError={loadError} /> : <SignInPrompt />}</div>
+        <div className="mt-8">{user ? <FavoritesList initial={favorites} loadError={loadError} initialCollectionId={initialCollectionId} /> : <SignInPrompt />}</div>
       </div>
     </div>
   );

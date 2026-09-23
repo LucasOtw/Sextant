@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Favorite, FavoriteSnapshot } from "@/lib/favorites-shared";
+import type { Collection } from "@/lib/collections-shared";
 
 /** Article à enregistrer dès que la connexion aboutit (clic sur un cœur sans compte). */
 export const PENDING_FAVORITE_KEY = "sextant:pendingFavorite";
@@ -48,6 +49,13 @@ interface FavoritesContext {
   toggle: (snapshot: FavoriteSnapshot) => Promise<"added" | "removed" | "signin" | "error">;
   /** Recharge les identifiants depuis le serveur. */
   refresh: () => Promise<Set<string> | null>;
+  /** Listes de l'utilisateur (dans l'ordre de création). */
+  collections: Collection[];
+  createCollection: (name: string) => Promise<Collection | null>;
+  renameCollection: (id: string, name: string) => Promise<boolean>;
+  deleteCollection: (id: string) => Promise<boolean>;
+  /** Met ou retire l'article d'une liste (l'ajout l'enregistre aussi en favori). */
+  setInCollection: (id: string, snapshot: FavoriteSnapshot, inList: boolean) => Promise<boolean>;
 }
 
 const Ctx = createContext<FavoritesContext | null>(null);
@@ -75,6 +83,7 @@ export function FavoritesProvider({ userId, children }: Props) {
   const router = useRouter();
   const [ids, setIds] = useState<Set<string>>(new Set());
   const [added, setAdded] = useState<Map<string, Favorite>>(new Map());
+  const [collections, setCollections] = useState<Collection[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState(false);
   /** Miroir synchrone de `ids`, lisible depuis les callbacks asynchrones sans attendre un rendu. */
@@ -96,11 +105,12 @@ export function FavoritesProvider({ userId, children }: Props) {
     try {
       const res = await fetch("/api/favorites", { cache: "no-store" });
       if (!res.ok) throw new Error(String(res.status));
-      const data = (await res.json()) as { ids: string[] };
+      const data = (await res.json()) as { ids: string[]; collections?: Collection[] };
       // Réponse périmée : une mutation a eu lieu, ou l'utilisateur a changé entre-temps.
       if (seq !== mutationSeq.current || forUser !== loadedFor.current) return idsRef.current;
       const next = new Set(data.ids);
       applyIds(next);
+      setCollections(data.collections ?? []);
       setReady(true);
       setError(false);
       lastRefreshAt.current = Date.now();
@@ -144,6 +154,7 @@ export function FavoritesProvider({ userId, children }: Props) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- déconnexion : on vide l'état local
       applyIds(new Set());
       setAdded(new Map());
+      setCollections([]);
       setReady(false);
       setError(false);
       return;
@@ -224,6 +235,92 @@ export function FavoritesProvider({ userId, children }: Props) {
     toggleRef.current = toggle;
   }, [toggle]);
 
+  async function jsonOrError(res: Response): Promise<Record<string, unknown>> {
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (res.status === 401) throw new Error("Connectez-vous pour gérer vos listes.");
+    if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Échec.");
+    return data;
+  }
+
+  const createCollection = useCallback<FavoritesContext["createCollection"]>(async (name) => {
+    try {
+      const data = await jsonOrError(await fetch("/api/collections", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) }));
+      const collection = data.collection as Collection;
+      mutationSeq.current++;
+      setCollections((prev) => [...prev, collection]);
+      return collection;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "La liste n'a pas pu être créée.");
+      return null;
+    }
+  }, []);
+
+  const renameCollection = useCallback<FavoritesContext["renameCollection"]>(async (id, name) => {
+    const previous = collections.find((c) => c.id === id)?.name;
+    mutationSeq.current++;
+    setCollections((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+    try {
+      await jsonOrError(await fetch(`/api/collections/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ name }) }));
+      return true;
+    } catch (e) {
+      if (previous !== undefined) setCollections((prev) => prev.map((c) => (c.id === id ? { ...c, name: previous } : c)));
+      toast.error(e instanceof Error ? e.message : "Le renommage a échoué.");
+      return false;
+    }
+  }, [collections]);
+
+  const deleteCollection = useCallback<FavoritesContext["deleteCollection"]>(async (id) => {
+    const previous = collections;
+    mutationSeq.current++;
+    setCollections((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await jsonOrError(await fetch(`/api/collections/${id}`, { method: "DELETE" }));
+      toast("Liste supprimée.", { description: "Ses articles restent dans vos favoris." });
+      return true;
+    } catch (e) {
+      setCollections(previous);
+      toast.error(e instanceof Error ? e.message : "La suppression a échoué.");
+      return false;
+    }
+  }, [collections]);
+
+  const setInCollection = useCallback<FavoritesContext["setInCollection"]>(async (id, snapshot, inList) => {
+    const target = collections.find((c) => c.id === id);
+    if (!target) return false;
+    const wasIn = target.articleIds.includes(snapshot.id);
+    if (wasIn === inList) return true;
+    mutationSeq.current++;
+    setCollections((prev) => prev.map((c) => (c.id === id ? { ...c, articleIds: inList ? [...c.articleIds, snapshot.id] : c.articleIds.filter((x) => x !== snapshot.id) } : c)));
+    const wasFavorite = idsRef.current.has(snapshot.id);
+    if (inList && !wasFavorite) {
+      applyIds(new Set(idsRef.current).add(snapshot.id));
+      setAdded((prev) => new Map(prev).set(snapshot.id, { ...snapshot, addedAt: new Date().toISOString() }));
+    }
+    try {
+      if (inList) {
+        const data = await jsonOrError(await fetch(`/api/collections/${id}/articles`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(snapshot) }));
+        const favorite = data.favorite as Favorite | undefined;
+        if (favorite) setAdded((prev) => new Map(prev).set(favorite.id, favorite));
+        toast.success(`Ajouté à « ${target.name} ».`, { action: { label: "Voir", onClick: () => router.push(`/favoris?liste=${id}`) } });
+      } else {
+        await jsonOrError(await fetch(`/api/collections/${id}/articles?workId=${snapshot.id}`, { method: "DELETE" }));
+        toast(`Retiré de « ${target.name} ».`);
+      }
+      return true;
+    } catch (e) {
+      mutationSeq.current++;
+      setCollections((prev) => prev.map((c) => (c.id === id ? { ...c, articleIds: wasIn ? [...c.articleIds, snapshot.id] : c.articleIds.filter((x) => x !== snapshot.id) } : c)));
+      if (inList && !wasFavorite) {
+        const reverted = new Set(idsRef.current);
+        reverted.delete(snapshot.id);
+        applyIds(reverted);
+        setAdded((prev) => { const n = new Map(prev); n.delete(snapshot.id); return n; });
+      }
+      toast.error(e instanceof Error ? e.message : "La liste n'a pas pu être mise à jour.");
+      return false;
+    }
+  }, [collections, router, applyIds]);
+
   const value = useMemo<FavoritesContext>(
     () => ({
       enabled: Boolean(userId),
@@ -234,8 +331,13 @@ export function FavoritesProvider({ userId, children }: Props) {
       added: [...added.values()].filter((f) => ids.has(f.id)),
       toggle,
       refresh,
+      collections,
+      createCollection,
+      renameCollection,
+      deleteCollection,
+      setInCollection,
     }),
-    [userId, ready, error, ids, added, toggle, refresh],
+    [userId, ready, error, ids, added, toggle, refresh, collections, createCollection, renameCollection, deleteCollection, setInCollection],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

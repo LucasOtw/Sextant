@@ -101,4 +101,7 @@ export async function removeFavorite(uid: string, id: string): Promise<void> {
     tx.set(userRef, { favoriteIds: next, favoritesCount: next.length }, { merge: true });
     if (existing.exists) tx.delete(favRef);
   });
+  // Les listes ne gardent pas d'article qui n'est plus favori.
+  const { removeFromAllCollections } = await import("@/lib/collections");
+  await removeFromAllCollections(uid, id).catch(() => undefined);
 }
