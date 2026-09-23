@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockOpenIcon, QuoteIcon } from "lucide-react";
+import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockIcon, LockOpenIcon, QuoteIcon, SearchIcon } from "lucide-react";
 import { AiSummary } from "@/components/ai-summary";
 import { AuthorChip } from "@/components/author-chip";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
@@ -89,7 +89,7 @@ export default async function ArticlePage({ params }: Props) {
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
-            {work.open_access.is_oa && <LockOpenIcon aria-hidden />}
+            {work.open_access.is_oa ? <LockOpenIcon aria-hidden /> : <LockIcon aria-hidden />}
             {oaLabel(work.open_access.oa_status)}
           </Badge>
           {work.is_retracted && <Badge variant="destructive">Rétracté</Badge>}
@@ -152,7 +152,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {publisher && (
             <a href={publisher} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
-              <ExternalLinkIcon /> Voir chez l'éditeur
+              {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
             </a>
           )}
           <CopyButton text={toApa(work)} label="Citer (APA)" size="lg" className="bg-card px-3.5" />
@@ -161,9 +161,22 @@ export default async function ArticlePage({ params }: Props) {
           {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Pas de version en accès ouvert connue. Le lien éditeur peut demander un abonnement institutionnel.
-          </p>
+          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[15px] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
+            <div className="flex items-start gap-2.5">
+              <LockIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+              <p className="text-muted-foreground">
+                <span className="font-medium text-foreground">Texte intégral non accessible ici.</span> Aucune version libre n'est connue : la page de l'éditeur demande en général un abonnement, souvent couvert par votre bibliothèque universitaire. Vous pouvez tout de même l'enregistrer, le citer et noter vos citations à la main.
+              </p>
+            </div>
+            <a
+              href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, "") : workTitle(work))}`}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
+            >
+              <SearchIcon /> Chercher une version libre
+            </a>
+          </aside>
         )}
 
         <Separator className="my-8" />
@@ -190,7 +203,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </section>
 
-        <ArticleHighlights />
+        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} />
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
