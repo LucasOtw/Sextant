@@ -72,6 +72,22 @@ export async function GET(req: Request) {
   return new Response(body, { headers });
 }
 
+/**
+ * Sonde pour la fiche article : 204 si une copie libre est relayable, 404 sinon. Le corps n'est pas envoyé.
+ * Mis en cache au bord (un jour) : une sonde par article, pas une par visiteur.
+ */
+export async function HEAD(req: Request) {
+  const id = new URL(req.url).searchParams.get("work") ?? "";
+  if (!WORK_ID.test(id)) return new Response(null, { status: 400 });
+  const work = await getWork(id).catch(() => null);
+  const candidates = work ? openAccessPdfUrls(work).slice(0, 5) : [];
+  if (candidates.length === 0) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=86400" } });
+  const opened = await openFirstPdf(candidates, Date.now() + 25_000);
+  if (!opened) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=3600" } });
+  opened.reader.cancel().catch(() => undefined);
+  return new Response(null, { status: 204, headers: { "cache-control": "public, max-age=3600, s-maxage=86400", "x-sextant-source": new URL(opened.upstream.url).host } });
+}
+
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 Sextant/1.0 (+https://sextant-psi.vercel.app)";
 
 /**
