@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
 
@@ -24,15 +23,18 @@ export async function POST(req: Request) {
   if (!idToken) return NextResponse.json({ error: "Jeton manquant." }, { status: 400 });
 
   try {
-    const decoded = await adminAuth().verifyIdToken(idToken, true);
+    const auth = await adminAuth();
+    const decoded = await auth.verifyIdToken(idToken, true);
     // Le jeton doit être récent : on refuse une connexion vieille de plus de 5 minutes.
     if (Date.now() / 1000 - decoded.auth_time > 5 * 60) {
       return NextResponse.json({ error: "Connexion trop ancienne, recommencez." }, { status: 401 });
     }
-    const sessionCookie = await adminAuth().createSessionCookie(idToken, { expiresIn: SESSION_MAX_AGE_MS });
+    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_MAX_AGE_MS });
+    const db = await adminDb();
+    const { FieldValue } = await import("firebase-admin/firestore");
 
     // Profil minimal, créé ou rafraîchi à chaque connexion.
-    await adminDb()
+    await db
       .doc(`users/${decoded.uid}`)
       .set(
         {
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
         { mergeFields: ["email", "name", "picture", "lastLoginAt"] },
       )
       .catch(() => undefined);
-    await adminDb()
+    await db
       .doc(`users/${decoded.uid}`)
       .set({ createdAt: FieldValue.serverTimestamp() }, { merge: true })
       .catch(() => undefined);

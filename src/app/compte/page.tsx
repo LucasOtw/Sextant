@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Mon compte" };
 
 async function memberSince(uid: string): Promise<string | null> {
   try {
-    const snap = await adminDb().doc(`users/${uid}`).get();
+    const snap = await (await adminDb()).doc(`users/${uid}`).get();
     const ts = snap.get("createdAt") as { toDate?: () => Date } | undefined;
     const d = ts?.toDate?.();
     return d ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d) : null;

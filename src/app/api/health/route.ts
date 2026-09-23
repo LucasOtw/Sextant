@@ -17,7 +17,7 @@ export async function GET() {
   };
   let admin: { ok: boolean; error?: string } = { ok: false };
   try {
-    adminAuth();
+    await adminAuth();
     admin = { ok: true };
   } catch (e) {
     admin = { ok: false, error: e instanceof Error ? `${e.name}: ${e.message.slice(0, 200)}` : String(e).slice(0, 200) };

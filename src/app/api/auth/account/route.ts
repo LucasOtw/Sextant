@@ -10,8 +10,9 @@ export async function DELETE() {
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
 
   try {
-    await adminDb().recursiveDelete(adminDb().doc(`users/${user.uid}`));
-    await adminAuth().deleteUser(user.uid);
+    const db = await adminDb();
+    await db.recursiveDelete(db.doc(`users/${user.uid}`));
+    await (await adminAuth()).deleteUser(user.uid);
   } catch {
     return NextResponse.json({ error: "La suppression a échoué, réessayez." }, { status: 500 });
   }

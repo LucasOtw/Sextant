@@ -28,7 +28,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    const claims = await adminAuth().verifySessionCookie(token, true);
+    const claims = await (await adminAuth()).verifySessionCookie(token, true);
     return {
       uid: claims.uid,
       email: claims.email ?? null,
