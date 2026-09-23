@@ -4,7 +4,7 @@ import { Pagination } from "@/components/pagination";
 import { SearchFilters } from "@/components/search-filters";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { searchWorks, type SearchParams } from "@/lib/openalex";
+import { OpenAlexError, searchWorks, type SearchParams } from "@/lib/openalex";
 
 export type RawSearchParams = Record<string, string | string[] | undefined>;
 
@@ -78,8 +78,17 @@ async function List({ base, sp, params }: Props) {
   let page: Awaited<ReturnType<typeof searchWorks>>;
   try {
     page = await searchWorks(params);
-  } catch {
-    return <EmptyState title="La recherche a échoué." hint="OpenAlex ne répond pas pour le moment. Réessayez dans quelques instants." />;
+  } catch (e) {
+    if (e instanceof OpenAlexError && e.isRateLimited) {
+      return (
+        <EmptyState
+          title="OpenAlex est très sollicité en ce moment."
+          hint="Notre source limite temporairement les recherches. Réessayez dans une minute, les résultats reviendront."
+          retryHref={buildHref(base, sp, {})}
+        />
+      );
+    }
+    return <EmptyState title="La recherche a échoué." hint="OpenAlex ne répond pas pour le moment. Réessayez dans quelques instants." retryHref={buildHref(base, sp, {})} />;
   }
 
   if (page.results.length === 0) {

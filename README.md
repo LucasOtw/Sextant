@@ -122,7 +122,7 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 
 ```bash
 npm install
-cp .env.example .env.local   # OPENALEX_MAILTO recommandé ; MISTRAL_API_KEY pour activer le condensé
+cp .env.example .env.local   # OPENALEX_API_KEY (clé gratuite, évite les limites anonymes) ; MISTRAL_API_KEY pour le condensé
 npm run dev                  # http://localhost:3000
 ```
 

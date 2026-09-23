@@ -1,6 +1,8 @@
 /**
- * Client minimal pour l'API OpenAlex (https://docs.openalex.org).
- * Pas de clé requise. Un `mailto` (OPENALEX_MAILTO) donne accès au "polite pool".
+ * Client minimal pour l'API OpenAlex (https://help.openalex.org/api/).
+ * Fonctionne sans clé, mais OpenAlex limite les recherches anonymes en période de charge (429) :
+ * une clé gratuite (OPENALEX_API_KEY, paramètre `api_key`) multiplie le budget quotidien par dix.
+ * Un `mailto` (OPENALEX_MAILTO) identifie poliment l'application.
  */
 
 const BASE = "https://api.openalex.org";
@@ -156,11 +158,28 @@ export const VERIFIED_TYPES = "article|review|book|book-chapter|dissertation";
 /** Revues et collections indexées (liste « core » d'OpenAlex, proche de Scopus / Web of Science). */
 const CORE_SOURCE = "primary_location.source.is_core:true";
 
-class OpenAlexError extends Error {
+export class OpenAlexError extends Error {
   constructor(message: string, public status: number) {
     super(message);
   }
+  /** OpenAlex refuse temporairement (quota anonyme, charge) : l'utilisateur peut réessayer. */
+  get isRateLimited() {
+    return this.status === 429;
+  }
 }
+
+/** Ajoute clé et mailto à une URL OpenAlex. Partagé avec la route d'autocomplétion. */
+export function withCredentials(url: URL): URL {
+  const key = process.env.OPENALEX_API_KEY?.trim();
+  if (key) url.searchParams.set("api_key", key);
+  const mailto = process.env.OPENALEX_MAILTO?.trim();
+  if (mailto && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mailto) && !mailto.endsWith("@example.com")) {
+    url.searchParams.set("mailto", mailto);
+  }
+  return url;
+}
+
+const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
 async function get<T>(
   path: string,
@@ -171,10 +190,14 @@ async function get<T>(
   for (const [k, v] of Object.entries(params)) {
     if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
   }
-  const mailto = process.env.OPENALEX_MAILTO;
-  if (mailto) url.searchParams.set("mailto", mailto);
+  withCredentials(url);
 
-  const res = await fetch(url, { next: { revalidate } });
+  // Une seule relance rapide : suffit pour les à-coups, sans faire attendre l'utilisateur sur un vrai 429.
+  let res = await fetch(url, { next: { revalidate } });
+  if (RETRYABLE.has(res.status)) {
+    await new Promise((r) => setTimeout(r, 1200));
+    res = await fetch(url, { next: { revalidate } });
+  }
   if (!res.ok) {
     throw new OpenAlexError(`OpenAlex ${res.status} sur ${path}`, res.status);
   }

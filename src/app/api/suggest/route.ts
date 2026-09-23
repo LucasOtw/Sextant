@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { shortId, VERIFIED_TYPES } from "@/lib/openalex";
+import { shortId, VERIFIED_TYPES, withCredentials } from "@/lib/openalex";
 
 export interface Suggestion {
   id: string;
@@ -24,8 +24,7 @@ export async function GET(req: Request) {
   const url = new URL("https://api.openalex.org/autocomplete/works");
   url.searchParams.set("q", q);
   url.searchParams.set("filter", `type:${VERIFIED_TYPES},primary_location.source.is_core:true,is_paratext:false`);
-  const mailto = process.env.OPENALEX_MAILTO;
-  if (mailto) url.searchParams.set("mailto", mailto);
+  withCredentials(url);
 
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
