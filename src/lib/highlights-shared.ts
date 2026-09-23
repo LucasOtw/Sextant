@@ -31,10 +31,16 @@ export const MAX_PAGE = 100_000;
 
 const SOURCES: HighlightSource[] = ["abstract", "pdf", "manual"];
 
-/** Texte normalisé : caractères de contrôle retirés, espaces réduits. */
-export function cleanText(input: unknown, max: number): string {
+/** Texte normalisé : caractères de contrôle retirés, espaces réduits (les sauts de ligne sont gardés si `keepLines`), borné. */
+export function cleanText(input: unknown, max: number, keepLines = false): string {
   if (typeof input !== "string") return "";
-  return Array.from(input.replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim()).slice(0, max).join("").trim();
+  const flat = input.replace(/\r\n?/g, "\n").replace(/[\p{Cc}\p{Cf}]/gu, (c) => (c === "\n" ? "\n" : "")).replace(keepLines ? /[^\S\n]+/g : /\s+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  return Array.from(flat).slice(0, max).join("").trim();
+}
+
+/** Le texte dépasse-t-il la borne (comptée en points de code) ? Sert à refuser plutôt que tronquer en silence. */
+export function tooLong(input: unknown, max: number): boolean {
+  return typeof input === "string" && Array.from(input).length > max;
 }
 
 export function sanitizePage(input: unknown): number | null {
@@ -47,13 +53,14 @@ export function sanitizeHighlightInput(input: unknown): HighlightInput | null {
   if (!input || typeof input !== "object") return null;
   const o = input as Record<string, unknown>;
   const article = sanitizeSnapshot(o.article);
+  if (tooLong(o.text, MAX_HIGHLIGHT_TEXT)) return null;
   const text = cleanText(o.text, MAX_HIGHLIGHT_TEXT);
   if (!article || !text) return null;
   const source = SOURCES.includes(o.source as HighlightSource) ? (o.source as HighlightSource) : "manual";
   return {
     text,
     page: sanitizePage(o.page),
-    note: cleanText(o.note, MAX_NOTE),
+    note: cleanText(o.note, MAX_NOTE, true),
     source,
     prefix: cleanText(o.prefix, MAX_CONTEXT),
     suffix: cleanText(o.suffix, MAX_CONTEXT),

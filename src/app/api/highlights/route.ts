@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { createHighlight, HighlightsLimitError, listHighlights } from "@/lib/highlights";
-import { sanitizeHighlightInput } from "@/lib/highlights-shared";
+import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, tooLong } from "@/lib/highlights-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
@@ -37,6 +37,9 @@ export async function POST(req: Request) {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
+  }
+  if (body && typeof body === "object" && tooLong((body as { text?: unknown }).text, MAX_HIGHLIGHT_TEXT)) {
+    return NextResponse.json({ error: `Passage trop long (${MAX_HIGHLIGHT_TEXT} caractères au plus).` }, { status: 400 });
   }
   const input = sanitizeHighlightInput(body);
   if (!input) return NextResponse.json({ error: "Passage ou article invalide." }, { status: 400 });

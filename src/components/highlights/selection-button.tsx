@@ -12,11 +12,14 @@ interface Props {
 /** Bouton flottant « Surligner » au-dessus de la sélection courante. */
 export function SelectionButton({ rect, onClick, busy = false }: Props) {
   if (!rect) return null;
+  // Au doigt, le menu natif (Copier, Rechercher…) occupe la zone au-dessus de la sélection : on se pose en bas de l'écran.
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
   const top = Math.max(8, rect.top - 44);
   const left = Math.min(Math.max(8, rect.left + rect.width / 2 - 56), window.innerWidth - 120);
+  const style = coarse ? { bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", left: "50%", transform: "translateX(-50%)" } : { top, left };
   return (
-    <div className="fixed z-50 animate-in fade-in zoom-in-95 duration-150" style={{ top, left }} role="toolbar" aria-label="Sélection">
-      <Button size="sm" onMouseDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-lg">
+    <div className="fixed z-50 animate-in fade-in zoom-in-95 duration-150" style={style} role="toolbar" aria-label="Sélection">
+      <Button size={coarse ? "lg" : "sm"} onPointerDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-lg">
         <HighlighterIcon /> Surligner
       </Button>
     </div>
@@ -44,4 +47,9 @@ export function readSelection(container: HTMLElement): { text: string; prefix: s
     suffix: full.slice(end, end + 60).replace(/\s+/g, " "),
     rect: { top: rect.top, left: rect.left, width: rect.width },
   };
+}
+
+/** Retire des passages capturés les mentions destinées aux lecteurs d'écran (balises du résumé). */
+export function cleanSelectionText(text: string): string {
+  return text.replace(/Début du passage surligné\.\s?/g, "").replace(/\s?Fin du passage surligné\./g, "").replace(/\s+/g, " ").trim();
 }

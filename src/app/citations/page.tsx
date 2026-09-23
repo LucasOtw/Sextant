@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { HighlighterIcon } from "lucide-react";
 import { SignInPrompt } from "@/components/favorites/sign-in-prompt";
 import { CitationsList } from "@/components/highlights/citations-list";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
@@ -31,7 +32,14 @@ export default async function CitationsPage() {
         <p className="mt-3 text-lg text-muted-foreground">
           Tout ce que vous avez surligné, avec l'article d'origine et la page. Copiez un passage avec sa référence, prêt à coller.
         </p>
-        <div className="mt-8">{user ? <CitationsList initial={highlights} collections={collections} loadError={loadError} /> : <SignInPrompt />}</div>
+        <div className="mt-8">{user ? <CitationsList initial={highlights} collections={collections} loadError={loadError} /> : (
+          <SignInPrompt
+            icon={<HighlighterIcon className="mx-auto size-8 text-accent-brand" aria-hidden />}
+            title="Vos citations vous attendent."
+            text="Connectez-vous pour retrouver les passages que vous avez surlignés, avec leur article et leur page."
+            intro="Connectez-vous pour surligner un passage et le retrouver plus tard, avec sa source."
+          />
+        )}</div>
       </div>
     </div>
   );

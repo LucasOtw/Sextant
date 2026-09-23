@@ -36,8 +36,8 @@ function Form({ onClose }: { onClose: () => void }) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!text.trim() || busy) return;
     setBusy(true);
     const n = Number(page);
@@ -48,7 +48,7 @@ function Form({ onClose }: { onClose: () => void }) {
 
   return (
     <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
-      <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} maxLength={MAX_HIGHLIGHT_TEXT} rows={5} placeholder="Le passage, tel qu'il apparaît dans l'article…" aria-label="Passage" className="text-base md:text-base" />
+      <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit(); }} maxLength={MAX_HIGHLIGHT_TEXT} rows={5} placeholder="Le passage, tel qu'il apparaît dans l'article…" aria-label="Passage" className="text-base md:text-base" />
       <div className="flex gap-3">
         <Input value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="Page" aria-label="Page" className="h-10 w-28 text-base md:text-base" />
         <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Note pour vous (facultatif)" aria-label="Note" className="h-10 flex-1 text-base md:text-base" />

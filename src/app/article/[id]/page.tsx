@@ -28,6 +28,7 @@ import {
   formatDate,
   languageName,
   oaLabel,
+  openAccessPdfUrls,
   openAccessUrl,
   publisherUrl,
   toApa,
@@ -60,6 +61,8 @@ export default async function ArticlePage({ params }: Props) {
 
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const oa = openAccessUrl(work);
+  // Le lecteur intégré ne s'ouvre que si une copie libre est relayable ; sinon le PDF s'ouvre chez son hébergeur.
+  const readable = openAccessPdfUrls(work).length > 0;
   const publisher = publisherUrl(work);
   const venue = venueName(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
@@ -82,7 +85,7 @@ export default async function ArticlePage({ params }: Props) {
         isOa={work.open_access.is_oa}
       />
       <article className="mx-auto max-w-3xl">
-      <HighlightsProvider enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialHighlights}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialHighlights}>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
@@ -132,10 +135,15 @@ export default async function ArticlePage({ params }: Props) {
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && oa.isPdf && (
+          {oa && oa.isPdf && readable && (
             <Link href={`/article/${shortId(work.id)}/lire`} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire le PDF
             </Link>
+          )}
+          {oa && oa.isPdf && !readable && (
+            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+              <FileTextIcon /> Lire le PDF
+            </a>
           )}
           {oa && !oa.isPdf && (
             <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckIcon, CopyIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,13 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
   const [copied, setCopied] = useState(false);
   const [note, setNote] = useState(h.note);
   const [editing, setEditing] = useState(false);
+  /** Vrai dès que l'édition se ferme : le blur émis par Chrome au démontage du champ ne doit pas ré-enregistrer. */
+  const closedRef = useRef(false);
+
+  function startEditing() {
+    closedRef.current = false;
+    setEditing(true);
+  }
 
   async function copy() {
     try {
@@ -36,10 +43,18 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
   }
 
   async function saveNote() {
+    if (closedRef.current) return;
+    closedRef.current = true;
     setEditing(false);
     const trimmed = note.trim();
     if (trimmed === h.note) return;
     if (!(await onNote(trimmed))) setNote(h.note);
+  }
+
+  function cancelNote() {
+    closedRef.current = true;
+    setNote(h.note);
+    setEditing(false);
   }
 
   const pageButton = h.page && onGoToPage ? (
@@ -49,8 +64,8 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
   );
 
   return (
-    <li className={cn("rounded-xl border-l-4 border-l-highlight bg-card p-4 ring-1 ring-foreground/10", compact && "p-3")}>
-      <blockquote className={cn("text-[15px] leading-relaxed", compact && "text-sm")}>« {h.text} »</blockquote>
+    <li className={cn("rounded-xl border-l-4 border-l-highlight-foreground bg-card p-4 ring-1 ring-foreground/10", compact && "p-3")}>
+      <blockquote className={cn("text-[15px] leading-relaxed whitespace-pre-line", compact && "text-sm")}>« {h.text} »</blockquote>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
         {pageButton}
         {h.createdAt && <span>· {DATE.format(new Date(h.createdAt))}</span>}
@@ -62,7 +77,7 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
           onChange={(e) => setNote(e.target.value)}
           onBlur={() => void saveNote()}
           onKeyDown={(e) => {
-            if (e.key === "Escape") { setNote(h.note); setEditing(false); }
+            if (e.key === "Escape") cancelNote();
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void saveNote();
           }}
           maxLength={MAX_NOTE}
@@ -72,13 +87,13 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
           className="mt-2 text-sm md:text-sm"
         />
       ) : (
-        <button type="button" onClick={() => setEditing(true)} className={cn("mt-2 block w-full rounded-md text-left text-sm", h.note ? "text-foreground" : "text-muted-foreground italic hover:text-foreground")}>
+        <button type="button" onClick={startEditing} aria-label={h.note ? "Modifier la note" : "Ajouter une note"} className={cn("mt-2 block w-full rounded-md text-left text-sm whitespace-pre-line", h.note ? "text-foreground" : "text-muted-foreground italic hover:text-foreground")}>
           {h.note || "Ajouter une note…"}
         </button>
       )}
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <Button variant="outline" size="sm" onClick={copy}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
-        <Button variant="ghost" size="sm" onClick={() => void onDelete()} aria-label="Supprimer ce surlignage" className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
+        <Button variant="outline" size="sm" onClick={copy} aria-label={`Copier le passage « ${h.text.slice(0, 40)}… » avec sa référence`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
+        <Button variant="ghost" size="sm" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${h.text.slice(0, 40)}… »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
       </div>
     </li>
   );

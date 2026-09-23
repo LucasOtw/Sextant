@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { cleanSelectionText } from "@/components/highlights/selection-button";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { readSelection, SelectionButton } from "@/components/highlights/selection-button";
 
@@ -20,7 +21,15 @@ function locate(full: string, text: string, prefix: string, suffix: string): [nu
     from = i + 1;
   }
   if (candidates.length === 0) return null;
-  const best = candidates.find((i) => (!prefix || full.slice(Math.max(0, i - prefix.length), i).endsWith(prefix.slice(-20))) && (!suffix || full.slice(i + text.length).startsWith(suffix.slice(0, 20)))) ?? candidates[0];
+  // Le contexte stocké a été nettoyé (espaces de bord retirés) : on compare aux voisins normalisés de la même façon.
+  const pre = prefix.slice(-20);
+  const suf = suffix.slice(0, 20);
+  const best =
+    candidates.find((i) => {
+      const before = full.slice(Math.max(0, i - 200), i).replace(/\s+/g, " ").trimEnd();
+      const after = full.slice(i + text.length, i + text.length + 200).replace(/\s+/g, " ").trimStart();
+      return (!pre || before.endsWith(pre)) && (!suf || after.startsWith(suf));
+    }) ?? candidates[0];
   return [best, best + text.length];
 }
 
@@ -51,14 +60,23 @@ export function HighlightableAbstract({ text, className }: Props) {
   }, [text, highlights]);
 
   useEffect(() => {
+    let clearTimer: ReturnType<typeof setTimeout> | undefined;
     const update = () => {
       const el = ref.current;
       if (!el) return;
-      setSelection(readSelection(el));
+      const read = readSelection(el);
+      // Au toucher, la sélection peut se réduire un instant avant le tap sur le bouton : on n'efface qu'après un court délai.
+      if (!read) {
+        clearTimer = setTimeout(() => setSelection(null), 300);
+        return;
+      }
+      clearTimeout(clearTimer);
+      setSelection({ ...read, text: cleanSelectionText(read.text) });
     };
     document.addEventListener("selectionchange", update);
     window.addEventListener("scroll", update, { passive: true });
     return () => {
+      clearTimeout(clearTimer);
       document.removeEventListener("selectionchange", update);
       window.removeEventListener("scroll", update);
     };
@@ -80,7 +98,9 @@ export function HighlightableAbstract({ text, className }: Props) {
       <p ref={ref} className={className}>
         {segments.map((s, i) =>
           s.id ? (
-            <mark key={s.id} data-highlight={s.id} title={s.note || "Passage surligné"}>{s.text}</mark>
+            <mark key={s.id} data-highlight={s.id}>
+              <span className="sr-only" data-sr>Début du passage surligné. </span>{s.text}<span className="sr-only" data-sr> Fin du passage surligné.</span>
+            </mark>
           ) : (
             <span key={i}>{s.text}</span>
           ),

@@ -65,12 +65,25 @@ export function CitationsList({ initial, collections, loadError = false }: Props
     }
   }
 
+  async function restore(removed: Highlight) {
+    try {
+      const res = await fetch("/api/highlights", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix, article: removed.article }) });
+      const data = (await res.json().catch(() => ({}))) as { highlight?: Highlight; error?: string };
+      if (!res.ok || !data.highlight) throw new Error(data.error ?? "Échec.");
+      const created = data.highlight;
+      setItems((prev) => [created, ...prev]);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "La citation n'a pas pu être rétablie.");
+    }
+  }
+
   async function remove(id: string) {
     const previous = items;
+    const removed = previous.find((h) => h.id === id);
     setItems((prev) => prev.filter((h) => h.id !== id));
     try {
       await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
-      toast("Citation supprimée.");
+      toast("Citation supprimée.", removed ? { action: { label: "Annuler", onClick: () => void restore(removed) } } : undefined);
       return true;
     } catch (e) {
       setItems(previous);
@@ -82,7 +95,7 @@ export function CitationsList({ initial, collections, loadError = false }: Props
   async function copyAll() {
     try {
       await navigator.clipboard.writeText(shown.map(citationBlock).join("\n\n---\n\n"));
-      toast.success(`${shown.length} citation${shown.length > 1 ? "s" : ""} copiée${shown.length > 1 ? "s" : ""} avec leurs références.`);
+      toast.success(shown.length > 1 ? `${shown.length} citations copiées avec leurs références.` : "Citation copiée avec sa référence.");
     } catch {
       toast.error("Presse-papiers indisponible.");
     }

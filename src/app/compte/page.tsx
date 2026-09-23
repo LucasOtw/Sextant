@@ -57,7 +57,7 @@ export default async function AccountPage() {
 
         <section className="mt-10" aria-labelledby="bibliotheque">
           <h2 id="bibliotheque" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ma bibliothèque</h2>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-3">
+          <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Tile icon={<BookmarkIcon />} label="Favoris" value={String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
             <Tile icon={<FolderIcon />} label="Listes" value={String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
             <Tile icon={<HighlighterIcon />} label="Citations" value={String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />

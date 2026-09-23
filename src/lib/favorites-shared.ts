@@ -94,8 +94,20 @@ export function bibField(value: string): string {
   return out + "}".repeat(depth);
 }
 
+const PARTICLES = new Set(["van", "von", "der", "den", "de", "del", "della", "di", "da", "le", "la", "du", "dos", "das", "ter", "ten", "af", "av", "zu", "y", "e", "d'", "l'"]);
+
+/** « María del Carmen García López » → nom « García López » ? non : OpenAlex ne structure pas ; on garde le dernier mot et ses particules (« van der Berg »), initiales avec trait d'union (« J.-P. »). */
+export function splitAuthorName(full: string): { last: string; initials: string } {
+  const parts = full.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { last: "", initials: "" };
+  const lastParts = [parts.pop()!];
+  while (parts.length > 1 && PARTICLES.has(parts[parts.length - 1].toLowerCase())) lastParts.unshift(parts.pop()!);
+  const initials = parts.map((p) => p.split("-").filter(Boolean).map((x) => x[0]!.toUpperCase() + ".").join("-")).join(" ");
+  return { last: lastParts.join(" "), initials };
+}
+
 function bibKey(s: FavoriteSnapshot): string {
-  const last = s.authorNames[0]?.split(" ").pop() ?? "anon";
+  const last = s.authorNames[0] ? splitAuthorName(s.authorNames[0]).last.replace(/\s+/g, "") : "anon";
   const word = s.title.split(/\s+/).find((w) => w.length > 3) ?? "work";
   return `${last}${s.year ?? ""}${word}`.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
 }
@@ -113,16 +125,14 @@ export function bibtexFromSnapshot(s: FavoriteSnapshot): string {
 }
 
 function apaName(full: string): string {
-  const parts = full.trim().split(/\s+/);
-  const last = parts.pop() ?? "";
-  const initials = parts.map((x) => x[0]?.toUpperCase() + ".").join(" ");
+  const { last, initials } = splitAuthorName(full);
   return initials ? `${last}, ${initials}` : last;
 }
 
 /** Référence APA (7e éd.) depuis un instantané : auteurs, année, titre, revue, DOI. */
 export function apaFromSnapshot(s: FavoriteSnapshot): string {
   const names = s.authorNames.map(apaName);
-  let authors = s.authors || "Anonyme";
+  let authors = "Anonyme";
   if (names.length === 1) authors = names[0];
   else if (names.length > 1 && names.length <= 20) authors = `${names.slice(0, -1).join(", ")}, & ${names[names.length - 1]}`;
   else if (names.length > 20) authors = `${names.slice(0, 19).join(", ")}, … ${names[names.length - 1]}`;
@@ -132,8 +142,7 @@ export function apaFromSnapshot(s: FavoriteSnapshot): string {
 
 /** Appel de citation court : (Piwowar et al., 2018, p. 4). */
 export function citeInline(s: FavoriteSnapshot, page?: number | null): string {
-  const last = (full: string) => full.trim().split(/\s+/).pop() ?? full;
-  const names = s.authorNames.length ? s.authorNames.map(last) : s.authors.split(/,| et /).map((x) => last(x)).filter(Boolean);
+  const names = s.authorNames.map((n) => splitAuthorName(n).last).filter(Boolean);
   const who = names.length === 0 ? "Anonyme" : names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} & ${names[1]}` : `${names[0]} et al.`;
   return `(${who}, ${s.year ?? "s. d."}${page ? `, p. ${page}` : ""})`;
 }

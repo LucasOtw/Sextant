@@ -7,7 +7,7 @@ import { ReaderLayout } from "@/components/highlights/pdf-reader";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { openAccessUrl, workTitle } from "@/lib/format";
+import { openAccessPdfUrls, openAccessUrl, workTitle } from "@/lib/format";
 import { listHighlights } from "@/lib/highlights";
 import { getWork, shortId } from "@/lib/openalex";
 
@@ -28,7 +28,7 @@ export default async function ReaderPage({ params }: Props) {
   if (!work) notFound();
   const wid = shortId(work.id);
   const oa = openAccessUrl(work);
-  if (!oa?.isPdf || !work.open_access.is_oa) redirect(`/article/${wid}`);
+  if (!oa?.isPdf || openAccessPdfUrls(work).length === 0) redirect(`/article/${wid}`);
 
   const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
   const initial = sessionUser ? await listHighlights(sessionUser.uid, wid).catch(() => []) : [];
@@ -44,7 +44,7 @@ export default async function ReaderPage({ params }: Props) {
           <ExternalLinkIcon /> PDF original
         </a>
       </div>
-      <HighlightsProvider enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initial}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initial}>
         <ReaderLayout url={`/api/pdf?work=${wid}`} originalUrl={oa.url} />
       </HighlightsProvider>
     </div>

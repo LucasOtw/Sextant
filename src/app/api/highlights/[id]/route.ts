@@ -28,7 +28,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (g.refused) return g.refused;
   let note = "";
   try {
-    note = cleanText(((await req.json()) as { note?: unknown }).note, MAX_NOTE);
+    const body: unknown = await req.json();
+    if (!body || typeof body !== "object" || Array.isArray(body) || typeof (body as { note?: unknown }).note !== "string") {
+      return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
+    }
+    note = cleanText((body as { note: string }).note, MAX_NOTE, true);
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }

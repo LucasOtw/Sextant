@@ -41,7 +41,9 @@ export class HighlightNotFoundError extends Error {}
 export async function listHighlights(uid: string, workId?: string): Promise<Highlight[]> {
   const db = await adminDb();
   const col = db.collection(`users/${uid}/highlights`);
-  const snap = workId ? await col.where("workId", "==", workId).get() : await col.orderBy("createdAt", "desc").limit(500).get();
+  const snap = workId
+    ? await col.where("workId", "==", workId).limit(MAX_HIGHLIGHTS).get()
+    : await col.orderBy("createdAt", "desc").limit(MAX_HIGHLIGHTS).get();
   const items = snap.docs.map((d) => toHighlight(d.data(), d.id));
   return workId ? items.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")) : items;
 }
