@@ -65,6 +65,8 @@ interface FavoritesContext {
   /** Renomme, décrit ou réordonne (articleIds = nouvel ordre complet), en optimiste. */
   updateCollection: (id: string, patch: { name?: string; description?: string; articleIds?: string[] }) => Promise<boolean>;
   deleteCollection: (id: string) => Promise<boolean>;
+  /** Active (true) ou désactive (false) le lien de partage de la liste ; renvoie le jeton actif ou null. */
+  setShared: (id: string, shared: boolean) => Promise<string | null | undefined>;
   /** Met ou retire l'article d'une liste (l'ajout l'enregistre aussi en favori). */
   setInCollection: (id: string, snapshot: FavoriteSnapshot, inList: boolean, options?: { silent?: boolean }) => Promise<boolean>;
 }
@@ -409,6 +411,28 @@ export function FavoritesProvider({ userId, children }: Props) {
     [applyCollections],
   );
 
+  const setShared = useCallback<FavoritesContext["setShared"]>(
+    async (id, shared) => {
+      try {
+        mutationSeq.current++;
+        if (shared) {
+          const data = await jsonOrError(await fetch(`/api/collections/${id}/share`, { method: "POST" }));
+          const token = String(data.shareToken);
+          applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, shareToken: token } : c)));
+          return token;
+        }
+        await jsonOrError(await fetch(`/api/collections/${id}/share`, { method: "DELETE" }));
+        applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, shareToken: null } : c)));
+        toast("Lien désactivé.", { description: "Il ne fonctionne plus pour personne." });
+        return null;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Le partage n'a pas pu être modifié.");
+        return undefined;
+      }
+    },
+    [applyCollections],
+  );
+
   /** Index article → listes, recalculé seulement quand les listes changent. */
   const membership = useMemo(() => {
     const m = new Map<string, Collection[]>();
@@ -438,9 +462,10 @@ export function FavoritesProvider({ userId, children }: Props) {
       createCollection,
       updateCollection,
       deleteCollection,
+      setShared,
       setInCollection,
     }),
-    [userId, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, updateCollection, deleteCollection, setInCollection],
+    [userId, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, updateCollection, deleteCollection, setShared, setInCollection],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

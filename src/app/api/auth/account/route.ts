@@ -14,6 +14,13 @@ export async function DELETE(req: Request) {
 
   try {
     const db = await adminDb();
+    // Les liens de partage vivent hors de users/{uid} : on les supprime d'abord, puis tout le reste du compte.
+    const shares = await db.collection("shares").where("uid", "==", user.uid).get();
+    if (!shares.empty) {
+      const batch = db.batch();
+      shares.docs.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
   } catch {

@@ -7,6 +7,15 @@ export interface Collection {
   /** Ordre manuel : l'ordre du tableau est celui de la liste. */
   articleIds: string[];
   createdAt: string | null;
+  /** Jeton du lien de partage en lecture seule, ou null si la liste n'est pas partagée. */
+  shareToken: string | null;
+}
+
+/** Jeton de partage : 22 caractères base64url (128 bits aléatoires). */
+export const SHARE_TOKEN = /^[A-Za-z0-9_-]{22}$/;
+
+export function shareUrl(origin: string, token: string): string {
+  return `${origin.replace(/\/$/, "")}/liste/${token}`;
 }
 
 export const MAX_COLLECTIONS = 50;

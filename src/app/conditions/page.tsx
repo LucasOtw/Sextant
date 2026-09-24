@@ -32,6 +32,8 @@ export default function TermsPage() {
       <h2>Compte et contenus que vous créez</h2>
       <p>
         Le compte est personnel et se crée par connexion Google. Vos favoris, listes, citations et notes vous appartiennent et restent privés.
+        Une liste que vous partagez par lien devient visible de quiconque a ce lien, jusqu'à ce que vous le désactiviez : vous restez
+        responsable de ce que vous y mettez (nom et description compris).
         Vous pouvez les télécharger ou supprimer votre compte à tout moment depuis « Mon compte », ce qui efface l'ensemble de vos données.
         Nous pouvons fermer un compte utilisé pour contourner les règles d'usage ci-dessus.
       </p>
