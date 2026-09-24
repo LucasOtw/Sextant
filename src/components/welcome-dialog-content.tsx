@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo";
 
 /**
- * Contenu de la fenêtre d'accueil. Chargé à la demande par WelcomeDialog (uniquement à la première visite),
- * pour ne pas alourdir le premier chargement des visiteurs qui l'ont déjà vue.
+ * Contenu de la fenêtre d'accueil, importé directement par WelcomeDialog : le chargement différé retardait
+ * l'affichage à la première visite (Speed Index mobile, cf. commit 0a474b8).
  */
 export default function WelcomeDialogContent({ onClose }: { onClose: () => void }) {
   return (
