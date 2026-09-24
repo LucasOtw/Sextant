@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { isPublicPdfUrl, openAccessPdfUrls } from "@/lib/format";
 import { getWork } from "@/lib/openalex";
-import { rateLimit } from "@/lib/rate-limit";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 /** Un PDF de 30 Mo à 1 Mo/s : on laisse le temps au flux. */
@@ -21,8 +21,9 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const id = url.searchParams.get("work") ?? "";
   if (!WORK_ID.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
-  if (!rateLimit(`pdf:${ip}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  // Adresse canonique : un paramètre ajouté ne doit pas relancer la fonction en contournant le cache CDN.
+  if (url.search !== canonicalSearch(id)) return NextResponse.redirect(new URL(`/api/pdf${canonicalSearch(id)}`, url), 308);
+  if (!rateLimit(`pdf:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
   const work = await getWork(id).catch(() => null);
   if (!work) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
@@ -77,8 +78,12 @@ export async function GET(req: Request) {
  * Mis en cache au bord (un jour) : une sonde par article, pas une par visiteur.
  */
 export async function HEAD(req: Request) {
-  const id = new URL(req.url).searchParams.get("work") ?? "";
+  const url = new URL(req.url);
+  const id = url.searchParams.get("work") ?? "";
   if (!WORK_ID.test(id)) return new Response(null, { status: 400 });
+  if (url.search !== canonicalSearch(id)) return new Response(null, { status: 308, headers: { location: `/api/pdf${canonicalSearch(id)}` } });
+  // Seau distinct du GET : une rafale de sondes ne doit pas bloquer la lecture.
+  if (!rateLimit(`pdf-head:${clientIp(req)}`, 60, 60_000)) return new Response(null, { status: 429, headers: { "retry-after": "60" } });
   const work = await getWork(id).catch(() => null);
   const candidates = work ? openAccessPdfUrls(work).slice(0, 5) : [];
   if (candidates.length === 0) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=86400" } });
@@ -86,6 +91,10 @@ export async function HEAD(req: Request) {
   if (!opened) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=3600" } });
   opened.reader.cancel().catch(() => undefined);
   return new Response(null, { status: 204, headers: { "cache-control": "public, max-age=3600, s-maxage=86400", "x-sextant-source": new URL(opened.upstream.url).host } });
+}
+
+function canonicalSearch(id: string): string {
+  return `?work=${id}`;
 }
 
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 Sextant/1.0 (+https://sextant-psi.vercel.app)";

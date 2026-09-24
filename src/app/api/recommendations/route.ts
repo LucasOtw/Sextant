@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getQualityWorksByIds, getRecentByTopic, getSeedMeta, shortId, type Work } from "@/lib/openalex";
-import { rateLimit } from "@/lib/rate-limit";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Recommendation, RecommendationSeed } from "@/lib/recommendations-shared";
 
 export const runtime = "nodejs";
@@ -31,8 +31,7 @@ function ids(param: string | null, max: number): string[] {
  * La réponse ne dépend que de la requête : elle se met en cache comme n'importe quelle page publique.
  */
 export async function GET(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
-  if (!rateLimit(`reco:${ip}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
+  if (!rateLimit(`reco:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
   const params = new URL(req.url).searchParams;
   const seen = ids(params.get("seen"), 12);
   const fav = ids(params.get("fav"), 30);

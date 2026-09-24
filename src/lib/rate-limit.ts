@@ -19,3 +19,9 @@ export function rateLimit(key: string, limit: number, windowMs: number): boolean
   b.count++;
   return b.count <= limit;
 }
+
+/** IP du client telle que transmise par Vercel (premier élément de `x-forwarded-for`), ou « anon ». */
+export function clientIp(source: Request | Headers): string {
+  const headers = source instanceof Headers ? source : source.headers;
+  return headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+}
