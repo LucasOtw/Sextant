@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
@@ -13,6 +13,16 @@ export const metadata: Metadata = {
   title: { default: "Sextant — la littérature scientifique, sans détour", template: "%s · Sextant" },
   description:
     "Articles évalués par les pairs, thèses et ouvrages universitaires : recherche par mots-clés, métadonnées claires, accès ouvert, articles similaires.",
+  // Fichiers statiques de public/ (favicon.ico y est aussi, pour les navigateurs et robots qui le demandent sans balise).
+  icons: { icon: { url: "/icon.svg", type: "image/svg+xml" }, apple: "/apple-touch-icon.png" },
+};
+
+/** Barre du navigateur mobile aux couleurs du fond (--background clair / sombre) ; suit le thème du système, pas la bascule du site. */
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F9F6F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+  ],
 };
 
 /** Applique le thème mémorisé (ou celui du système) avant le premier rendu, pour éviter le flash blanc. */
