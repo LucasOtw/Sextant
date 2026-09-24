@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { activeProvider, AiError, completeOpenAiCompatible, modelFor } from "@/lib/ai";
 import { WORK_ID } from "@/lib/favorites-shared";
@@ -92,20 +91,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ summary: text, model });
   } catch (e) {
     if (e instanceof AiError) return NextResponse.json({ error: e.message }, { status: e.status });
-    if (e instanceof Anthropic.AuthenticationError) {
-      logError("summary.anthropicKey", e);
-      return NextResponse.json({ error: "Clé API invalide côté serveur." }, { status: 500 });
-    }
-    if (e instanceof Anthropic.RateLimitError) return NextResponse.json({ error: "Trop de demandes, réessayez dans un instant." }, { status: 429 });
-    // Délai dépassé ou coupure réseau (sous-classes d'APIError sans statut HTTP).
-    if (e instanceof Anthropic.APIConnectionError) {
-      logError("summary.anthropic", e);
-      return NextResponse.json({ error: "Le service IA ne répond pas, réessayez." }, { status: 504 });
-    }
-    if (e instanceof Anthropic.APIError) {
-      logError("summary.anthropic", e);
-      return NextResponse.json({ error: `Erreur du service IA${e.status ? ` (${e.status})` : ""}.` }, { status: 502 });
-    }
     // Erreur inattendue : trace côté serveur, et toujours un JSON lisible pour le client (jamais un corps vide).
     logError("summary.POST", e, { work: id });
     return NextResponse.json({ error: "Synthèse indisponible pour le moment, réessayez." }, { status: 502 });
@@ -120,18 +105,43 @@ function stripMarkdown(text: string): string {
     .trim();
 }
 
+/**
+ * Fournisseur de secours, inactif en production (Mistral) : le SDK n'est chargé qu'ici, à la demande, pour ne pas
+ * alourdir chaque démarrage à froid de la route (PERF-20). Ses erreurs sont traduites en `AiError`, comme celles
+ * des fournisseurs compatibles OpenAI.
+ */
 async function completeAnthropic(model: string, userContent: string): Promise<string> {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
   // Même borne que les fournisseurs compatibles OpenAI : le SDK attendrait sinon 10 min, avec deux relances.
   const client = new Anthropic({ timeout: 20_000, maxRetries: 0 });
-  const response = await client.beta.messages.create({
-    model,
-    max_tokens: 1024,
-    system: SYSTEM,
-    output_config: { effort: "low" },
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    messages: [{ role: "user", content: userContent }],
-  });
+  let response;
+  try {
+    response = await client.beta.messages.create({
+      model,
+      max_tokens: 1024,
+      system: SYSTEM,
+      output_config: { effort: "low" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      messages: [{ role: "user", content: userContent }],
+    });
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError) {
+      logError("summary.anthropicKey", e);
+      throw new AiError("Clé API invalide côté serveur.", 500);
+    }
+    if (e instanceof Anthropic.RateLimitError) throw new AiError("Trop de demandes, réessayez dans un instant.", 429);
+    // Délai dépassé ou coupure réseau (sous-classes d'APIError sans statut HTTP).
+    if (e instanceof Anthropic.APIConnectionError) {
+      logError("summary.anthropic", e);
+      throw new AiError("Le service IA ne répond pas, réessayez.", 504);
+    }
+    if (e instanceof Anthropic.APIError) {
+      logError("summary.anthropic", e);
+      throw new AiError(`Erreur du service IA${e.status ? ` (${e.status})` : ""}.`, 502);
+    }
+    throw e;
+  }
   if (response.stop_reason === "refusal") throw new AiError("Le modèle n'a pas pu résumer cet article.", 502);
   const text = response.content
     .filter((b) => b.type === "text")
