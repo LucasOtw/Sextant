@@ -327,3 +327,13 @@ mark[data-highlight] {
 @keyframes mcp-flow {
   to { stroke-dashoffset: -20; }
 }
+
+/* Pages d'erreur : le sextant flotte (404) ou tangue (erreur serveur). */
+@keyframes sextant-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-6px) rotate(2deg); }
+}
+@keyframes sextant-roll {
+  0%, 100% { transform: translateY(0) rotate(-9deg); }
+  50% { transform: translateY(-4px) rotate(9deg); }
+}
