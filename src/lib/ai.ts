@@ -4,6 +4,8 @@
  * Groq et OpenRouter sont possibles, tous compatibles avec le format « chat/completions ». Anthropic reste possible.
  */
 
+import { logError } from "@/lib/log";
+
 export type Provider = "groq" | "mistral" | "openrouter" | "anthropic";
 
 interface ProviderConfig {
@@ -77,6 +79,9 @@ export function modelFor(provider: Provider): string {
   return configuredModel() ?? (provider === "anthropic" ? "claude-haiku-4-5" : CONFIGS[provider].defaultModel);
 }
 
+/** Délai maximal d'une synthèse : au-delà, l'utilisateur reçoit un message clair plutôt qu'un 504 muet. */
+const AI_TIMEOUT_MS = 20_000;
+
 export class AiError extends Error {
   constructor(message: string, public status: number) {
     super(message);
@@ -93,29 +98,51 @@ export async function completeOpenAiCompatible(
   const key = process.env[cfg.envKey];
   if (!key) throw new AiError(`Clé ${cfg.envKey} absente.`, 503);
 
-  const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${key}`,
-      ...(provider === "openrouter" ? { "x-title": "Sextant" } : {}),
-    },
-    body: JSON.stringify({
-      model: modelFor(provider),
-      temperature: 0.3,
-      max_tokens: 700,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${key}`,
+        ...(provider === "openrouter" ? { "x-title": "Sextant" } : {}),
+      },
+      // Sans délai, un fournisseur bloqué ferait attendre jusqu'à la limite de la fonction (504 de Vercel, sans message).
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      body: JSON.stringify({
+        model: modelFor(provider),
+        temperature: 0.3,
+        max_tokens: 700,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    });
+  } catch (e) {
+    // Délai dépassé ou coupure réseau : jamais de « fetch failed » brut renvoyé au navigateur.
+    logError("ai.fetch", e, { provider });
+    throw new AiError("Le service IA ne répond pas, réessayez.", 504);
+  }
 
   if (res.status === 429) throw new AiError("Quota gratuit atteint, réessayez dans un instant.", 429);
-  if (res.status === 401 || res.status === 403) throw new AiError("Clé API refusée par le fournisseur.", 500);
-  if (!res.ok) throw new AiError(`Erreur du fournisseur IA (${res.status}).`, 502);
+  if (res.status === 401 || res.status === 403) {
+    // Clé expirée ou révoquée (rotation oubliée côté Vercel) : c'est l'exploitant qu'il faut prévenir.
+    logError("ai.keyRefused", new Error(`HTTP ${res.status}`), { provider, status: res.status });
+    throw new AiError("Clé API refusée par le fournisseur.", 500);
+  }
+  if (!res.ok) {
+    logError("ai.upstream", new Error(`HTTP ${res.status}`), { provider, status: res.status });
+    throw new AiError(`Erreur du fournisseur IA (${res.status}).`, 502);
+  }
 
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
+  let data: { choices?: { message?: { content?: string } }[] };
+  try {
+    data = (await res.json()) as typeof data;
+  } catch (e) {
+    logError("ai.parse", e, { provider });
+    throw new AiError("Réponse illisible du fournisseur IA.", 502);
+  }
   const text = data.choices?.[0]?.message?.content?.trim();
   if (!text) throw new AiError("Réponse vide du fournisseur IA.", 502);
   return text;

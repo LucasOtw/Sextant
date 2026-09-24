@@ -3,6 +3,7 @@ import type { DocumentReference, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
 import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { recover } from "@/lib/log";
 
 /**
  * Favoris d'un utilisateur : `users/{uid}/favorites/{workId}`, écrits uniquement côté serveur.
@@ -65,7 +66,7 @@ export async function listFavoriteIds(uid: string): Promise<string[]> {
   if (Array.isArray(ids)) return ids.filter((x): x is string => typeof x === "string");
   const snap = await userRef.collection("favorites").select().get();
   const rebuilt = snap.docs.map((d) => d.id);
-  await userRef.set({ favoriteIds: rebuilt, favoritesCount: rebuilt.length }, { merge: true }).catch(() => undefined);
+  await userRef.set({ favoriteIds: rebuilt, favoritesCount: rebuilt.length }, { merge: true }).catch(recover("favorites.rebuildIndex", undefined));
   return rebuilt;
 }
 

@@ -5,6 +5,7 @@ import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 import { listCollections } from "@/lib/collections";
+import { logError, recover } from "@/lib/log";
 
 export const runtime = "nodejs";
 
@@ -28,9 +29,10 @@ export async function GET(req: Request) {
   try {
     const withCollections = params.get("collections") === "1";
     // Les listes n'empêchent pas les cœurs : leur échec renvoie `null`, le client garde ce qu'il sait.
-    const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), withCollections ? listCollections(user.uid).catch(() => null) : undefined]);
+    const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), withCollections ? listCollections(user.uid).catch(recover("favorites.collections", null)) : undefined]);
     return NextResponse.json({ ids, count: ids.length, ...(withCollections ? { collections } : {}) }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("favorites.GET", e);
     return NextResponse.json({ error: "Favoris indisponibles." }, { status: 502 });
   }
 }
@@ -54,6 +56,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ favorite: await addFavorite(user.uid, snapshot) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
+    logError("favorites.POST", e);
     return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
   }
 }
@@ -70,7 +73,8 @@ export async function DELETE(req: Request) {
   try {
     await removeFavorite(user.uid, id);
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("favorites.DELETE", e);
     return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
   }
 }

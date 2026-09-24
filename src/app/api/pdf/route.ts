@@ -3,6 +3,7 @@ import { WORK_ID } from "@/lib/favorites-shared";
 import { isPublicPdfUrl, openAccessPdfUrls } from "@/lib/format";
 import { getWork } from "@/lib/openalex";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { recover } from "@/lib/log";
 
 export const runtime = "nodejs";
 /** Un PDF de 30 Mo à 1 Mo/s : on laisse le temps au flux. */
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
   if (url.search !== canonicalSearch(id)) return NextResponse.redirect(new URL(`/api/pdf${canonicalSearch(id)}`, url), 308);
   if (!rateLimit(`pdf:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
-  const work = await getWork(id).catch(() => null);
+  const work = await getWork(id).catch(recover("pdf.getWork", null, { work: id }));
   if (!work) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   const candidates = openAccessPdfUrls(work).slice(0, 5);
   if (candidates.length === 0) return NextResponse.json({ error: "Pas de PDF en accès ouvert pour cet article." }, { status: 404 });
@@ -84,7 +85,7 @@ export async function HEAD(req: Request) {
   if (url.search !== canonicalSearch(id)) return new Response(null, { status: 308, headers: { location: `/api/pdf${canonicalSearch(id)}` } });
   // Seau distinct du GET : une rafale de sondes ne doit pas bloquer la lecture.
   if (!rateLimit(`pdf-head:${clientIp(req)}`, 60, 60_000)) return new Response(null, { status: 429, headers: { "retry-after": "60" } });
-  const work = await getWork(id).catch(() => null);
+  const work = await getWork(id).catch(recover("pdf.head.getWork", null, { work: id }));
   const candidates = work ? openAccessPdfUrls(work).slice(0, 5) : [];
   if (candidates.length === 0) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=86400" } });
   const opened = await openFirstPdf(candidates, Date.now() + 25_000);

@@ -4,6 +4,7 @@ import { createHighlight, HighlightsLimitError } from "@/lib/highlights";
 import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, tooLong } from "@/lib/highlights-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ highlight: await createHighlight(user.uid, input) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof HighlightsLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
+    logError("highlights.POST", e);
     return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
   }
 }

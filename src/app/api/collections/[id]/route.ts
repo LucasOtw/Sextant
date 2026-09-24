@@ -5,6 +5,7 @@ import { MAX_FAVORITES, WORK_ID } from "@/lib/favorites-shared";
 import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -56,6 +57,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof CollectionOrderError) return NextResponse.json({ error: e.message }, { status: 409 });
+    logError("collections.id.PATCH", e);
     return NextResponse.json({ error: "La modification a échoué." }, { status: 502 });
   }
 }
@@ -67,7 +69,8 @@ export async function DELETE(req: Request, ctx: Ctx) {
   try {
     await deleteCollection(g.user.uid, g.id);
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("collections.id.DELETE", e);
     return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
   }
 }

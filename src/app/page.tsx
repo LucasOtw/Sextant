@@ -7,6 +7,7 @@ import { RecentlyViewed } from "@/components/recently-viewed";
 import { ForYou } from "@/components/for-you";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFeaturedWorks } from "@/lib/openalex";
+import { logError } from "@/lib/log";
 
 const EXAMPLES = ["télétravail et bien-être", "transition énergétique villes", "réseaux sociaux santé mentale adolescents", "fast fashion supply chain"];
 
@@ -61,7 +62,8 @@ async function Featured() {
   let works: Awaited<ReturnType<typeof getFeaturedWorks>> = [];
   try {
     works = await getFeaturedWorks(6);
-  } catch {
+  } catch (e) {
+    logError("home.featured", e);
     return <p className="text-sm text-muted-foreground">La sélection est momentanément indisponible.</p>;
   }
   return (

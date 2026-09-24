@@ -2,6 +2,7 @@ import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { verifyKey } from "@/lib/api-keys";
 import { registerSextantTools } from "@/lib/mcp-tools";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -79,7 +80,7 @@ async function entry(req: Request): Promise<Response> {
   try {
     found = await verifyKey(key);
   } catch (e) {
-    console.error("[mcp] vérification de la clé impossible", e);
+    logError("mcp.verifyKey", e);
     return jsonRpcError(503, "Service momentanément indisponible, réessayez dans un instant.", 5);
   }
   if (!found) return missingKey();

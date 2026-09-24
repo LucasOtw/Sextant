@@ -4,6 +4,7 @@ import { CollectionNotFoundError } from "@/lib/collections";
 import { createShare, revokeShare } from "@/lib/shares";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -30,6 +31,7 @@ export async function POST(req: Request, ctx: Ctx) {
     return NextResponse.json({ shareToken: await createShare(g.user.uid, g.id) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
+    logError("collections.id.share.POST", e);
     return NextResponse.json({ error: "Le lien n'a pas pu être créé." }, { status: 502 });
   }
 }
@@ -43,6 +45,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
+    logError("collections.id.share.DELETE", e);
     return NextResponse.json({ error: "Le lien n'a pas pu être désactivé." }, { status: 502 });
   }
 }

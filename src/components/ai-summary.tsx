@@ -14,6 +14,8 @@ interface Props {
   isFrench: boolean;
 }
 
+const UNAVAILABLE = "Synthèse indisponible pour le moment, réessayez.";
+
 type State = { status: "idle" } | { status: "loading" } | { status: "done"; text: string } | { status: "error"; message: string };
 
 /** Condensé du résumé original en quatre points (traduit si besoin), généré à la demande. */
@@ -28,11 +30,16 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: workId }),
       });
-      const data = (await res.json()) as { summary?: string; error?: string };
-      if (!res.ok || !data.summary) throw new Error(data.error ?? "Synthèse indisponible.");
-      setState({ status: "done", text: data.summary });
-    } catch (e) {
-      setState({ status: "error", message: e instanceof Error ? e.message : "Erreur inconnue." });
+      // Corps vide ou page HTML (délai dépassé chez l'hébergeur…) : on garde le message fixe plutôt qu'une erreur d'analyse.
+      const data = (await res.json().catch(() => ({}))) as { summary?: string; error?: string };
+      if (res.ok && data.summary) {
+        setState({ status: "done", text: data.summary });
+        return;
+      }
+      setState({ status: "error", message: data.error ?? UNAVAILABLE });
+    } catch {
+      // Coupure réseau (« Failed to fetch », « Load failed ») : jamais de message technique en anglais.
+      setState({ status: "error", message: UNAVAILABLE });
     }
   }
 

@@ -5,6 +5,7 @@ import { MAX_API_KEY_NAME } from "@/lib/api-keys-shared";
 import { cleanText } from "@/lib/highlights-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -14,7 +15,8 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   try {
     return NextResponse.json({ keys: await listKeys(user.uid) }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("account.keys.GET", e);
     return NextResponse.json({ error: "Clés indisponibles." }, { status: 502 });
   }
 }
@@ -38,6 +40,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ key, info }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof ApiKeysLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
+    logError("account.keys.POST", e);
     return NextResponse.json({ error: "La clé n'a pas pu être créée." }, { status: 502 });
   }
 }

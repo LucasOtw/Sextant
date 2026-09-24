@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { getTopicsForField } from "@/lib/openalex";
 import { THEMES, themeBySlug } from "@/lib/themes";
 import { cn } from "cn";
+import { recover } from "@/lib/log";
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -38,7 +39,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
     filterDefaults = { sort: "cited", from: String(year - 1) };
   }
 
-  const topics = await getTopicsForField(theme.fieldId, 14).catch(() => []);
+  const topics = await getTopicsForField(theme.fieldId, 14).catch(recover("theme.topics", []));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">

@@ -4,6 +4,7 @@ import { CollectionsLimitError, createCollection, listCollections } from "@/lib/
 import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -17,7 +18,8 @@ export async function GET() {
   if (tooMany(user.uid)) return TOO_MANY();
   try {
     return NextResponse.json({ collections: await listCollections(user.uid) }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("collections.GET", e);
     return NextResponse.json({ error: "Listes indisponibles." }, { status: 502 });
   }
 }
@@ -43,6 +45,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ collection: await createCollection(user.uid, name, description) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionsLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
+    logError("collections.POST", e);
     return NextResponse.json({ error: "La création a échoué." }, { status: 502 });
   }
 }
