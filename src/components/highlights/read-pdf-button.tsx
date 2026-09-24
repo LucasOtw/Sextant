@@ -22,8 +22,9 @@ export function ReadPdfButton({ workId, originalUrl, className }: Props) {
     const ctrl = new AbortController();
     fetch(`/api/pdf?work=${workId}`, { method: "HEAD", signal: ctrl.signal })
       .then((res) => {
-        // Un refus de débit (429) ne dit rien du PDF : on garde le lecteur intégré.
-        if (!res.ok && res.status !== 429) setTarget("original");
+        // Seul un « non relayable » explicite renvoie vers l'hébergeur. Un refus de débit (429) ou une panne (503)
+        // ne dit rien du PDF : on garde le lecteur intégré, qui gère lui-même l'échec.
+        if (res.headers.get("x-sextant-readable") === "0") setTarget("original");
       })
       .catch(() => undefined);
     return () => ctrl.abort();

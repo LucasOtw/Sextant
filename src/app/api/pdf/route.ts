@@ -75,8 +75,10 @@ export async function GET(req: Request) {
 }
 
 /**
- * Sonde pour la fiche article : 204 si une copie libre est relayable, 404 sinon. Le corps n'est pas envoyé.
- * Mis en cache au bord (un jour) : une sonde par article, pas une par visiteur.
+ * Sonde pour la fiche article, toujours en 204 (corps vide) : l'en-tête `x-sextant-readable` dit si une copie libre
+ * est relayable (« 1 ») ou non (« 0 »). Une réponse 404 ici était attendue mais s'affichait comme une erreur dans la
+ * console du navigateur (et dans les audits Lighthouse). Mis en cache au bord : une sonde par article, pas une par visiteur.
+ * Le GET, lui, garde ses vrais codes d'échec (404, 502) : le lecteur en a besoin.
  */
 export async function HEAD(req: Request) {
   const url = new URL(req.url);
@@ -85,13 +87,21 @@ export async function HEAD(req: Request) {
   if (url.search !== canonicalSearch(id)) return new Response(null, { status: 308, headers: { location: `/api/pdf${canonicalSearch(id)}` } });
   // Seau distinct du GET : une rafale de sondes ne doit pas bloquer la lecture.
   if (!rateLimit(`pdf-head:${clientIp(req)}`, 60, 60_000)) return new Response(null, { status: 429, headers: { "retry-after": "60" } });
-  const work = await getWork(id).catch(recover("pdf.head.getWork", null, { work: id }));
+  // `undefined` = OpenAlex en panne : on ne sait rien du PDF, et la réponse ne doit surtout pas rester un jour en cache.
+  const work = await getWork(id).catch(recover("pdf.head.getWork", undefined, { work: id }));
+  if (work === undefined) return new Response(null, { status: 503, headers: { "cache-control": "no-store", "retry-after": "60" } });
   const candidates = work ? openAccessPdfUrls(work).slice(0, 5) : [];
-  if (candidates.length === 0) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=86400" } });
+  if (candidates.length === 0) return probe(false, "public, max-age=600, s-maxage=86400");
   const opened = await openFirstPdf(candidates, Date.now() + 25_000);
-  if (!opened) return new Response(null, { status: 404, headers: { "cache-control": "public, max-age=600, s-maxage=3600" } });
+  if (!opened) return probe(false, "public, max-age=600, s-maxage=3600");
   opened.reader.cancel().catch(() => undefined);
-  return new Response(null, { status: 204, headers: { "cache-control": "public, max-age=3600, s-maxage=86400", "x-sextant-source": new URL(opened.upstream.url).host } });
+  return probe(true, "public, max-age=3600, s-maxage=86400", new URL(opened.upstream.url).host);
+}
+
+function probe(readable: boolean, cacheControl: string, source?: string): Response {
+  const headers = new Headers({ "x-sextant-readable": readable ? "1" : "0", "cache-control": cacheControl });
+  if (source) headers.set("x-sextant-source", source);
+  return new Response(null, { status: 204, headers });
 }
 
 function canonicalSearch(id: string): string {
