@@ -52,9 +52,12 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  // Même contrôle que la page : un identifiant mal formé (« W…?per-page=1 ») ne doit pas emprunter le titre d'un vrai article.
+  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
   let work: Awaited<ReturnType<typeof getWork>>;
   try {
-    work = await getWork((await params).id);
+    work = await getWork(id);
   } catch {
     // Panne de la source (OpenAlex) : le titre ne doit pas parler d'article absent.
     return { title: "Article momentanément indisponible", robots: { index: false } };
@@ -64,6 +67,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: workTitle(work), description: abstract?.slice(0, 160) };
 }
 
+/**
+ * Pas de loading.tsx sur ce segment : un squelette démarrerait le flux avec un statut 200 avant `notFound()`,
+ * et un article introuvable répondrait « 200 + noindex » (soft 404). Ici l'article est lu avant tout envoi,
+ * donc un identifiant absent d'OpenAlex renvoie un vrai 404 (fiche comme lecteur /lire, qui hérite du segment).
+ */
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
   if (!/^W\d+$/i.test(id)) notFound();

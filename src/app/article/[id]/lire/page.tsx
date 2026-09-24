@@ -18,7 +18,9 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const work = await getWork((await params).id).catch(() => null);
+  const { id } = await params;
+  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
+  const work = await getWork(id).catch(() => null);
   return { title: work ? `Lire · ${workTitle(work)}` : "Lecteur", robots: { index: false } };
 }
 
