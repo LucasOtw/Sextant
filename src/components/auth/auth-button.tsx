@@ -1,21 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { BookmarkIcon, LogOutIcon, UserRoundIcon, HighlighterIcon } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Suspense, useState } from "react";
+import dynamic from "next/dynamic";
+import { UserRoundIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import type { SessionUser } from "@/lib/auth";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
-import { useLogout } from "@/components/auth/use-logout";
+
+// Rendu côté serveur et préchargé pour un connecté ; jamais téléchargé par un anonyme (PERF-03).
+const AccountMenu = dynamic(() => import("@/components/auth/account-menu"));
 
 interface Props {
   user: SessionUser | null;
@@ -24,7 +17,6 @@ interface Props {
 /** Bouton du header : « Se connecter » ou avatar avec menu. L'état vient du serveur (cookie de session). */
 export function AuthButton({ user }: Props) {
   const [open, setOpen] = useState(false);
-  const { logout } = useLogout();
 
   if (!user) {
     return (
@@ -39,43 +31,10 @@ export function AuthButton({ user }: Props) {
     );
   }
 
-  const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
-
+  // Juste après une connexion, le menu arrive par le réseau : on réserve la place de l'avatar en attendant.
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        aria-label="Mon compte"
-        render={<Button variant="ghost" size="icon" className="rounded-full" />}
-      >
-        <Avatar className="size-8">
-          {user.picture && <AvatarImage src={user.picture} alt="" referrerPolicy="no-referrer" />}
-          <AvatarFallback className="text-xs">{initials}</AvatarFallback>
-        </Avatar>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
-        <DropdownMenuGroup>
-          {/* L'identité mène à la page du compte. */}
-          <DropdownMenuItem render={<Link href="/compte" />} className="flex-col items-start gap-0 py-1.5" aria-label="Mon compte">
-            <span className="w-full truncate font-medium text-foreground">{user.name ?? "Mon compte"}</span>
-            {user.email && <span className="w-full truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem render={<Link href="/favoris" />}>
-            <BookmarkIcon /> Mes favoris
-          </DropdownMenuItem>
-          <DropdownMenuItem render={<Link href="/citations" />}>
-            <HighlighterIcon /> Mes citations
-          </DropdownMenuItem>
-          <DropdownMenuItem render={<Link href="/compte" />}>
-            <UserRoundIcon /> Mon compte
-          </DropdownMenuItem>
-          <DropdownMenuItem variant="destructive" onClick={logout}>
-            <LogOutIcon /> Se déconnecter
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Suspense fallback={<span className="size-8 shrink-0 rounded-full bg-muted" aria-hidden />}>
+      <AccountMenu user={user} />
+    </Suspense>
   );
 }
