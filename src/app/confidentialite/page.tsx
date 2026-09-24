@@ -49,8 +49,10 @@ export default function PrivacyPage() {
         <li><strong>notes</strong> : ce que vous écrivez sur un article.</li>
       </ul>
       <p>
-        Ces données sont privées : personne d'autre que vous n'y a accès depuis Sextant. Elles sont conservées dans une base Firestore
-        (Google Cloud) située en Europe, région Paris.
+        Ces données sont privées : personne d'autre que vous n'y a accès depuis Sextant, sauf une liste que vous choisissez de partager
+        par lien. Toute personne qui a ce lien voit alors le nom de la liste, sa description et ses articles, jamais vos notes, vos
+        citations ni votre profil ; vous pouvez désactiver le lien à tout moment, il cesse aussitôt de fonctionner. Ces données sont
+        conservées dans une base Firestore (Google Cloud) située en Europe, région Paris.
       </p>
       <ul>
         <li><strong>Finalité et base légale</strong> : fournir le service que vous demandez en créant un compte (exécution du contrat, RGPD art. 6.1.b).</li>

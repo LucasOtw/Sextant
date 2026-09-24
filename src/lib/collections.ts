@@ -18,6 +18,7 @@ function toCollection(data: Record<string, unknown>, id: string): Collection {
     description: String(data.description ?? ""),
     articleIds: Array.isArray(data.articleIds) ? (data.articleIds as unknown[]).filter((x): x is string => typeof x === "string") : [],
     createdAt: ts?.toDate?.().toISOString() ?? null,
+    shareToken: typeof data.shareToken === "string" ? data.shareToken : null,
   };
 }
 
@@ -45,7 +46,7 @@ export async function createCollection(uid: string, name: string, description = 
     if (n >= MAX_COLLECTIONS) throw new CollectionsLimitError(`Limite de ${MAX_COLLECTIONS} listes atteinte.`);
     tx.set(ref, { name, description, articleIds: [], createdAt: FieldValue.serverTimestamp() });
   });
-  return { id: ref.id, name, description, articleIds: [], createdAt: new Date().toISOString() };
+  return { id: ref.id, name, description, articleIds: [], createdAt: new Date().toISOString(), shareToken: null };
 }
 
 export class CollectionOrderError extends Error {}
@@ -78,9 +79,16 @@ export async function updateCollection(uid: string, id: string, patch: Collectio
   });
 }
 
+/** Supprime la liste et, si elle était partagée, son lien. */
 export async function deleteCollection(uid: string, id: string): Promise<void> {
   const db = await adminDb();
-  await db.doc(`users/${uid}/collections/${id}`).delete();
+  const ref = db.doc(`users/${uid}/collections/${id}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const token = snap.get("shareToken");
+    if (typeof token === "string") tx.delete(db.doc(`shares/${token}`));
+    tx.delete(ref);
+  });
 }
 
 /** Ajoute l'article à la liste et l'enregistre en favori s'il ne l'est pas encore : tout ou rien. */

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowDownIcon, ArrowUpIcon, CopyIcon, DownloadIcon, FolderIcon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CopyIcon, DownloadIcon, FolderIcon, Link2Icon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,8 @@ import { CollectionPicker } from "@/components/collections/collection-picker";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import type { Collection } from "@/lib/collections-shared";
-import { bibtexFromSnapshot, type Favorite } from "@/lib/favorites-shared";
+import { bibtexAll, fileSlug, type Favorite } from "@/lib/favorites-shared";
+import { ShareDialog } from "@/components/collections/share-dialog";
 import { formatCount, typeLabel } from "@/lib/format";
 import { cn } from "cn";
 
@@ -34,24 +35,6 @@ function fold(s: string) {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-/** BibTeX de plusieurs références, clés rendues uniques (suffixe b, c, d… en cas de doublon). */
-function bibtexAll(items: Favorite[]): string {
-  const used = new Map<string, number>();
-  return items
-    .map((f) => {
-      const entry = bibtexFromSnapshot(f);
-      const m = entry.match(/^@\w+\{([^,]+),/);
-      if (!m) return entry;
-      const n = used.get(m[1]) ?? 0;
-      used.set(m[1], n + 1);
-      return n === 0 ? entry : entry.replace(m[1], `${m[1]}${String.fromCharCode(97 + n)}`);
-    })
-    .join("\n\n");
-}
-
-function slug(name: string) {
-  return fold(name).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liste";
-}
 
 function deleteHint(n: number) {
   if (n === 0) return "La liste est vide : rien ne change dans vos favoris.";
@@ -81,6 +64,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
   const [creating, setCreating] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const { loadCollections } = favorites;
 
   // À l'arrivée sur la page, on se réaligne avec le serveur (favoris et listes posés depuis un autre appareil).
@@ -166,7 +150,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = collection ? `sextant-${slug(collection.name)}.bib` : "sextant-favoris.bib";
+    a.download = collection ? `sextant-${fileSlug(collection.name)}.bib` : "sextant-favoris.bib";
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -187,7 +171,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
     <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Listes">
       <Chip active={!collection} onClick={() => select(null)} count={all.length}>Tous</Chip>
       {collections.map((c) => (
-        <Chip key={c.id} active={collection?.id === c.id} onClick={() => select(c.id)} count={c.articleIds.length} icon>
+        <Chip key={c.id} active={collection?.id === c.id} onClick={() => select(c.id)} count={c.articleIds.length} icon shared={Boolean(c.shareToken)}>
           {c.name}
         </Chip>
       ))}
@@ -224,10 +208,13 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
         submitLabel="Enregistrer"
         onSubmit={(name, description) => (collection ? favorites.updateCollection(collection.id, { name, description }) : Promise.resolve(false))}
       />
+      {collection && <ShareDialog open={sharing} onOpenChange={setSharing} collection={collection} />}
       <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[15px] text-muted-foreground">{deleteHint(collection?.articleIds.length ?? 0)}</DialogDescription>
+          <DialogDescription className="text-[15px] text-muted-foreground">
+            {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
+          </DialogDescription>
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleting(false)}>Annuler</Button>
             <Button
@@ -272,6 +259,11 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
               <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="truncate">{collection.name}</span>
             </h2>
             {collection.description && <p className="mt-1 text-[15px] text-muted-foreground">{collection.description}</p>}
+            {collection.shareToken && (
+              <button type="button" onClick={() => setSharing(true)} className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-accent-brand underline underline-offset-3">
+                <Link2Icon className="size-3.5" aria-hidden /> Partagée par lien
+              </button>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label="Renommer ou supprimer la liste" />}>
@@ -280,6 +272,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
             <DropdownMenuContent align="end" className="min-w-48">
               <DropdownMenuGroup>
                 <DropdownMenuItem onClick={() => setRenaming(true)}><PencilIcon /> Nom et description</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSharing(true)}><Link2Icon /> {collection.shareToken ? "Lien de partage" : "Partager par lien"}</DropdownMenuItem>
                 <DropdownMenuItem variant="destructive" onClick={() => setDeleting(true)}><Trash2Icon /> Supprimer la liste</DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
@@ -379,7 +372,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
   );
 }
 
-function Chip({ active, onClick, count, icon = false, children }: { active: boolean; onClick: () => void; count: number; icon?: boolean; children: string }) {
+function Chip({ active, onClick, count, icon = false, shared = false, children }: { active: boolean; onClick: () => void; count: number; icon?: boolean; shared?: boolean; children: string }) {
   return (
     <button
       type="button"
@@ -393,6 +386,7 @@ function Chip({ active, onClick, count, icon = false, children }: { active: bool
     >
       {icon && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
       <span className="truncate">{children}</span>
+      {shared && <Link2Icon className="size-3.5 shrink-0" aria-label="partagée par lien" />}
       <span className={active ? "text-primary-foreground/75" : "text-muted-foreground"}>{count}</span>
     </button>
   );

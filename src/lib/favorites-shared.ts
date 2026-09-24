@@ -146,3 +146,23 @@ export function citeInline(s: FavoriteSnapshot, page?: number | null): string {
   const who = names.length === 0 ? "Anonyme" : names.length === 1 ? names[0] : names.length === 2 ? `${names[0]} & ${names[1]}` : `${names[0]} et al.`;
   return `(${who}, ${s.year ?? "s. d."}${page ? `, p. ${page}` : ""})`;
 }
+
+/** BibTeX de plusieurs références, clés rendues uniques (suffixe b, c, d… en cas de doublon). */
+export function bibtexAll(items: FavoriteSnapshot[]): string {
+  const used = new Map<string, number>();
+  return items
+    .map((f) => {
+      const entry = bibtexFromSnapshot(f);
+      const m = entry.match(/^@\w+\{([^,]+),/);
+      if (!m) return entry;
+      const n = used.get(m[1]) ?? 0;
+      used.set(m[1], n + 1);
+      return n === 0 ? entry : entry.replace(m[1], `${m[1]}${String.fromCharCode(97 + n)}`);
+    })
+    .join("\n\n");
+}
+
+/** Nom de fichier sûr à partir d'un nom de liste. */
+export function fileSlug(name: string): string {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liste";
+}
