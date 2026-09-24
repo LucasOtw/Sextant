@@ -1,4 +1,6 @@
 /** Historique local des articles consultés (localStorage, aucun envoi serveur). */
+import { WORK_ID } from "@/lib/favorites-shared";
+
 export interface RecentWork {
   id: string;
   title: string;
@@ -12,11 +14,31 @@ export interface RecentWork {
 export const RECENT_KEY = "sextant:recent";
 const MAX = 12;
 
+/**
+ * Garde de type : le stockage local est modifiable par le visiteur, une extension ou un ancien format.
+ * Un élément invalide rendu tel quel ferait planter l'accueil ; il est écarté.
+ */
+function isRecentWork(value: unknown): value is RecentWork {
+  if (typeof value !== "object" || value === null) return false;
+  const w = value as Record<string, unknown>;
+  return (
+    typeof w.id === "string" &&
+    WORK_ID.test(w.id) &&
+    typeof w.title === "string" &&
+    typeof w.authors === "string" &&
+    (w.venue === null || typeof w.venue === "string") &&
+    (w.year === null || typeof w.year === "number") &&
+    typeof w.isOa === "boolean" &&
+    typeof w.viewedAt === "number"
+  );
+}
+
+/** Liste validée élément par élément : `pushRecent` la réécrit à la consultation suivante, la corruption se répare seule. */
 export function readRecent(): RecentWork[] {
   try {
     const raw = localStorage.getItem(RECENT_KEY);
-    const list = raw ? (JSON.parse(raw) as RecentWork[]) : [];
-    return Array.isArray(list) ? list : [];
+    const list: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list.filter(isRecentWork).slice(0, MAX) : [];
   } catch {
     return [];
   }
