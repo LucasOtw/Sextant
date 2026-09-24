@@ -322,3 +322,8 @@ mark[data-highlight] {
   background: oklch(0.92 0.17 96);
   border-radius: 2px;
 }
+
+/* Fil pointillé de l'annonce MCP : les points avancent du sextant vers l'assistant. */
+@keyframes mcp-flow {
+  to { stroke-dashoffset: -20; }
+}
