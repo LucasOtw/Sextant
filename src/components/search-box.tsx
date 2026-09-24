@@ -164,7 +164,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             aria-autocomplete="list"
             aria-haspopup="listbox"
             aria-expanded={showList}
-            aria-controls={listId}
+            aria-controls={showList ? listId : undefined}
             aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
             className={cn(
               "bg-card",
@@ -177,6 +177,11 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
         </Button>
       </form>
 
+      {/* Toujours rendue (hors du bloc conditionnel), sinon la région ne serait pas annoncée à son apparition. */}
+      <p role="status" className="sr-only">
+        {showList ? `${items.length} suggestion${items.length > 1 ? "s" : ""}, flèches haut et bas pour parcourir` : ""}
+      </p>
+
       {showList && (
         <ul
           id={listId}
@@ -184,9 +189,14 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
           className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10 animate-in fade-in zoom-in-98 slide-in-from-top-1 duration-150 motion-reduce:animate-none"
         >
           {items.map((item, i) => (
-            <li key={item.href} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
+            <li key={item.href} role="none">
+              {/* Le lien porte lui-même le rôle option : pas d'élément interactif imbriqué dans l'option (WCAG 4.1.2),
+                  et on garde le préchargement de Link ainsi que le Cmd-clic et le clic du milieu. */}
               <Link
                 href={item.href}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === active}
                 // Motif combobox : les options se parcourent aux flèches, pas à la tabulation, et le focus reste dans le
                 // champ au clic (sinon Safari, qui ne focalise pas les liens, fermerait la liste avant la navigation).
                 tabIndex={-1}
