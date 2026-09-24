@@ -90,7 +90,8 @@ export function SearchFilters({ className, defaults }: Props) {
       </Field>
 
       <Field label="Sources">
-        <Select items={SOURCES} value={params.get("src") === "all" ? "any" : "all"} onValueChange={(v) => update({ src: v === "any" ? "all" : null })}>
+        {/* « all » est la valeur par défaut (retirée de l'URL) ; « any » s'écrit src=any et lève le filtre des revues indexées. */}
+        <Select items={SOURCES} value={params.get("src") === "any" ? "any" : "all"} onValueChange={(v) => update({ src: String(v) })}>
           <SelectTrigger className="w-full" aria-label="Sources"><SelectValue /></SelectTrigger>
           <SelectContent>
             {SOURCES.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}

@@ -32,7 +32,8 @@ export function parseSearchParams(sp: RawSearchParams, extra: Partial<SearchPara
     topic: first(sp.topic),
     cites: first(sp.cites),
     language: first(sp.lang),
-    coreOnly: first(sp.src) !== "all",
+    // src=any : toutes les sources vérifiées ; sinon revues indexées seulement (« all » est réservé au défaut des filtres).
+    coreOnly: first(sp.src) !== "any",
     author: first(sp.author),
     ...extra,
   };
