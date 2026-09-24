@@ -109,7 +109,7 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 - [x] Listes de favoris (« Mémoire 2026 », « Santé »…)
 - [x] Surligner dans le résumé ou le PDF, page « Mes citations » avec la source
 - [x] Note personnelle sur un article ; listes avec description et ordre manuel
-- [x] « Pour vous » : des articles récents et cités sur les sujets de ce que vous avez consulté (première marche, historique local)
+- [x] « Pour vous » : articles apparentés à vos favoris et lectures, et les plus cités de vos sujets, chaque suggestion expliquée et écartable
 - [ ] Serveur MCP : brancher sa bibliothèque Sextant à Claude ou ChatGPT ([note](docs/handoffs/2026-09-22-idee-mcp-sextant.md))
 - [ ] Alertes sur un sujet ou un auteur
 - [ ] Applications mobiles (après la version web)
