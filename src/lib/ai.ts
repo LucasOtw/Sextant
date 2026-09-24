@@ -23,10 +23,26 @@ const CONFIGS: Record<Exclude<Provider, "anthropic">, Omit<ProviderConfig, "key"
   openrouter: { baseUrl: "https://openrouter.ai/api/v1", envKey: "OPENROUTER_API_KEY", defaultModel: "meta-llama/llama-3.3-70b-instruct:free" },
 };
 
-/** Fournisseur actif : AI_PROVIDER explicite, sinon le premier dont la clé est présente. */
+const PROVIDERS: readonly Provider[] = ["mistral", "groq", "openrouter", "anthropic"];
+
+let warnedBadProvider = false;
+
+/**
+ * Fournisseur actif : AI_PROVIDER explicite, sinon le premier dont la clé est présente.
+ * AI_PROVIDER est lu sans tenir compte de la casse ni des espaces ; une valeur inconnue (« openai », faute de frappe)
+ * est ignorée avec un avertissement, au lieu de faire planter chaque fiche qui affiche un résumé.
+ */
 export function activeProvider(): Provider | null {
-  const forced = process.env.AI_PROVIDER as Provider | undefined;
-  if (forced) return forced;
+  const forced = process.env.AI_PROVIDER?.trim().toLowerCase();
+  if (forced) {
+    const known = PROVIDERS.find((p) => p === forced);
+    if (known) return known;
+    if (!warnedBadProvider) {
+      warnedBadProvider = true;
+      // La valeur n'est pas reprise dans le journal : une clé collée par erreur dans la variable ne doit pas fuiter.
+      console.warn(`[ai] AI_PROVIDER inconnu (attendu : ${PROVIDERS.join(", ")}), ignoré : fournisseur choisi d'après les clés présentes.`);
+    }
+  }
   if (process.env.MISTRAL_API_KEY) return "mistral";
   if (process.env.GROQ_API_KEY) return "groq";
   if (process.env.OPENROUTER_API_KEY) return "openrouter";
@@ -43,10 +59,6 @@ const LABELS: Record<Provider, string> = {
 
 export function providerLabel(provider: Provider): string {
   return LABELS[provider];
-}
-
-export function isAiEnabled(): boolean {
-  return activeProvider() !== null;
 }
 
 /** Forme d'un nom de modèle : « ministral-8b-latest », « meta-llama/llama-3.3-70b-instruct:free »… */
