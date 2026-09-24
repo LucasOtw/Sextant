@@ -71,7 +71,7 @@ function NameForm({ initialName, initialDescription, submitLabel, onSubmit, onCl
         rows={2}
         placeholder="Description (facultatif) : à quoi sert cette liste ?"
         aria-label="Description de la liste"
-        className="text-sm md:text-sm"
+        className="text-base md:text-sm"
       />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>

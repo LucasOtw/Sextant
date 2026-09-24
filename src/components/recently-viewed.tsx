@@ -19,7 +19,7 @@ export function RecentlyViewed() {
   if (items.length === 0) return null;
 
   return (
-    <section id="recents" className="scroll-mt-20 py-8 pb-16 animate-in fade-in duration-500 motion-reduce:animate-none">
+    <section id="recents" className="py-8 pb-16 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="title-display text-3xl sm:text-4xl">Consultés récemment</h2>
@@ -38,7 +38,7 @@ export function RecentlyViewed() {
           <Trash2Icon /> Effacer l'historique
         </Button>
       </div>
-      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.slice(0, 6).map((w, i) => (
           <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
             <Link

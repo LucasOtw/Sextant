@@ -39,7 +39,8 @@ export default async function ReaderPage({ params }: Props) {
         <Link href={`/article/${wid}`} className={buttonVariants({ variant: "outline", size: "sm", className: "bg-card" })}>
           <ArrowLeftIcon /> Fiche article
         </Link>
-        <h1 className="title-display min-w-0 flex-1 truncate text-xl" title={workTitle(work)}>{workTitle(work)}</h1>
+        {/* Sur mobile, le titre passe en entier sous les deux boutons au lieu d'être haché dans une colonne étroite. */}
+        <h1 className="title-display order-last basis-full wrap-break-word text-xl sm:order-none sm:min-w-0 sm:flex-1 sm:basis-0">{workTitle(work)}</h1>
         <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "ghost", size: "sm" })}>
           <ExternalLinkIcon /> PDF original
         </a>

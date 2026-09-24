@@ -103,7 +103,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         rows={text ? Math.min(12, Math.max(3, text.split("\n").length + 1)) : 3}
         placeholder="Ce que vous retenez de cet article, pour vous : une idée, une réserve, où il se place dans votre travail…"
         aria-label="Ma note sur cet article"
-        className="mt-3 bg-card text-[15px] leading-relaxed md:text-[15px]"
+        className="mt-3 bg-card text-base leading-relaxed md:text-[15px]"
       />
       {signIn && <SignInDialog open={signIn} onOpenChange={setSignIn} intro="Connectez-vous pour garder vos notes sur les articles, sur tous vos appareils." />}
     </section>

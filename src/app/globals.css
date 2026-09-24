@@ -74,7 +74,7 @@
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.9 0.01 85);
   --input: oklch(0.86 0.012 85);
-  --ring: oklch(0.6 0.14 262);
+  --ring: oklch(0.5 0.16 262);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -113,7 +113,7 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.6 0.12 262);
+  --ring: oklch(0.7 0.12 262);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -131,20 +131,29 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
+  }
+  /* Focus clavier : contour plein de 2 px, décollé, contrasté (≥ 3:1) sur tous les éléments. Les composants ui/*
+     portent outline-none (couche utilities, prioritaire) et gardent leur propre anneau. */
+  :focus-visible {
+    outline-style: solid;
+    outline-width: 2px;
+    outline-offset: 2px;
   }
   body {
     @apply bg-background text-foreground;
   }
+  /* En-tête collant de 64 px : l'élément focalisé ou l'ancre visée s'arrête dessous (5rem = en-tête + marge). */
   html {
-    @apply font-sans;
+    @apply font-sans scroll-pt-20;
   }
 }
-/* Titres : sans, graisse marquée, interlettrage resserré */
+/* Titres : sans, graisse marquée, interlettrage resserré ; un mot trop long (sigles, URL) se coupe au lieu de déborder à 320 px */
 .title-display {
   font-weight: 600;
   letter-spacing: -0.025em;
   text-wrap: balance;
+  overflow-wrap: break-word;
 }
 
 /* Barres de chargement animées (synthèse IA) */

@@ -99,7 +99,7 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
           rows={2}
           placeholder="Votre note…"
           aria-label="Note"
-          className="mt-2 text-sm md:text-sm"
+          className="mt-2 text-base md:text-sm"
         />
       ) : (
         <button type="button" onClick={startEditing} aria-label={h.note ? "Modifier la note" : "Ajouter une note"} className={cn("mt-2 block w-full rounded-md pl-6 text-left text-sm whitespace-pre-line", h.note ? "text-foreground" : "text-muted-foreground italic hover:text-foreground")}>

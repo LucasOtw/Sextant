@@ -59,7 +59,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
               const active = search.topic === id;
               return (
                 <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`}>
-                  <Badge variant={active ? "default" : "secondary"} className="h-7 cursor-pointer px-3 text-sm">
+                  <Badge variant={active ? "default" : "secondary"} className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">
                     {t.display_name}
                   </Badge>
                 </Link>

@@ -56,7 +56,7 @@ export function ShareDialog({ open, onOpenChange, collection }: Props) {
         {url ? (
           <div className="mt-2 flex flex-col gap-3">
             <div className="flex gap-2">
-              <Input readOnly value={url} aria-label="Lien de partage" onFocus={(e) => e.currentTarget.select()} className="h-10 font-mono text-sm md:text-sm" />
+              <Input readOnly value={url} aria-label="Lien de partage" onFocus={(e) => e.currentTarget.select()} className="h-10 font-mono text-base md:text-sm" />
               <Button className="h-10 shrink-0" onClick={() => void copy(url)}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}</Button>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">

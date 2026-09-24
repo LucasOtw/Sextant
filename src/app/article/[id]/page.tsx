@@ -222,12 +222,12 @@ export default async function ArticlePage({ params }: Props) {
             <div className="mt-2 flex flex-wrap gap-1.5">
               {work.topics?.slice(0, 3).map((t) => (
                 <Link key={t.id} href={`/search?topic=${shortId(t.id)}`}>
-                  <Badge variant="secondary" className="h-7 cursor-pointer px-3 text-sm">{t.display_name}</Badge>
+                  <Badge variant="secondary" className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">{t.display_name}</Badge>
                 </Link>
               ))}
               {work.keywords?.slice(0, 6).map((k) => (
                 <Link key={k.id} href={`/search?q=${encodeURIComponent(k.display_name)}`}>
-                  <Badge variant="outline" className="h-7 cursor-pointer px-3 text-sm">{k.display_name}</Badge>
+                  <Badge variant="outline" className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">{k.display_name}</Badge>
                 </Link>
               ))}
             </div>
@@ -294,7 +294,7 @@ async function Similar({ work }: { work: Work }) {
   }
   if (similar.length === 0) return <p className="mt-4 text-sm text-muted-foreground">Aucune suggestion pour cet article.</p>;
   return (
-    <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {similar.slice(0, 9).map((w, i) => (
         <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
           <WorkCard work={w} variant="compact" />
@@ -306,7 +306,7 @@ async function Similar({ work }: { work: Work }) {
 
 function SimilarSkeleton() {
   return (
-    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
     </div>
   );
