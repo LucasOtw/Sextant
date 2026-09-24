@@ -1,13 +1,14 @@
 "use client";
 
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist";
 import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { cn } from "cn";
 
@@ -141,6 +142,37 @@ function formatBytes(n: number): string {
   return `${Math.max(1, Math.round(n / 1024))} Ko`;
 }
 
+/** Télécharge le PDF en entier, en signalant la progression (`total` = 0 si la taille n'est pas annoncée). */
+async function downloadPdf(url: string, signal: AbortSignal, onProgress: (loaded: number, total: number) => void): Promise<Uint8Array> {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  // Réponse compressée : Content-Length compte les octets compressés, pas ceux lus → taille totale inconnue.
+  const encoded = (res.headers.get("content-encoding") ?? "identity") !== "identity";
+  const total = encoded ? 0 : Number(res.headers.get("content-length")) || 0;
+  if (!res.body) {
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    onProgress(bytes.length, total);
+    return bytes;
+  }
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    onProgress(loaded, total);
+  }
+  const bytes = new Uint8Array(loaded);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
 function pageOf(node: Node | null | undefined): string | undefined {
   return (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-page]")?.dataset.page;
 }
@@ -166,24 +198,34 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   useEffect(() => {
     let cancelled = false;
     let task: PDFDocumentLoadingTask | null = null;
+    let worker: PDFWorker | null = null;
+    const download = new AbortController();
     (async () => {
       try {
+        // Le PDF part tout de suite, en parallèle du module PDF.js et du worker (au lieu d'attendre que le worker
+        // le demande). /api/pdf n'annonce pas de requêtes partielles : PDF.js attendait de toute façon le fichier entier.
+        const data = downloadPdf(url, download.signal, (loaded, total) => {
+          if (!cancelled) setProgress({ loaded, total });
+        });
+        data.catch(() => undefined); // l'échec est traité plus bas, au moment d'attendre les données
         const pdfjs = await import("pdfjs-dist");
         if (cancelled) return;
-        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        const base = pdfjsAssetsBase(pdfjs.version);
+        pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.min.mjs`;
+        worker = new pdfjs.PDFWorker(); // le worker se charge pendant que le PDF finit d'arriver
+        const bytes = await data;
+        if (cancelled) return;
         // Ressources optionnelles de PDF.js servies depuis /public : décodeurs WebAssembly (JBIG2, JPX des scans anciens),
         // polices standard non embarquées, CMaps (CJK), profils ICC. Sans elles, les images sont ignorées et la page reste blanche.
         task = pdfjs.getDocument({
-          url,
-          wasmUrl: "/pdfjs/wasm/",
-          iccUrl: "/pdfjs/iccs/",
-          standardFontDataUrl: "/pdfjs/standard_fonts/",
-          cMapUrl: "/pdfjs/cmaps/",
+          data: bytes,
+          worker,
+          wasmUrl: `${base}/wasm/`,
+          iccUrl: `${base}/iccs/`,
+          standardFontDataUrl: `${base}/standard_fonts/`,
+          cMapUrl: `${base}/cmaps/`,
           cMapPacked: true,
         });
-        task.onProgress = (p: { loaded: number; total?: number }) => {
-          if (!cancelled) setProgress({ loaded: p.loaded, total: p.total ?? 0 });
-        };
         const d = await task.promise;
         // Hauteur provisoire des pages non rendues : proportion de la première page (comme le visualiseur PDF.js),
         // pas un A4 fixe. Sinon, sur un PDF au format Letter ou en paysage, les pages changent de hauteur en se rendant
@@ -210,7 +252,9 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
     })();
     return () => {
       cancelled = true;
+      download.abort();
       void task?.destroy();
+      worker?.destroy(); // fourni par nous : PDF.js ne le détruit pas avec le document
     };
   }, [url]);
 

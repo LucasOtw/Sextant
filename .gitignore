@@ -40,6 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Worker PDF.js copié depuis node_modules au postinstall
-/public/pdf.worker.min.mjs
+# Worker et ressources PDF.js copiés depuis node_modules au postinstall (public/pdfjs/<version>/)
 /public/pdfjs/
