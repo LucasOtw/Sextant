@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
 import { toast } from "sonner";
-import { BookmarkIcon, LogOutIcon, UserRoundIcon, HighlighterIcon, BotIcon } from "lucide-react";
+import { BookmarkIcon, LogOutIcon, UserRoundIcon, HighlighterIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +13,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -73,10 +72,11 @@ export function AuthButton({ user }: Props) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="flex flex-col">
-            <span className="truncate font-medium text-foreground">{user.name ?? "Mon compte"}</span>
-            {user.email && <span className="truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
-          </DropdownMenuLabel>
+          {/* L'identité mène à la page du compte. */}
+          <DropdownMenuItem render={<Link href="/compte" />} className="flex-col items-start gap-0 py-1.5" aria-label="Mon compte">
+            <span className="w-full truncate font-medium text-foreground">{user.name ?? "Mon compte"}</span>
+            {user.email && <span className="w-full truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -86,13 +86,10 @@ export function AuthButton({ user }: Props) {
           <DropdownMenuItem render={<Link href="/citations" />}>
             <HighlighterIcon /> Mes citations
           </DropdownMenuItem>
-          <DropdownMenuItem render={<Link href="/compte#assistants" />}>
-            <BotIcon /> Assistants IA (MCP)
-          </DropdownMenuItem>
           <DropdownMenuItem render={<Link href="/compte" />}>
             <UserRoundIcon /> Mon compte
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={logout}>
+          <DropdownMenuItem variant="destructive" onClick={logout}>
             <LogOutIcon /> Se déconnecter
           </DropdownMenuItem>
         </DropdownMenuGroup>
