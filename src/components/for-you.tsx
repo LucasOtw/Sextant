@@ -26,7 +26,14 @@ export function ForYou() {
   const favorites = useFavorites();
   const [state, setState] = useState<State>({ status: "idle", items: [], fromFavorites: false });
   const waiting = favorites.enabled && !favorites.ready && !favorites.error;
-  const favKey = waiting ? null : favorites.favoriteIds.slice(0, 30).join(",");
+  // Graines figées une fois les favoris prêts, recalculées seulement à la connexion ou à la déconnexion : un cœur
+  // cliqué pendant la visite ne relance pas la requête et ne réorganise pas la grille sous le pointeur (la carte
+  // qu'on vient d'enregistrer en sortirait). Les nouveaux favoris comptent au prochain affichage de l'accueil.
+  const [seed, setSeed] = useState<{ enabled: boolean; key: string } | null>(null);
+  if (!waiting && (seed === null || seed.enabled !== favorites.enabled)) {
+    setSeed({ enabled: favorites.enabled, key: favorites.favoriteIds.slice(0, 30).join(",") });
+  }
+  const favKey = seed?.key ?? null;
 
   useEffect(() => {
     // Connecté : on attend les favoris pour ne faire qu'une requête.
@@ -45,7 +52,8 @@ export function ForYou() {
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((data: { items: Recommendation[] }) => setState({ status: data.items.length ? "ready" : "hidden", items: data.items, fromFavorites: fav.length > 0 }))
       .catch(() => {
-        if (!ctrl.signal.aborted) setState({ status: "hidden", items: [], fromFavorites: false });
+        // Un échec de rechargement (429, panne OpenAlex) garde les suggestions déjà affichées.
+        if (!ctrl.signal.aborted) setState((s) => (s.items.length ? s : { status: "hidden", items: [], fromFavorites: false }));
       });
     return () => ctrl.abort();
   }, [favKey]);
