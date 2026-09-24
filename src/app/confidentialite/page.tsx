@@ -72,6 +72,13 @@ export default function PrivacyPage() {
         moment ; toutes sont supprimées avec le compte.
       </p>
 
+      <h2>Bugs et idées</h2>
+      <p>
+        Les sujets publiés sur la page « Bugs et idées » sont publics et n'affichent pas leur auteur ; Sextant garde l'identifiant technique
+        du compte qui les a publiés, pour limiter les abus. Les votes sont anonymes pour les autres visiteurs. À la suppression du compte,
+        ses votes sont effacés et ses sujets restent en ligne, détachés de lui.
+      </p>
+
       <h2>Services tiers et sous-traitants</h2>
       <ul>
         <li>
