@@ -71,7 +71,7 @@ export default async function AccountPage() {
         </section>
 
         <section className="mt-10" aria-labelledby="assistants">
-          <h2 id="assistants" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Assistants IA (MCP)</h2>
+          <h2 id="assistants" className="scroll-mt-24 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Assistants IA (MCP)</h2>
           <div className="mt-3"><McpKeys /></div>
         </section>
 

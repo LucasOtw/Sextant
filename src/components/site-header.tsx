@@ -3,6 +3,7 @@ import { HeaderSearch } from "@/components/header-search";
 import { HeaderNav } from "@/components/header-nav";
 import { LogoMark } from "@/components/logo";
 import { WelcomeDialog } from "@/components/welcome-dialog";
+import { McpAnnouncement } from "@/components/mcp-announcement";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButton } from "@/components/auth/auth-button";
 import { FavoritesLink } from "@/components/favorites/favorites-link";
@@ -28,6 +29,7 @@ export async function SiteHeader() {
         </div>
       </div>
       <WelcomeDialog />
+      <McpAnnouncement />
     </header>
   );
 }
