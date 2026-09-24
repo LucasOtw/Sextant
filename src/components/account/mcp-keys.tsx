@@ -10,30 +10,46 @@ import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
-function CopyBlock({ label, value, secret = false }: { label: string; value: string; secret?: boolean }) {
+function useCopy() {
   const [copied, setCopied] = useState(false);
+  async function copy(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      toast.error("Presse-papiers indisponible : sélectionnez le texte pour le copier.");
+    }
+  }
+  return { copied, copy };
+}
+
+/** Bloc technique secondaire : libellé et bouton sur une ligne, texte en dessous, retour à la ligne plutôt que défilement. */
+function CopyBlock({ label, value }: { label: string; value: string }) {
+  const { copied, copy } = useCopy();
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <p className="text-sm font-medium">{label}</p>
-      <div className="relative min-w-0">
-        <pre className={`max-w-full overflow-x-auto rounded-lg bg-muted p-3 pr-24 text-xs leading-relaxed ${secret ? "select-all" : ""}`}><code>{value}</code></pre>
-        <Button
-          size="sm"
-          variant="outline"
-          className="absolute right-2 top-2 bg-card"
-          onClick={async () => {
-            try {
-              await navigator.clipboard.writeText(value);
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1800);
-            } catch {
-              toast.error("Presse-papiers indisponible : sélectionnez le texte.");
-            }
-          }}
-        >
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">{label}</p>
+        <Button size="sm" variant="ghost" onClick={() => void copy(value)}>
           {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}
         </Button>
       </div>
+      <pre className="max-w-full whitespace-pre-wrap break-all rounded-lg bg-muted p-3 text-xs leading-relaxed"><code>{value}</code></pre>
+    </div>
+  );
+}
+
+/** Ce qu'il faut coller dans Claude : l'adresse, en grand, avec un seul bouton. */
+function ConnectorUrl({ url }: { url: string }) {
+  const { copied, copy } = useCopy();
+  return (
+    <div className="flex flex-col gap-3 rounded-xl bg-accent-brand/8 p-4 ring-1 ring-accent-brand/25">
+      <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
+      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[13px] leading-relaxed ring-1 ring-foreground/10">{url}</p>
+      <Button size="lg" className="w-full" onClick={() => void copy(url)}>
+        {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Adresse copiée" : "Copier l'adresse"}
+      </Button>
     </div>
   );
 }
@@ -133,40 +149,56 @@ export function McpKeys() {
       <details className="text-sm">
         <summary className="font-medium">Comment brancher Sextant à mon assistant ?</summary>
         <div className="mt-3 flex flex-col gap-2 text-muted-foreground">
-          <p>Adresse du serveur MCP : <code className="text-foreground">{endpoint}</code>, avec votre clé dans l'en-tête <code>Authorization: Bearer sxt_…</code>.</p>
-          <p>Créez une clé : les instructions s'affichent alors avec votre clé déjà insérée, pour Claude Code, Claude Desktop, claude.ai et ChatGPT.</p>
+          <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages → Connecteurs → Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
+          <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans « Autres méthodes ».</p>
         </div>
       </details>
 
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
-        <DialogContent className="max-h-[90dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-2xl">
-          <DialogTitle className="title-display text-2xl">Votre clé « {created?.info.name} »</DialogTitle>
-          <DialogDescription className="text-[15px] text-muted-foreground">
-            Copiez-la maintenant : elle ne sera plus jamais affichée. Traitez-la comme un mot de passe ; en cas de doute, révoquez-la et créez-en une autre.
+        <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
+          <DialogTitle className="title-display text-2xl">Votre clé est prête</DialogTitle>
+          <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
+            Copiez l'adresse ci-dessous maintenant : elle contient votre clé et ne sera plus jamais affichée.
           </DialogDescription>
           {created && (
-            <div className="mt-2 flex min-w-0 flex-col gap-4">
-              <CopyBlock label="Clé" value={created.key} secret />
-              <CopyBlock label="Claude Code (terminal)" value={`claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer ${created.key}"`} secret />
-              <CopyBlock
-                label="Claude Desktop — fichier claude_desktop_config.json"
-                value={JSON.stringify(
-                  { mcpServers: { sextant: { command: "npx", args: ["-y", "mcp-remote", endpoint, "--header", "Authorization:${SEXTANT_AUTH}"], env: { SEXTANT_AUTH: `Bearer ${created.key}` } } } },
-                  null,
-                  2,
-                )}
-                secret
-              />
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <CopyBlock label="claude.ai, ChatGPT et autres connecteurs sans champ d'en-tête — adresse à coller" value={`${endpoint}?key=${created.key}`} secret />
-                <p className="text-xs text-muted-foreground">
-                  Cette adresse contient la clé : ne la partagez pas. Dans claude.ai : Réglages → Connecteurs → Ajouter un connecteur personnalisé.
-                  Dans ChatGPT : Réglages → Connecteurs (mode développeur) → Créer, sans authentification.
-                </p>
-              </div>
-              <div className="flex justify-end">
-                <Button onClick={() => setCreated(null)}>J'ai copié ma clé</Button>
-              </div>
+            <div className="mt-1 flex min-w-0 flex-col gap-5">
+              <ConnectorUrl url={`${endpoint}?key=${created.key}`} />
+
+              <ol className="flex flex-col gap-2.5 text-[15px]">
+                {[
+                  <>Dans Claude, ouvrez <strong>Réglages</strong>, puis <strong>Connecteurs</strong>.</>,
+                  <>Cliquez sur <strong>Ajouter un connecteur personnalisé</strong>.</>,
+                  <>Nom : <strong>Sextant</strong>. URL : collez l'adresse. Laissez le reste vide, puis validez.</>,
+                ].map((step, i) => (
+                  <li key={i} className="flex gap-3">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">{i + 1}</span>
+                    <span className="pt-0.5">{step}</span>
+                  </li>
+                ))}
+              </ol>
+
+              <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+                Même démarche dans ChatGPT : Réglages → Connecteurs → Créer (mode développeur), sans authentification.
+                Cette adresse vaut mot de passe : ne la partagez pas. En cas de doute, révoquez la clé et créez-en une autre.
+              </p>
+
+              <details className="group text-sm">
+                <summary className="text-muted-foreground hover:text-foreground">Autres méthodes (Claude Code, fichier de configuration de Claude Desktop, clé seule)</summary>
+                <div className="mt-3 flex min-w-0 flex-col gap-4">
+                  <CopyBlock label="Claude Code, dans le terminal" value={`claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer ${created.key}"`} />
+                  <CopyBlock
+                    label="Claude Desktop, fichier claude_desktop_config.json"
+                    value={JSON.stringify(
+                      { mcpServers: { sextant: { command: "npx", args: ["-y", "mcp-remote", endpoint, "--header", "Authorization:${SEXTANT_AUTH}"], env: { SEXTANT_AUTH: `Bearer ${created.key}` } } } },
+                      null,
+                      2,
+                    )}
+                  />
+                  <CopyBlock label="Clé seule" value={created.key} />
+                </div>
+              </details>
+
+              <Button variant="outline" size="lg" className="w-full" onClick={() => setCreated(null)}>C'est fait</Button>
             </div>
           )}
         </DialogContent>
