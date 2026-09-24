@@ -80,7 +80,23 @@ export async function adminAuth(): Promise<Auth> {
   return getAuth(await adminApp());
 }
 
+let db: Firestore | undefined;
+
+/**
+ * Firestore en REST plutôt qu'en gRPC (PERF-24) : démarrage à froid plus léger (~40 à 120 ms par instance), et le
+ * serveur n'écoute aucun flux (ni onSnapshot ni listen, seuls usages qui exigent gRPC). Transactions, batch et
+ * recursiveDelete fonctionnent en REST. `initializeFirestore` renvoie l'instance existante si les réglages sont les
+ * mêmes ; ne jamais appeler `settings()` ici (« You can only call settings() once » dès la 2e requête).
+ */
 export async function adminDb(): Promise<Firestore> {
-  const { getFirestore } = await import("firebase-admin/firestore");
-  return getFirestore(await adminApp());
+  if (db) return db;
+  const { getFirestore, initializeFirestore } = await import("firebase-admin/firestore");
+  const firebaseApp = await adminApp();
+  try {
+    db = initializeFirestore(firebaseApp, { preferRest: true });
+  } catch {
+    // Instance déjà créée avec d'autres réglages dans ce processus (rechargement à chaud en dev) : on la reprend.
+    db = getFirestore(firebaseApp);
+  }
+  return db;
 }
