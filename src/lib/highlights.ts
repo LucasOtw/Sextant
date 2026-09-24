@@ -51,11 +51,11 @@ export async function listHighlights(uid: string, workId?: string, max = MAX_HIG
   return workId ? items.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")) : items;
 }
 
-/** Les surlignages (les plus récents d'abord) qui correspondent à `match`, lus par pages et seulement jusqu'à en trouver `limit`. */
-export async function findHighlights(uid: string, match: (h: Highlight) => boolean, limit: number): Promise<Highlight[]> {
+/** Les surlignages (les plus récents d'abord) qui correspondent à `match`, lus par pages jusqu'à en trouver `limit` ou à en avoir parcouru `max`. */
+export async function findHighlights(uid: string, match: (h: Highlight) => boolean, limit: number, max: number): Promise<Highlight[]> {
   const db = await adminDb();
   const query = db.collection(`users/${uid}/highlights`).orderBy("createdAt", "desc");
-  return scanPages(query, (d) => toHighlight(d.data(), d.id), match, limit, MAX_HIGHLIGHTS);
+  return scanPages(query, (d) => toHighlight(d.data(), d.id), match, limit, Math.min(max, MAX_HIGHLIGHTS));
 }
 
 export async function countHighlights(uid: string): Promise<number> {

@@ -22,7 +22,8 @@ export function ReadPdfButton({ workId, originalUrl, className }: Props) {
     const ctrl = new AbortController();
     fetch(`/api/pdf?work=${workId}`, { method: "HEAD", signal: ctrl.signal })
       .then((res) => {
-        if (!res.ok) setTarget("original");
+        // Un refus de débit (429) ne dit rien du PDF : on garde le lecteur intégré.
+        if (!res.ok && res.status !== 429) setTarget("original");
       })
       .catch(() => undefined);
     return () => ctrl.abort();

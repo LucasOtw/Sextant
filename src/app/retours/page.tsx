@@ -16,8 +16,8 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function FeedbackPage() {
-  // Page publique qui lit jusqu'à 300 documents : limite par IP avant Firestore (par instance).
-  const limited = !rateLimit(`feedback-view:${clientIp(await headers())}`, 30, 60_000);
+  // Page publique qui lit jusqu'à 300 documents : limite par IP avant Firestore (par instance), assez large pour un campus derrière un NAT.
+  const limited = !rateLimit(`feedback-view:${clientIp(await headers())}`, 120, 60_000);
   const user = isAuthEnabled() && !limited ? await getCurrentUser() : null;
   let items: FeedbackItem[] = [];
   let voted: string[] = [];

@@ -19,6 +19,12 @@ import { SITE } from "@/lib/site";
 /** Passages lus au plus pour un article donné (le tri par date se fait en mémoire, sans index composite). */
 const MAX_ARTICLE_HIGHLIGHTS = 200;
 
+/**
+ * Éléments parcourus au plus par un filtre texte (favoris ou citations) : sans ce plafond, une requête
+ * qui ne trouve rien lirait toute la bibliothèque (jusqu'à 2000 documents) à chaque appel.
+ */
+const MCP_SCAN_MAX = 600;
+
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 const articleId = z.string().regex(/^W\d{2,15}$/i, "Identifiant OpenAlex attendu, par exemple W2741809807").describe("Identifiant OpenAlex de l'article (W…)");
 
@@ -158,13 +164,14 @@ export function registerSextantTools(server: McpServer) {
       const uid = uidOf(ctx as Ctx);
       const n = limit ?? 30;
       const q = query ? fold(query) : "";
-      // Lectures bornées : sans filtre, seulement les `n` plus récents ; avec filtre, parcours par pages jusqu'à `n` résultats.
+      // Lectures bornées : sans filtre, seulement les `n` plus récents ; avec filtre, parcours par pages jusqu'à `n` résultats ou MCP_SCAN_MAX favoris lus.
       const [shown, total] = await Promise.all([
-        q ? findFavorites(uid, (f) => fold(`${f.title} ${f.authors} ${f.venue ?? ""} ${f.topic ?? ""}`).includes(q), n) : listFavorites(uid, n),
+        q ? findFavorites(uid, (f) => fold(`${f.title} ${f.authors} ${f.venue ?? ""} ${f.topic ?? ""}`).includes(q), n, MCP_SCAN_MAX) : listFavorites(uid, n),
         countFavorites(uid),
       ]);
-      if (shown.length === 0) return text(q ? `Aucun favori ne correspond à « ${query} ».` : "Aucun favori pour l'instant.");
-      return text(`${total} favori(s) au total${q ? `, ${shown.length} pour « ${query} »` : ""} :\n\n${shown.map(favoriteLine).join("\n")}`);
+      const capped = q && total > MCP_SCAN_MAX ? ` (recherche limitée aux ${MCP_SCAN_MAX} favoris les plus récents)` : "";
+      if (shown.length === 0) return text(q ? `Aucun favori ne correspond à « ${query} »${capped}.` : "Aucun favori pour l'instant.");
+      return text(`${total} favori(s) au total${q ? `, ${shown.length} pour « ${query} »${capped}` : ""} :\n\n${shown.map(favoriteLine).join("\n")}`);
     },
   );
 
@@ -222,17 +229,19 @@ export function registerSextantTools(server: McpServer) {
       const n = limit ?? 30;
       const q = query ? fold(query) : "";
       const matches = (h: Highlight) => !q || fold(`${h.text} ${h.note} ${h.article.title}`).includes(q);
-      // Lectures bornées : un article (≤ 200 passages), les `n` plus récents, ou un parcours par pages jusqu'à `n` résultats.
+      // Lectures bornées : un article (≤ 200 passages), les `n` plus récents, ou un parcours par pages jusqu'à `n` résultats ou MCP_SCAN_MAX passages lus.
       const shown = article_id
         ? (await listHighlights(uid, shortId(article_id).toUpperCase(), MAX_ARTICLE_HIGHLIGHTS)).filter(matches).slice(0, n)
         : q
-          ? await findHighlights(uid, matches, n)
+          ? await findHighlights(uid, matches, n, MCP_SCAN_MAX)
           : await listHighlights(uid, undefined, n);
-      if (shown.length === 0) return text("Aucune citation ne correspond.");
+      // Le parcours filtré s'arrête après MCP_SCAN_MAX passages : on le dit quand il a pu ne pas tout voir.
+      const capped = q && !article_id && shown.length < n ? `\n\n(Recherche limitée aux ${MCP_SCAN_MAX} passages les plus récents.)` : "";
+      if (shown.length === 0) return text(`Aucune citation ne correspond.${capped}`);
       return text(
         shown
           .map((h, i) => `${i + 1}. ${citationBlock(h)}\n   Source : ${sourceLabel(h)} — article ${h.workId}${h.note ? `\n   Note : ${h.note}` : ""}`)
-          .join("\n\n"),
+          .join("\n\n") + capped,
       );
     },
   );

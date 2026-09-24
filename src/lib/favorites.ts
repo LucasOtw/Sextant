@@ -38,11 +38,11 @@ export async function listFavorites(uid: string, max = MAX_FAVORITES): Promise<F
   return snap.docs.map((d) => toFavorite(d.data(), d.id));
 }
 
-/** Les favoris qui correspondent à `match`, lus par pages et seulement jusqu'à en trouver `limit`. */
-export async function findFavorites(uid: string, match: (f: Favorite) => boolean, limit: number): Promise<Favorite[]> {
+/** Les favoris qui correspondent à `match`, lus par pages jusqu'à en trouver `limit` ou à en avoir parcouru `max`. */
+export async function findFavorites(uid: string, match: (f: Favorite) => boolean, limit: number, max: number): Promise<Favorite[]> {
   const db = await adminDb();
   const query = db.collection(`users/${uid}/favorites`).orderBy("addedAt", "desc");
-  return scanPages(query, (d) => toFavorite(d.data(), d.id), match, limit, MAX_FAVORITES);
+  return scanPages(query, (d) => toFavorite(d.data(), d.id), match, limit, Math.min(max, MAX_FAVORITES));
 }
 
 /** Les favoris demandés, dans l'ordre donné (les absents sont ignorés) : `getAll` par paquets de 100, en parallèle. */

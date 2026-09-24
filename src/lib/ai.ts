@@ -72,8 +72,9 @@ function configuredModel(): string | null {
   return null;
 }
 
+/** Sans AI_MODEL valide, un modèle économique : la synthèse est anonyme, elle ne doit jamais partir sur le plus cher. */
 export function modelFor(provider: Provider): string {
-  return configuredModel() ?? (provider === "anthropic" ? "claude-opus-5" : CONFIGS[provider].defaultModel);
+  return configuredModel() ?? (provider === "anthropic" ? "claude-haiku-4-5" : CONFIGS[provider].defaultModel);
 }
 
 export class AiError extends Error {

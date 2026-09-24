@@ -34,13 +34,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 415 });
   }
 
-  let raw: unknown;
+  let bodyId: unknown;
   try {
-    raw = ((await req.json()) as { id?: unknown }).id;
+    bodyId = ((await req.json()) as { id?: unknown }).id;
   } catch {
     /* corps invalide */
   }
-  const id = typeof raw === "string" ? raw.toUpperCase() : "";
+  const id = typeof bodyId === "string" ? bodyId.toUpperCase() : "";
   if (!WORK_ID.test(id)) {
     return NextResponse.json({ error: "Identifiant d'article invalide." }, { status: 400 });
   }

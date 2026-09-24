@@ -23,10 +23,11 @@ interface Props {
 /**
  * Une seule lecture par rendu (métadonnées et page partagent le résultat grâce à `cache`), et une limite par IP
  * avant tout accès à Firestore : une liste pleine coûte un millier de lectures (limite par instance).
+ * 120 vues/min : une classe derrière le NAT d'un campus partage la même IP ; la borne globale est au pare-feu Vercel.
  */
 const load = cache(async (token: string): Promise<SharedList | "limited" | null> => {
   if (!SHARE_TOKEN.test(token)) return null;
-  if (!rateLimit(`share-view:${clientIp(await headers())}`, 30, 60_000)) return "limited";
+  if (!rateLimit(`share-view:${clientIp(await headers())}`, 120, 60_000)) return "limited";
   return getSharedList(token).catch(() => null);
 });
 
@@ -47,6 +48,7 @@ export default async function SharedListPage({ params }: Props) {
   if (list === "limited") {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+        <h1 className="sr-only">Liste partagée</h1>
         <TooManyRequests />
       </div>
     );
