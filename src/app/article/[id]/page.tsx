@@ -50,8 +50,14 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const work = await getWork((await params).id).catch(() => null);
-  if (!work) return { title: "Article introuvable" };
+  let work: Awaited<ReturnType<typeof getWork>>;
+  try {
+    work = await getWork((await params).id);
+  } catch {
+    // Panne de la source (OpenAlex) : la page d'erreur serveur prend le relais, le titre ne doit pas parler d'article absent.
+    return { title: "Erreur serveur", robots: { index: false } };
+  }
+  if (!work) return { title: "Article introuvable", robots: { index: false } };
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   return { title: workTitle(work), description: abstract?.slice(0, 160) };
 }
