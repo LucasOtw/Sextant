@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
 import { addFavorite, FavoritesLimitError, listFavoriteIds, removeFavorite } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
   const id = new URL(req.url).searchParams.get("id") ?? "";

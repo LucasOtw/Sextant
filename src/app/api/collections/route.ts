@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
 import { CollectionsLimitError, createCollection, listCollections } from "@/lib/collections";
 import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -28,7 +28,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (tooMany(user.uid)) return TOO_MANY();
   let name: string | null = null;

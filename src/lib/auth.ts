@@ -23,13 +23,32 @@ export function isAuthEnabled(): boolean {
   );
 }
 
-/** Utilisateur courant d'après le cookie de session, ou null. Mémorisé pour la durée de la requête. */
-export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
+/**
+ * Contrôle de révocation (compte supprimé ou désactivé, jetons révoqués) déjà réussi, par uid, pour 5 minutes.
+ * Mémoire propre à chaque instance : une rafale d'écritures (cœurs, surlignages) ne coûte qu'un aller-retour.
+ */
+const REVOCATION_CHECK_TTL_MS = 5 * 60 * 1000;
+const revocationChecked = new Map<string, number>();
+
+/** Oublie le contrôle mémorisé (à la suppression du compte : les autres appareils sont recontrôlés aussitôt). */
+export function forgetRevocationCheck(uid: string): void {
+  revocationChecked.delete(uid);
+}
+
+async function readSession(strict: boolean): Promise<SessionUser | null> {
   if (!isAuthEnabled()) return null;
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   try {
-    const claims = await (await adminAuth()).verifySessionCookie(token, true);
+    const auth = await adminAuth();
+    // Vérification locale (signature, expiration) : aucun appel réseau une fois les clés publiques en cache.
+    let claims = await auth.verifySessionCookie(token);
+    if (strict && (revocationChecked.get(claims.uid) ?? 0) < Date.now()) {
+      // Contrôle de révocation : un aller-retour vers Identity Toolkit (accounts:lookup).
+      claims = await auth.verifySessionCookie(token, true);
+      if (revocationChecked.size > 1000) revocationChecked.clear();
+      revocationChecked.set(claims.uid, Date.now() + REVOCATION_CHECK_TTL_MS);
+    }
     return {
       uid: claims.uid,
       email: claims.email ?? null,
@@ -41,4 +60,21 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
     if (!isExpectedAuthError(e)) logError("auth.session", e);
     return null;
   }
-});
+}
+
+/**
+ * Utilisateur courant d'après le cookie de session, ou null, pour les rendus et les lectures. Mémorisé pour la
+ * durée de la requête. Sans contrôle de révocation (PERF-05) : un compte supprimé ou désactivé ailleurs reste
+ * reconnu jusqu'à l'expiration du cookie (14 jours au plus) pour les lectures, qui ne portent que sur ses
+ * propres données (supprimées avec le compte). Les écritures passent par `getCurrentUserStrict`.
+ */
+export const getCurrentUser = cache((): Promise<SessionUser | null> => readSession(false));
+
+/**
+ * Variante stricte, pour les écritures et les opérations sensibles (export, clés d'API, partage, suppression) :
+ * contrôle aussi que le compte existe, n'est pas désactivé et que ses jetons n'ont pas été révoqués. Délai de
+ * détection : 5 minutes au plus (contrôle mémorisé par instance). Sans quoi un cookie resté sur un autre appareil
+ * pourrait recréer des données sous users/{uid} après la suppression du compte. Une vraie déconnexion de tous les
+ * appareils exigerait aussi `revokeRefreshTokens(uid)` à la déconnexion (voir SEC-08).
+ */
+export const getCurrentUserStrict = cache((): Promise<SessionUser | null> => readSession(true));

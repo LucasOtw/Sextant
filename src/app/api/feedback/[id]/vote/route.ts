@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserStrict } from "@/lib/auth";
 import { FeedbackNotFoundError, toggleVote } from "@/lib/feedback";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Connectez-vous pour voter." }, { status: 401 });
   if (!rateLimit(`feedback-vote:${user.uid}`, 60, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   const { id } = await ctx.params;

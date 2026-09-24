@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserStrict } from "@/lib/auth";
 import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  * avec tout ce que Sextant conserve pour vous. Téléchargé depuis « Mon compte ».
  */
 export async function GET() {
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (!rateLimit(`export:${user.uid}`, 5, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   try {

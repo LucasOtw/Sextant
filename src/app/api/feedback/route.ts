@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserStrict } from "@/lib/auth";
 import { createFeedback } from "@/lib/feedback";
 import { sanitizeFeedback } from "@/lib/feedback-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 16_384);
   if (refused) return refused;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Connectez-vous pour publier." }, { status: 401 });
   if (!rateLimit(`feedback-post:${user.uid}`, 5, 60 * 60_000)) return NextResponse.json({ error: "Vous avez publié plusieurs sujets récemment : réessayez dans une heure." }, { status: 429 });
   let body: unknown;

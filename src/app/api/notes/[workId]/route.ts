@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { cleanText } from "@/lib/highlights-shared";
 import { getNote, setNote } from "@/lib/notes";
@@ -18,7 +18,8 @@ async function guard(req: Request, ctx: Ctx, write: boolean) {
     const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 32_768);
     if (refused) return { refused };
   }
-  const user = await getCurrentUser();
+  // Écriture : contrôle de révocation (PERF-05) ; lecture : cookie vérifié localement.
+  const user = await (write ? getCurrentUserStrict() : getCurrentUser());
   if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
   if (!rateLimit(`notes:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { workId } = await ctx.params;

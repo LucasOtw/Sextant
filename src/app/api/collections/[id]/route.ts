@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUserStrict } from "@/lib/auth";
 import { type CollectionPatch, CollectionNotFoundError, CollectionOrderError, deleteCollection, updateCollection } from "@/lib/collections";
 import { MAX_FAVORITES, WORK_ID } from "@/lib/favorites-shared";
 import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
@@ -17,7 +17,7 @@ type Ctx = { params: Promise<{ id: string }> };
 async function guard(req: Request, ctx: Ctx) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return { refused };
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
   if (!rateLimit(`collections:${user.uid}`, 60, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
