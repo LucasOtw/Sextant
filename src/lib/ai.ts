@@ -47,9 +47,33 @@ export function isAiEnabled(): boolean {
   return activeProvider() !== null;
 }
 
+/** Forme d'un nom de modèle : « ministral-8b-latest », « meta-llama/llama-3.3-70b-instruct:free »… */
+const MODEL_NAME = /^[a-z0-9][a-z0-9._:/-]{1,63}$/i;
+/** Préfixes de clés connus (Mistral, OpenAI/Anthropic/OpenRouter, Groq, Sextant…). */
+const KEY_PREFIX = /^(mstrl|sk|gsk|sxt|xai|pk|rk|key)[-_]/i;
+/** Une longue suite de caractères sans séparateur trahit un jeton, jamais un nom de modèle. */
+const TOKEN_RUN = /[a-z0-9]{24,}/i;
+
+let warnedBadModel = false;
+
+/**
+ * AI_MODEL n'est retenu que s'il ressemble à un nom de modèle : cette valeur est affichée sur chaque fiche article
+ * et renvoyée par /api/summary. Une clé collée par erreur dans la variable est ignorée (modèle par défaut),
+ * sans jamais être reprise dans une réponse ni dans les journaux.
+ */
+function configuredModel(): string | null {
+  const raw = process.env.AI_MODEL?.trim();
+  if (!raw) return null;
+  if (MODEL_NAME.test(raw) && !KEY_PREFIX.test(raw) && !TOKEN_RUN.test(raw)) return raw;
+  if (!warnedBadModel) {
+    warnedBadModel = true;
+    console.warn("[ai] AI_MODEL ignoré : la valeur ne ressemble pas à un nom de modèle (clé collée par erreur ?).");
+  }
+  return null;
+}
+
 export function modelFor(provider: Provider): string {
-  if (process.env.AI_MODEL) return process.env.AI_MODEL;
-  return provider === "anthropic" ? "claude-opus-5" : CONFIGS[provider].defaultModel;
+  return configuredModel() ?? (provider === "anthropic" ? "claude-opus-5" : CONFIGS[provider].defaultModel);
 }
 
 export class AiError extends Error {
