@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckIcon, Loader2Icon, NotebookPenIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
@@ -19,52 +19,111 @@ const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", 
 /** « Ma note » : un texte libre sur l'article, enregistré tout seul quelques instants après la frappe. */
 export function ArticleNote({ enabled, snapshot, initial }: Props) {
   const [text, setText] = useState(initial?.text ?? "");
-  const [saved, setSaved] = useState(initial?.text ?? "");
   const [savedAt, setSavedAt] = useState<string | null>(initial?.updatedAt ?? null);
   const [status, setStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [signIn, setSignIn] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const latest = useRef(text);
-  useEffect(() => {
-    latest.current = text;
-  }, [text]);
+  /** Dernier texte saisi (lu par les gestionnaires de départ, sans attendre un rendu). */
+  const pending = useRef(text);
+  /** Dernier texte envoyé avec succès (tel que saisi, avant nettoyage serveur : sert de point de comparaison). */
+  const sent = useRef(text);
+  /** Un envoi en cours : jamais deux PUT en vol, pour qu'une version ancienne n'arrive pas après la récente. */
+  const inflight = useRef(false);
+  /** L'utilisateur a tapé depuis l'affichage : la relecture serveur ne doit pas écraser sa saisie. */
+  const dirty = useRef(false);
+  const url = `/api/notes/${snapshot.id}`;
 
-  async function save(value: string) {
-    if (value.trim() === saved.trim()) return;
-    setStatus("saving");
+  /** Envoie la dernière saisie, puis la suivante si l'utilisateur a continué de taper pendant l'envoi. */
+  const save = useCallback(async () => {
+    if (inflight.current) return;
+    inflight.current = true;
     try {
-      const res = await fetch(`/api/notes/${snapshot.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) });
-      const data = (await res.json().catch(() => ({}))) as { note?: Note | null; error?: string };
-      if (res.status === 401) {
-        setSignIn(true);
-        setStatus("idle");
-        return;
+      while (pending.current.trim() !== sent.current.trim()) {
+        const value = pending.current;
+        setStatus("saving");
+        try {
+          const res = await fetch(url, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) });
+          const data = (await res.json().catch(() => ({}))) as { note?: Note | null; error?: string };
+          if (res.status === 401) {
+            setSignIn(true);
+            setStatus("idle");
+            return;
+          }
+          if (!res.ok) throw new Error(data.error ?? "Échec.");
+          sent.current = value;
+          setSavedAt(data.note?.updatedAt ?? null);
+          setStatus("saved");
+        } catch (e) {
+          setStatus("error");
+          toast.error(e instanceof Error ? e.message : "La note n'a pas pu être enregistrée.");
+          return;
+        }
       }
-      if (!res.ok) throw new Error(data.error ?? "Échec.");
-      setSaved(data.note?.text ?? "");
-      setSavedAt(data.note?.updatedAt ?? null);
-      setStatus("saved");
-    } catch (e) {
-      setStatus("error");
-      toast.error(e instanceof Error ? e.message : "La note n'a pas pu être enregistrée.");
+    } finally {
+      inflight.current = false;
     }
-  }
+  }, [url, snapshot]);
 
-  // Enregistrement différé : 900 ms après la dernière frappe, et au départ de la page.
+  /**
+   * Départ de la page (fermeture, rechargement, retour arrière, onglet masqué) : la saisie en attente part en
+   * `keepalive`, qui survit au déchargement. Sans mise à jour d'état : le composant est peut-être déjà démonté.
+   */
+  const flush = useCallback(() => {
+    clearTimeout(timer.current);
+    const value = pending.current;
+    if (value.trim() === sent.current.trim()) return;
+    sent.current = value;
+    void fetch(url, { method: "PUT", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) }).catch(() => undefined);
+  }, [url, snapshot]);
+
+  // Enregistrement différé : 900 ms après la dernière frappe, au blur, et au départ de la page (flush).
   useEffect(() => {
-    return () => clearTimeout(timer.current);
-  }, []);
+    if (!enabled) return;
+    const onHidden = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onHidden);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onHidden);
+      flush();
+    };
+  }, [enabled, flush]);
+
+  // Relecture à l'affichage : au retour arrière, Next réutilise la page déjà rendue, donc une note périmée.
+  // La compléter réécrirait l'ancienne version par-dessus la récente.
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void fetch(url, { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ note?: Note | null }>) : null))
+      .then((data) => {
+        if (cancelled || !data || dirty.current || inflight.current) return;
+        const fresh = data.note?.text ?? "";
+        pending.current = fresh;
+        sent.current = fresh;
+        setText(fresh);
+        setSavedAt(data.note?.updatedAt ?? null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, url]);
 
   function onChange(value: string) {
+    dirty.current = true;
+    pending.current = value;
     setText(value);
     setStatus("idle");
     clearTimeout(timer.current);
-    timer.current = setTimeout(() => void save(value), 900);
+    timer.current = setTimeout(() => void save(), 900);
   }
 
   function onBlur() {
     clearTimeout(timer.current);
-    void save(latest.current);
+    void save();
   }
 
   if (!enabled) {

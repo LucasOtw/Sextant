@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, CopyIcon, QuoteIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,15 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
   /** Vrai dès que l'édition se ferme : le blur émis par Chrome au démontage du champ ne doit pas ré-enregistrer. */
   const closedRef = useRef(false);
   const long = h.text.length > LONG_TEXT;
+  const unsaved = editing && note.trim() !== h.note;
+
+  // Note en cours de saisie (enregistrée seulement au blur ou à Cmd+Entrée) : le navigateur prévient avant de quitter.
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
 
   function startEditing() {
     closedRef.current = false;
