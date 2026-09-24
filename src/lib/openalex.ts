@@ -291,6 +291,36 @@ export async function getWorksBySameTopic(topicId: string, excludeId: string, n 
   return page.results.filter((w) => shortId(w.id) !== shortId(excludeId)).slice(0, n);
 }
 
+/** Sujet principal et articles apparentés (related_works) des graines d'une recommandation, dans l'ordre demandé. */
+export async function getSeedMeta(ids: string[]): Promise<Pick<Work, "id" | "display_name" | "title" | "primary_topic" | "related_works">[]> {
+  const short = ids.map(shortId).filter(Boolean).slice(0, 50);
+  if (short.length === 0) return [];
+  const page = await get<Page<Pick<Work, "id" | "display_name" | "title" | "primary_topic" | "related_works">>>(
+    "/works",
+    { filter: `ids.openalex:${short.join("|")}`, "per-page": short.length, select: "id,display_name,title,primary_topic,related_works" },
+    3600,
+  );
+  const byId = new Map(page.results.map((w) => [shortId(w.id), w]));
+  return short.map((id) => byId.get(id)).filter((w): w is NonNullable<typeof w> => Boolean(w));
+}
+
+/** Travaux par identifiant, avec les garde-fous qualité de la recherche (types vérifiés, revues indexées, résumé). */
+export async function getQualityWorksByIds(ids: string[]): Promise<Work[]> {
+  const short = ids.map(shortId).filter(Boolean).slice(0, 50);
+  if (short.length === 0) return [];
+  const page = await get<Page<Work>>(
+    "/works",
+    {
+      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, "has_abstract:true", `ids.openalex:${short.join("|")}`].join(","),
+      "per-page": short.length,
+      select: LIST_SELECT,
+    },
+    3600,
+  );
+  const byId = new Map(page.results.map((w) => [shortId(w.id), w]));
+  return short.map((id) => byId.get(id)).filter((w): w is Work => Boolean(w));
+}
+
 /**
  * Articles récents (depuis `sinceYear`) les plus cités d'un sujet, hors identifiants déjà vus : matière de « Pour vous ».
  * Mêmes garde-fous que partout : types vérifiés, revues indexées, résumé présent.

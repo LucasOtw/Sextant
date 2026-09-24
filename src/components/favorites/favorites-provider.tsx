@@ -44,6 +44,8 @@ interface FavoritesContext {
   error: boolean;
   count: number;
   has: (id: string) => boolean;
+  /** Identifiants des favoris, du plus récent au plus ancien. */
+  favoriteIds: string[];
   /** Instantanés des favoris ajoutés pendant la session (le serveur ne renvoie que des identifiants). */
   added: Favorite[];
   /** Ajoute ou retire. Renvoie `"signin"` si l'utilisateur doit d'abord se connecter. */
@@ -425,6 +427,7 @@ export function FavoritesProvider({ userId, children }: Props) {
       error,
       count: ids.size,
       has: (id) => ids.has(id),
+      favoriteIds: [...ids].reverse(),
       added: [...added.values()].filter((f) => ids.has(f.id)),
       toggle,
       refresh,
