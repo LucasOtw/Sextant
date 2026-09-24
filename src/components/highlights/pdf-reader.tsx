@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
@@ -15,6 +15,8 @@ type PdfLib = typeof import("pdfjs-dist");
 
 const GOTO_EVENT = "sextant:goto-page";
 const NO_HIGHLIGHTS: Highlight[] = [];
+/** Proportion A4, en attendant de connaître celle de la première page du document. */
+const A4_ASPECT = 1.414;
 
 function goToPage(page: number) {
   window.dispatchEvent(new CustomEvent(GOTO_EVENT, { detail: page }));
@@ -156,6 +158,7 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [width, setWidth] = useState(0);
+  const [defaultAspect, setDefaultAspect] = useState(A4_ASPECT);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<(NonNullable<ReturnType<typeof readSelection>> & { page: number }) | null>(null);
   const [busy, setBusy] = useState(false);
@@ -182,10 +185,21 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
           if (!cancelled) setProgress({ loaded: p.loaded, total: p.total ?? 0 });
         };
         const d = await task.promise;
+        // Hauteur provisoire des pages non rendues : proportion de la première page (comme le visualiseur PDF.js),
+        // pas un A4 fixe. Sinon, sur un PDF au format Letter ou en paysage, les pages changent de hauteur en se rendant
+        // et « aller à la page N » atterrit à côté. `getPage` est mis en cache par PDF.js : rien n'est lu deux fois.
+        let aspect = A4_ASPECT;
+        try {
+          const v = (await d.getPage(1)).getViewport({ scale: 1 });
+          if (v.width > 0 && v.height > 0) aspect = v.height / v.width;
+        } catch {
+          /* première page illisible : on garde l'A4, chaque page corrige sa hauteur en se rendant */
+        }
         if (cancelled) {
           void task.destroy();
           return;
         }
+        setDefaultAspect(aspect);
         setLib(pdfjs);
         setDoc(d);
       } catch (e) {
@@ -226,6 +240,8 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
       const page = Number(a);
       const ok = read && page > 0 && a === pageOf(sel?.focusNode);
       if (!ok) {
+        // Un seul minuteur à la fois : un minuteur orphelin (défilement juste avant) effacerait une sélection valide.
+        clearTimeout(clearTimer);
         clearTimer = setTimeout(() => setSelection(null), 300);
         return;
       }
@@ -244,13 +260,18 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   useEffect(() => {
     const onGoto = (e: Event) => {
       const page = (e as CustomEvent<number>).detail;
-      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Saut instantané : un défilement doux ferait rendre les pages traversées, dont la hauteur peut changer en route
+      // (documents mêlant plusieurs formats), et la cible, calculée au départ, ne serait plus au bon endroit.
+      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "auto", block: "start" });
     };
     window.addEventListener(GOTO_EVENT, onGoto);
     return () => window.removeEventListener(GOTO_EVENT, onGoto);
   }, []);
 
-  /** Passages par page, avec une référence stable par page : la mise en surbrillance ne se rejoue qu'aux vrais changements. */
+  /**
+   * Passages par page. Les références ne changent qu'avec les surlignages (jamais au défilement ni à la sélection) ;
+   * les pages sans passage reçoivent toutes la même constante.
+   */
   const byPage = useMemo(() => {
     const m = new Map<number, Highlight[]>();
     for (const h of highlights) {
@@ -328,7 +349,15 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         <>
           <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner.</p>
           {Array.from({ length: doc.numPages }, (_, i) => (
-            <PdfPage key={i + 1} doc={doc} lib={lib} pageNumber={i + 1} width={width} highlights={byPage.get(i + 1) ?? NO_HIGHLIGHTS} />
+            <PdfPage
+              key={i + 1}
+              doc={doc}
+              lib={lib}
+              pageNumber={i + 1}
+              width={width}
+              defaultAspect={defaultAspect}
+              highlights={byPage.get(i + 1) ?? NO_HIGHLIGHTS}
+            />
           ))}
         </>
       )}
@@ -342,14 +371,20 @@ interface PageProps {
   lib: PdfLib;
   pageNumber: number;
   width: number;
+  /** Proportion (hauteur / largeur) supposée tant que la page n'a pas été rendue. */
+  defaultAspect: number;
   highlights: Highlight[];
 }
 
-function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
+/**
+ * Mémoïsée : une sélection dans le lecteur re-rend `PdfReader` à chaque défilement (position du bouton « Surligner ») ;
+ * les pages, dont les props ne changent pas, ne suivent pas.
+ */
+const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspect, highlights }: PageProps) {
   const ref = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const [aspect, setAspect] = useState(1.414);
+  const [aspect, setAspect] = useState(defaultAspect);
   const [visible, setVisible] = useState(false);
   const [rendered, setRendered] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -442,4 +477,4 @@ function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
       )}
     </div>
   );
-}
+});
