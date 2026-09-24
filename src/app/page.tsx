@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getFeaturedWorks } from "@/lib/openalex";
 import { logError } from "@/lib/log";
 
+// Liens d'exemple non préchargés : /search est dynamique, le préchargement coûtait une invocation sans rien apporter (PERF-18).
 const EXAMPLES = ["télétravail et bien-être", "transition énergétique villes", "réseaux sociaux santé mentale adolescents", "fast fashion supply chain"];
 
 export default function HomePage() {
@@ -27,7 +28,7 @@ export default function HomePage() {
           Essayez :{" "}
           {EXAMPLES.map((q, i) => (
             <span key={q}>
-              <Link href={`/search?q=${encodeURIComponent(q)}`} className="underline underline-offset-2 hover:text-foreground">
+              <Link href={`/search?q=${encodeURIComponent(q)}`} prefetch={false} className="underline underline-offset-2 hover:text-foreground">
                 {q}
               </Link>
               {i < EXAMPLES.length - 1 && " · "}
