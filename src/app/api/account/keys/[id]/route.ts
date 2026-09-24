@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
+import { revokeKey } from "@/lib/api-keys";
+import { API_KEY_ID } from "@/lib/api-keys-shared";
+import { rejectCrossSite } from "@/lib/security";
+
+export const runtime = "nodejs";
+
+/** Révoque une clé : elle cesse de fonctionner immédiatement. */
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const refused = rejectCrossSite(req);
+  if (refused) return refused;
+  const user = await getCurrentUser();
+  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  const { id } = await ctx.params;
+  if (!API_KEY_ID.test(id)) return NextResponse.json({ error: "Clé invalide." }, { status: 400 });
+  try {
+    if (!(await revokeKey(user.uid, id))) return NextResponse.json({ error: "Clé introuvable." }, { status: 404 });
+    return NextResponse.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
+  } catch {
+    return NextResponse.json({ error: "La révocation a échoué." }, { status: 502 });
+  }
+}

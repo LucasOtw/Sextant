@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { rejectCrossSite } from "@/lib/security";
+import { deleteAllKeys } from "@/lib/api-keys";
 
 export const runtime = "nodejs";
 
@@ -21,6 +22,7 @@ export async function DELETE(req: Request) {
       shares.docs.forEach((d) => batch.delete(d.ref));
       await batch.commit();
     }
+    await deleteAllKeys(user.uid);
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
   } catch {
