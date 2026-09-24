@@ -112,7 +112,7 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 - [x] Partager une liste en lecture seule par lien (désactivable), export BibTeX pour le destinataire
 - [x] Pages légales à jour, export de ses données (RGPD)
 - [x] « Pour vous » : articles apparentés à vos favoris et lectures, et les plus cités de vos sujets, chaque suggestion expliquée et écartable
-- [ ] Serveur MCP : brancher sa bibliothèque Sextant à Claude ou ChatGPT ([note](docs/handoffs/2026-09-22-idee-mcp-sextant.md))
+- [x] Serveur MCP : brancher sa bibliothèque Sextant à Claude ou ChatGPT, avec une clé personnelle révocable (« Mon compte »)
 - [ ] Alertes sur un sujet ou un auteur
 - [ ] Applications mobiles (après la version web)
 

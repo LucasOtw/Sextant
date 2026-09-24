@@ -63,6 +63,15 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
+      <h2>Assistants IA branchés à votre compte (MCP)</h2>
+      <p>
+        Depuis « Mon compte », vous pouvez créer des clés personnelles pour donner à un assistant IA de votre choix (Claude, ChatGPT…)
+        un accès en lecture seule à votre bibliothèque : favoris, listes, citations et notes. Sextant ne conserve que l'empreinte de chaque
+        clé (jamais la clé elle-même), son nom et ses dates de création et de dernière utilisation. Ce que vous consultez ainsi est
+        transmis à l'assistant que vous avez branché et relève alors de sa propre politique de confidentialité. Une clé se révoque à tout
+        moment ; toutes sont supprimées avec le compte.
+      </p>
+
       <h2>Services tiers et sous-traitants</h2>
       <ul>
         <li>

@@ -5,6 +5,7 @@ import { BookmarkIcon, DownloadIcon, FolderIcon, HistoryIcon, ShieldCheckIcon, H
 import { buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
+import { McpKeys } from "@/components/account/mcp-keys";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { adminDb } from "@/lib/firebase/admin";
 import { countFavorites } from "@/lib/favorites";
@@ -67,6 +68,11 @@ export default async function AccountPage() {
             <Tile icon={<NotebookPenIcon />} label="Notes" value={String(notesCount)} hint="Ce que vous retenez d'un article, sur sa fiche." />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>
+        </section>
+
+        <section className="mt-10" aria-labelledby="assistants">
+          <h2 id="assistants" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Assistants IA (MCP)</h2>
+          <div className="mt-3"><McpKeys /></div>
         </section>
 
         <section className="mt-10" aria-labelledby="donnees">

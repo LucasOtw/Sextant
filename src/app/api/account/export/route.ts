@@ -4,6 +4,7 @@ import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
 import { adminDb } from "@/lib/firebase/admin";
 import { listHighlights } from "@/lib/highlights";
+import { listKeys } from "@/lib/api-keys";
 import { listNotes } from "@/lib/notes";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -19,12 +20,13 @@ export async function GET() {
   if (!rateLimit(`export:${user.uid}`, 5, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   try {
     const db = await adminDb();
-    const [profileSnap, favorites, lists, highlights, notes] = await Promise.all([
+    const [profileSnap, favorites, lists, highlights, notes, keys] = await Promise.all([
       db.doc(`users/${user.uid}`).get(),
       listFavorites(user.uid),
       listCollections(user.uid),
       listHighlights(user.uid),
       listNotes(user.uid, 2000),
+      listKeys(user.uid),
     ]);
     const created = profileSnap.get("createdAt") as { toDate?: () => Date } | undefined;
     const data = {
@@ -42,6 +44,8 @@ export async function GET() {
       lists,
       citations: highlights,
       notes,
+      // Les clés ne sont jamais stockées en clair : seuls leur nom, leur début et leurs dates figurent ici.
+      assistantKeys: keys.map(({ name, prefix, createdAt, lastUsedAt }) => ({ name, prefix, createdAt, lastUsedAt })),
     };
     const stamp = new Date().toISOString().slice(0, 10);
     return new NextResponse(JSON.stringify(data, null, 2), {
