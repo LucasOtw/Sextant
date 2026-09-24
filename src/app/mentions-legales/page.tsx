@@ -10,7 +10,7 @@ export default function LegalNoticePage() {
   const email = SITE.contactEmail;
 
   return (
-    <ProsePage title="Mentions légales" intro="Qui édite Sextant, qui l'héberge, et comment nous joindre." updated="23 septembre 2026">
+    <ProsePage title="Mentions légales" intro="Qui édite Sextant, qui l'héberge, et comment nous joindre." updated="24 septembre 2026">
       <h2>Éditeur du site</h2>
       <p>
         {SITE.name} est un site personnel, sans but lucratif, édité par{" "}
@@ -36,6 +36,13 @@ export default function LegalNoticePage() {
         Site : <a href={SITE.host.url} target="_blank" rel="noreferrer">{SITE.host.url}</a> · Contact : {SITE.host.contact}
       </p>
 
+      <h2>Stockage des données des comptes</h2>
+      <p>
+        Les données des comptes (profil, favoris, listes, citations, notes) sont stockées par <strong>Google Cloud Firebase</strong> (Google
+        Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irlande), dans la région Europe-Paris. La connexion passe par Firebase
+        Authentication.
+      </p>
+
       <h2>Données bibliographiques</h2>
       <p>
         Les métadonnées d'articles proviennent d'<a href="https://openalex.org" target="_blank" rel="noreferrer">OpenAlex</a>,
@@ -52,8 +59,8 @@ export default function LegalNoticePage() {
 
       <h2>Données personnelles</h2>
       <p>
-        Sans compte, Sextant ne collecte aucune donnée personnelle ; avec un compte, il ne conserve que votre profil Google et ce que
-        vous y enregistrez. Ni cookie de suivi ni mesure d'audience. Le détail se trouve dans la{" "}
+        Sans compte, Sextant ne conserve aucune donnée personnelle ; avec un compte, il ne conserve que votre profil Google et ce que
+        vous y enregistrez, que vous pouvez télécharger ou effacer à tout moment. Ni cookie de suivi ni mesure d'audience. Le détail se trouve dans la{" "}
         <Link href="/confidentialite">politique de confidentialité</Link>. Les règles d'usage du service sont décrites dans les{" "}
         <Link href="/conditions">conditions d'utilisation</Link>.
       </p>
