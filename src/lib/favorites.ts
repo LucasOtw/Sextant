@@ -1,5 +1,5 @@
 import "server-only";
-import type { DocumentReference, Transaction } from "firebase-admin/firestore";
+import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
 import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
@@ -70,9 +70,9 @@ export async function listFavoriteIds(uid: string): Promise<string[]> {
   return rebuilt;
 }
 
-export async function countFavorites(uid: string): Promise<number> {
-  const db = await adminDb();
-  const user = await db.doc(`users/${uid}`).get();
+/** Nombre de favoris ; `user` évite de relire `users/{uid}` quand l'appelant l'a déjà chargé (page compte). */
+export async function countFavorites(uid: string, user?: DocumentSnapshot): Promise<number> {
+  user ??= await (await adminDb()).doc(`users/${uid}`).get();
   const n = user.get("favoritesCount");
   if (typeof n === "number") return Math.max(0, n);
   return (await listFavoriteIds(uid)).length;
