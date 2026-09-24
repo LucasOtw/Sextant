@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithPopup } from "firebase/auth";
 import { toast } from "sonner";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
+import { firebaseAuth, googleProvider, isFirebaseConfigured } from "@/lib/firebase/client";
 
 interface Props {
   open: boolean;
@@ -33,6 +33,19 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Firebase Auth n'est initialisé qu'à l'ouverture de cette fenêtre, jamais au chargement d'une page : un visiteur qui
+  // ne se connecte pas ne contacte pas Google (iframe d'authentification, base IndexedDB). Sur mobile et Safari, `getAuth()`
+  // précharge alors l'iframe pendant que la fenêtre s'affiche, pour que `signInWithPopup` ouvre la fenêtre Google
+  // dans la foulée du clic (sinon le bloqueur de fenêtres surgissantes l'arrêterait).
+  useEffect(() => {
+    if (!open || !isFirebaseConfigured) return;
+    try {
+      firebaseAuth();
+    } catch {
+      /* configuration absente : l'erreur s'affichera au clic */
+    }
+  }, [open]);
 
   async function signInWithGoogle() {
     setBusy(true);
