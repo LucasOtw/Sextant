@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { BookmarkIcon, FolderIcon, HistoryIcon, ShieldCheckIcon, HighlighterIcon, NotebookPenIcon } from "lucide-react";
+import { BookmarkIcon, DownloadIcon, FolderIcon, HistoryIcon, ShieldCheckIcon, HighlighterIcon, NotebookPenIcon } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
@@ -70,13 +71,21 @@ export default async function AccountPage() {
 
         <section className="mt-10" aria-labelledby="donnees">
           <h2 id="donnees" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Données et confidentialité</h2>
-          <div className="mt-3 flex items-start gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-            <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
-            <p className="text-[15px] leading-relaxed text-muted-foreground">
-              Votre compte contient votre nom, votre e-mail et votre photo Google, ainsi que ce que vous enregistrerez dans
-              Sextant. Rien d'autre, aucun suivi. Détails dans la{" "}
-              <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
-            </p>
+          <div className="mt-3 flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+            <div className="flex items-start gap-3">
+              <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
+              <p className="text-[15px] leading-relaxed text-muted-foreground">
+                Votre compte contient votre nom, votre e-mail et votre photo Google, et ce que vous enregistrez dans Sextant : favoris,
+                listes, citations et notes. Rien d'autre, aucun suivi. Détails dans la{" "}
+                <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 pl-8">
+              <a href="/api/account/export" download className={buttonVariants({ variant: "outline", className: "bg-card" })}>
+                <DownloadIcon /> Télécharger mes données
+              </a>
+              <span className="text-sm text-muted-foreground">Un fichier JSON avec tout ce que Sextant conserve pour vous.</span>
+            </div>
           </div>
         </section>
 
