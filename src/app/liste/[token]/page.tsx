@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { FolderIcon, LockOpenIcon, QuoteIcon } from "lucide-react";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { SharedListActions } from "@/components/shared/shared-list-actions";
+import { TooManyRequests } from "@/components/too-many-requests";
 import { Badge } from "@/components/ui/badge";
 import { SHARE_TOKEN } from "@/lib/collections-shared";
 import { formatCount, typeLabel } from "@/lib/format";
-import { getSharedList } from "@/lib/shares";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { getSharedList, type SharedList } from "@/lib/shares";
 
 // Lu à chaque visite : un lien désactivé cesse de fonctionner tout de suite.
 export const dynamic = "force-dynamic";
@@ -16,13 +20,19 @@ interface Props {
   params: Promise<{ token: string }>;
 }
 
-async function load(token: string) {
+/**
+ * Une seule lecture par rendu (métadonnées et page partagent le résultat grâce à `cache`), et une limite par IP
+ * avant tout accès à Firestore : une liste pleine coûte un millier de lectures (limite par instance).
+ */
+const load = cache(async (token: string): Promise<SharedList | "limited" | null> => {
   if (!SHARE_TOKEN.test(token)) return null;
+  if (!rateLimit(`share-view:${clientIp(await headers())}`, 30, 60_000)) return "limited";
   return getSharedList(token).catch(() => null);
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const list = await load((await params).token);
+  if (list === "limited") return { title: "Trop de requêtes", robots: { index: false, follow: false } };
   return {
     title: list ? `Liste partagée · ${list.name}` : "Liste introuvable",
     description: list?.description || undefined,
@@ -34,6 +44,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /** Page publique d'une liste partagée : nom, description, articles, export BibTeX. Rien d'autre du compte. */
 export default async function SharedListPage({ params }: Props) {
   const list = await load((await params).token);
+  if (list === "limited") {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+        <TooManyRequests />
+      </div>
+    );
+  }
   if (!list) notFound();
   const n = list.articles.length;
 

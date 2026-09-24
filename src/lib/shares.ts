@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import { adminDb } from "@/lib/firebase/admin";
 import { CollectionNotFoundError } from "@/lib/collections";
+import { getFavoritesByIds } from "@/lib/favorites";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 
 /**
@@ -61,29 +62,11 @@ export async function getSharedList(token: string): Promise<SharedList | null> {
   // Double vérification : le jeton doit toujours être celui de la liste (désactivation, suppression).
   if (!list.exists || list.get("shareToken") !== token) return null;
   const ids = (list.get("articleIds") as unknown[] | undefined)?.filter((x): x is string => typeof x === "string") ?? [];
-  const favorites = db.collection(`users/${uid}/favorites`);
-  const articles: FavoriteSnapshot[] = [];
-  for (let i = 0; i < ids.length; i += 100) {
-    const chunk = ids.slice(i, i + 100);
-    if (chunk.length === 0) break;
-    const docs = await db.getAll(...chunk.map((id) => favorites.doc(id)));
-    for (const d of docs) {
-      if (!d.exists) continue;
-      const x = d.data() ?? {};
-      articles.push({
-        id: d.id,
-        title: String(x.title ?? ""),
-        authors: String(x.authors ?? ""),
-        authorNames: Array.isArray(x.authorNames) ? (x.authorNames as string[]) : [],
-        venue: (x.venue as string | null) ?? null,
-        year: (x.year as number | null) ?? null,
-        doi: (x.doi as string | null) ?? null,
-        type: String(x.type ?? "article"),
-        isOa: Boolean(x.isOa),
-        citedByCount: Number(x.citedByCount ?? 0),
-        topic: (x.topic as string | null) ?? null,
-      });
-    }
-  }
+  // Paquets lus en parallèle ; la date d'ajout reste privée (jamais transmise à la page publique).
+  const articles: FavoriteSnapshot[] = (await getFavoritesByIds(uid, ids)).map((f) => {
+    const snapshot: FavoriteSnapshot & { addedAt?: string | null } = { ...f };
+    delete snapshot.addedAt;
+    return snapshot;
+  });
   return { name: String(list.get("name") ?? ""), description: String(list.get("description") ?? ""), articles };
 }
