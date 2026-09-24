@@ -13,6 +13,11 @@ import { hideRecommendation, readHidden, reasonText, unhideRecommendation, type 
 
 type State = { status: "idle" | "loading" | "ready" | "hidden"; items: Recommendation[]; fromFavorites: boolean };
 
+/** Raccourcit un titre d'article d'origine trop long pour la ligne de raison (le titre entier reste dans le nom accessible). */
+function shortTitle(title: string): string {
+  return title.length > 70 ? `${title.slice(0, 67).trimEnd()}…` : title;
+}
+
 /**
  * « Pour vous » : vos favoris (si vous êtes connecté) et vos consultations sur cet appareil, envoyés à la volée pour calculer
  * des suggestions ; rien n'est gardé côté serveur. Chaque suggestion dit pourquoi elle est là, et peut être écartée.
@@ -89,15 +94,22 @@ export function ForYou() {
             return (
               <li key={item.work.id} className="flex min-w-0 flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
                 <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
-                  {/* Raison complète (sujet et tous les articles d'origine), sur deux lignes au plus : pas d'info réservée au survol. */}
-                  <p className="min-w-0 line-clamp-2 wrap-break-word">
+                  {/* Raison complète (sujet et tous les articles d'origine), jamais tronquée par la hauteur : chaque lien reste visible
+                      et focalisable. Seuls les titres très longs sont raccourcis, le titre entier restant dans le nom accessible du lien. */}
+                  <p className="min-w-0 wrap-break-word">
                     {seeds.length > 0 ? (
                       <>
                         {kind === "related" ? "Proche de " : topic ? `Récent et cité sur « ${topic} », comme ` : "Même sujet que "}
                         {seeds.map((seed, j) => (
                           <Fragment key={seed.id}>
                             {j > 0 && (j === seeds.length - 1 ? " et " : ", ")}
-                            <Link href={`/article/${seed.id}`} className="underline underline-offset-2 hover:text-foreground">« {seed.title} »</Link>
+                            <Link
+                              href={`/article/${seed.id}`}
+                              aria-label={`« ${seed.title} »`}
+                              className="underline underline-offset-2 hover:text-foreground"
+                            >
+                              « {shortTitle(seed.title)} »
+                            </Link>
                           </Fragment>
                         ))}
                       </>

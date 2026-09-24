@@ -97,6 +97,13 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    // Flèche bas rouvre volontairement la liste fermée (motif combobox ARIA), y compris sur un champ prérempli.
+    if (!showList && e.key === "ArrowDown" && items.length > 0) {
+      e.preventDefault();
+      setOpen(true);
+      setActive(0);
+      return;
+    }
     if (!showList) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
@@ -119,8 +126,10 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
         if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
       }}
       // Échap ferme la liste d'où que vienne la touche dans le composant, et rend le focus au champ.
+      // preventDefault : sinon le navigateur vide aussi le champ de recherche. Liste fermée, Échap garde son effacement natif.
       onKeyDown={(e) => {
         if (e.key === "Escape" && showList) {
+          e.preventDefault();
           setOpen(false);
           inputRef.current?.focus();
         }
