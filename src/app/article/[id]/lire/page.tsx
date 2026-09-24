@@ -56,7 +56,7 @@ export default async function ReaderPage({ params }: Props) {
           <ExternalLinkIcon /> PDF original
         </a>
       </div>
-      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initial}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initial}>
         <ReaderLayout url={`/api/pdf?work=${wid}`} originalUrl={oa.url} />
       </HighlightsProvider>
     </div>

@@ -11,8 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { SHARE_TOKEN } from "@/lib/collections-shared";
 import { formatCount, typeLabel } from "@/lib/format";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
-import { recover } from "@/lib/log";
-import { getRetractedIds } from "@/lib/openalex";
+import { retractedWithin } from "@/lib/retracted";
 import { getSharedList, type SharedList } from "@/lib/shares";
 
 // Lu à chaque visite : un lien désactivé cesse de fonctionner tout de suite.
@@ -59,8 +58,8 @@ export default async function SharedListPage({ params }: Props) {
   }
   if (!list) notFound();
   const n = list.articles.length;
-  // Rétractations recalculées à chaque visite : les instantanés de la liste datent de l'enregistrement.
-  const retracted = n > 0 ? await getRetractedIds(list.articles.map((a) => a.id)).catch(recover("liste.retracted", new Set<string>())) : new Set<string>();
+  // Rétractations recalculées à chaque visite (les instantanés datent de l'enregistrement), bornées dans le temps.
+  const retracted = await retractedWithin(list.articles.map((a) => a.id), "liste.retracted");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">

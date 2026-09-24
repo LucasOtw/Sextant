@@ -115,7 +115,7 @@ export default async function ArticlePage({ params }: Props) {
         isOa={work.open_access.is_oa}
       />
       <article className="mx-auto max-w-3xl">
-      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialHighlights}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initialHighlights}>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>

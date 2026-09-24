@@ -11,17 +11,30 @@ export function logError(scope: string, err: unknown, ctx?: Context): void {
   const e = err as { name?: unknown; message?: unknown; code?: unknown; status?: unknown; cause?: unknown } | null;
   const cause = e?.cause as { name?: unknown; code?: unknown } | undefined;
   const entry = {
+    // Le contexte d'abord : il ne peut pas écraser les champs fixes (niveau, portée, message).
+    ...ctx,
     level: "error",
     scope,
     name: typeof e?.name === "string" ? e.name : typeof err,
-    message: typeof e?.message === "string" ? e.message.slice(0, 300) : String(err).slice(0, 300),
+    message: scrub(typeof e?.message === "string" ? e.message : String(err)),
     code: typeof e?.code === "string" || typeof e?.code === "number" ? e.code : undefined,
     status: typeof e?.status === "number" ? e.status : undefined,
     // Cause d'un « fetch failed » (ECONNRESET, UND_ERR_CONNECT_TIMEOUT…) : c'est elle qui dit ce qui a lâché.
     cause: cause && (typeof cause.code === "string" ? cause.code : typeof cause.name === "string" ? cause.name : undefined),
-    ...ctx,
   };
   console.error(JSON.stringify(entry));
+}
+
+/**
+ * Message d'erreur sans donnée personnelle : les erreurs Firestore citent le chemin du document
+ * (« …/documents/users/<uid>/apiKeys/… »), d'autres une adresse e-mail. Tronqué à 300 caractères.
+ */
+function scrub(message: string): string {
+  return message
+    .slice(0, 1000)
+    .replace(/users\/[^/\s"']+/g, "users/<uid>")
+    .replace(/[^\s@"'<>]+@[^\s@"'<>]+\.[^\s@"'<>]+/g, "<email>")
+    .slice(0, 300);
 }
 
 /** Codes Firebase Auth d'une session simplement expirée, révoquée ou mal formée : cas attendus, pas des pannes. */

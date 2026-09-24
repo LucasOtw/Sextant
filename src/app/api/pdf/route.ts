@@ -26,7 +26,11 @@ export async function GET(req: Request) {
   if (url.search !== canonicalSearch(id)) return NextResponse.redirect(new URL(`/api/pdf${canonicalSearch(id)}`, url), 308);
   if (!rateLimit(`pdf:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
-  const work = await getWork(id).catch(recover("pdf.getWork", null, { work: id }));
+  // `undefined` = OpenAlex en panne : ce n'est pas un article absent, et la réponse ne doit pas rester en cache.
+  const work = await getWork(id).catch(recover("pdf.getWork", undefined, { work: id }));
+  if (work === undefined) {
+    return NextResponse.json({ error: "Source momentanément indisponible, réessayez." }, { status: 503, headers: { "cache-control": "no-store", "retry-after": "60" } });
+  }
   if (!work) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   const candidates = openAccessPdfUrls(work).slice(0, 5);
   if (candidates.length === 0) return NextResponse.json({ error: "Pas de PDF en accès ouvert pour cet article." }, { status: 404 });

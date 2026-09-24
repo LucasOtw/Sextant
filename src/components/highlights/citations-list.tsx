@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { CopyIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +16,8 @@ interface Props {
   initial: Highlight[];
   collections: Collection[];
   loadError?: boolean;
+  /** Articles rétractés (vérifiés côté serveur) : badge et mention dans les références copiées. */
+  retracted?: string[];
 }
 
 function fold(s: string) {
@@ -29,8 +32,9 @@ async function jsonOrError(res: Response) {
 const ALL = "__all__";
 
 /** Toutes les citations, groupées par article, filtrables par liste et par texte. */
-export function CitationsList({ initial, collections, loadError = false }: Props) {
+export function CitationsList({ initial, collections, loadError = false, retracted = [] }: Props) {
   const [items, setItems] = useState(initial);
+  const retractedIds = useMemo(() => new Set(retracted), [retracted]);
   const [q, setQ] = useState("");
   const [list, setList] = useState(ALL);
 
@@ -94,7 +98,7 @@ export function CitationsList({ initial, collections, loadError = false }: Props
 
   async function copyAll() {
     try {
-      await navigator.clipboard.writeText(shown.map((h) => citationBlock(h)).join("\n\n---\n\n"));
+      await navigator.clipboard.writeText(shown.map((h) => citationBlock(h, retractedIds.has(h.workId))).join("\n\n---\n\n"));
       toast.success(shown.length > 1 ? `${shown.length} citations copiées avec leurs références.` : "Citation copiée avec sa référence.");
     } catch {
       toast.error("Presse-papiers indisponible.");
@@ -149,6 +153,7 @@ export function CitationsList({ initial, collections, loadError = false }: Props
           const a = group[0].article;
           return (
             <section key={group[0].workId} aria-label={a.title}>
+              {retractedIds.has(group[0].workId) && <Badge variant="destructive" className="mb-1.5">Rétracté</Badge>}
               <h2 className="title-display text-xl leading-snug">
                 <Link href={`/article/${group[0].workId}`} className="hover:text-accent-brand">{a.title}</Link>
               </h2>
@@ -157,7 +162,7 @@ export function CitationsList({ initial, collections, loadError = false }: Props
               </p>
               <ul className="mt-3 flex flex-col gap-2">
                 {group.map((h) => (
-                  <HighlightItem key={h.id} highlight={h} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} />
+                  <HighlightItem key={h.id} highlight={h} retracted={retractedIds.has(h.workId)} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} />
                 ))}
               </ul>
             </section>

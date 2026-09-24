@@ -8,8 +8,8 @@ import { listCollections } from "@/lib/collections";
 import type { Collection } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { listFavorites } from "@/lib/favorites";
-import { logError, recover } from "@/lib/log";
-import { getRetractedIds } from "@/lib/openalex";
+import { logError } from "@/lib/log";
+import { retractedWithin } from "@/lib/retracted";
 import type { Favorite } from "@/lib/favorites-shared";
 
 export const metadata: Metadata = { title: "Mes favoris" };
@@ -34,8 +34,8 @@ export default async function FavoritesPage() {
     }
     if (c.status === "fulfilled") collections = c.value;
     else logError("favoris.collections", c.reason);
-    // Rétractations recalculées à chaque visite : un article peut l'être après son enregistrement.
-    if (favorites.length > 0) retracted = [...(await getRetractedIds(favorites.map((x) => x.id)).catch(recover("favoris.retracted", new Set<string>())))];
+    // Rétractations recalculées à chaque visite (un article peut l'être après son enregistrement), bornées dans le temps.
+    retracted = [...(await retractedWithin(favorites.map((x) => x.id), "favoris.retracted"))];
   }
 
   return (

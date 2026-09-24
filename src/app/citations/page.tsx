@@ -10,6 +10,8 @@ import type { Collection } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { listHighlights } from "@/lib/highlights";
 import type { Highlight } from "@/lib/highlights-shared";
+import { logError } from "@/lib/log";
+import { retractedWithin } from "@/lib/retracted";
 
 export const metadata: Metadata = { title: "Mes citations" };
 
@@ -20,13 +22,20 @@ export default async function CitationsPage() {
   let highlights: Highlight[] = [];
   let collections: Collection[] = [];
   let loadError = false;
+  let retracted: string[] = [];
   // Jusqu'à un millier de lectures par rendu pour une bibliothèque pleine : limite par compte (par instance).
   const limited = user ? !rateLimit(`page-lib:${user.uid}`, 30, 60_000) : false;
   if (user && !limited) {
     const [h, c] = await Promise.allSettled([listHighlights(user.uid), listCollections(user.uid)]);
     if (h.status === "fulfilled") highlights = h.value;
-    else loadError = true;
+    else {
+      loadError = true;
+      logError("citations.list", h.reason);
+    }
     if (c.status === "fulfilled") collections = c.value;
+    else logError("citations.collections", c.reason);
+    // Références copiées marquées « [Article rétracté] » : rétractations recalculées à chaque visite, bornées dans le temps.
+    retracted = [...(await retractedWithin(highlights.map((x) => x.workId), "citations.retracted"))];
   }
 
   return (
@@ -36,7 +45,7 @@ export default async function CitationsPage() {
         <p className="mt-3 text-lg text-muted-foreground">
           Tout ce que vous avez surligné, avec l'article d'origine et la page. Copiez un passage avec sa référence, prêt à coller.
         </p>
-        <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <CitationsList initial={highlights} collections={collections} loadError={loadError} />) : (
+        <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <CitationsList initial={highlights} collections={collections} loadError={loadError} retracted={retracted} />) : (
           <SignInPrompt
             icon={<HighlighterIcon className="mx-auto size-8 text-accent-brand" aria-hidden />}
             title="Vos citations vous attendent."

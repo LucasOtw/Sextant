@@ -9,8 +9,11 @@ import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
-/** Au-delà du délai de l'appel IA (20 s) et de la lecture OpenAlex : la réponse reste un JSON lisible. */
-export const maxDuration = 30;
+/**
+ * Au-delà de la lecture OpenAlex (8 s, jusqu'à ~17 s avec sa relance) et de l'appel IA (20 s, sans relance, pour
+ * Anthropic comme pour les fournisseurs compatibles OpenAI) : la réponse reste un JSON lisible, jamais un 504 de Vercel.
+ */
+export const maxDuration = 40;
 
 /** Cache mémoire par instance : un résumé par article et par modèle, borné (les plus anciens sortent d'abord). */
 const cache = new Map<string, string>();
@@ -94,9 +97,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Clé API invalide côté serveur." }, { status: 500 });
     }
     if (e instanceof Anthropic.RateLimitError) return NextResponse.json({ error: "Trop de demandes, réessayez dans un instant." }, { status: 429 });
+    // Délai dépassé ou coupure réseau (sous-classes d'APIError sans statut HTTP).
+    if (e instanceof Anthropic.APIConnectionError) {
+      logError("summary.anthropic", e);
+      return NextResponse.json({ error: "Le service IA ne répond pas, réessayez." }, { status: 504 });
+    }
     if (e instanceof Anthropic.APIError) {
       logError("summary.anthropic", e);
-      return NextResponse.json({ error: `Erreur du service IA (${e.status}).` }, { status: 502 });
+      return NextResponse.json({ error: `Erreur du service IA${e.status ? ` (${e.status})` : ""}.` }, { status: 502 });
     }
     // Erreur inattendue : trace côté serveur, et toujours un JSON lisible pour le client (jamais un corps vide).
     logError("summary.POST", e, { work: id });
@@ -113,7 +121,8 @@ function stripMarkdown(text: string): string {
 }
 
 async function completeAnthropic(model: string, userContent: string): Promise<string> {
-  const client = new Anthropic();
+  // Même borne que les fournisseurs compatibles OpenAI : le SDK attendrait sinon 10 min, avec deux relances.
+  const client = new Anthropic({ timeout: 20_000, maxRetries: 0 });
   const response = await client.beta.messages.create({
     model,
     max_tokens: 1024,

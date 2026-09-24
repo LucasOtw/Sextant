@@ -66,30 +66,48 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
 
   /**
    * Départ de la page (fermeture, rechargement, retour arrière, onglet masqué) : la saisie en attente part en
-   * `keepalive`, qui survit au déchargement. Sans mise à jour d'état : le composant est peut-être déjà démonté.
+   * `keepalive`, qui survit au déchargement. En cas d'échec (session expirée, limite, réseau), `sent` reprend sa
+   * valeur précédente pour que le prochain `save()` (retour sur l'onglet, frappe, blur) renvoie la note.
+   * Les mises à jour d'état sur un composant démonté sont sans effet.
    */
   const flush = useCallback(() => {
     clearTimeout(timer.current);
     const value = pending.current;
     if (value.trim() === sent.current.trim()) return;
+    const prev = sent.current;
     sent.current = value;
-    void fetch(url, { method: "PUT", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) }).catch(() => undefined);
-  }, [url, snapshot]);
+    const restore = () => {
+      if (sent.current !== value) return;
+      sent.current = prev;
+      // L'utilisateur est déjà revenu sur l'onglet pendant l'envoi : renvoi immédiat par la voie normale.
+      if (document.visibilityState === "visible") void save();
+    };
+    void fetch(url, { method: "PUT", keepalive: true, headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) })
+      .then(async (res) => {
+        if (!res.ok) return restore();
+        const data = (await res.json().catch(() => ({}))) as { note?: Note | null };
+        setSavedAt(data.note?.updatedAt ?? null);
+        setStatus("saved");
+      })
+      .catch(restore);
+  }, [url, snapshot, save]);
 
   // Enregistrement différé : 900 ms après la dernière frappe, au blur, et au départ de la page (flush).
   useEffect(() => {
     if (!enabled) return;
-    const onHidden = () => {
+    // Onglet masqué : envoi `keepalive` ; retour sur l'onglet : renvoi par la voie normale si cet envoi a échoué.
+    const onVisibility = () => {
       if (document.visibilityState === "hidden") flush();
+      else void save();
     };
     window.addEventListener("pagehide", flush);
-    document.addEventListener("visibilitychange", onHidden);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("pagehide", flush);
-      document.removeEventListener("visibilitychange", onHidden);
+      document.removeEventListener("visibilitychange", onVisibility);
       flush();
     };
-  }, [enabled, flush]);
+  }, [enabled, flush, save]);
 
   // Relecture à l'affichage : au retour arrière, Next réutilise la page déjà rendue, donc une note périmée.
   // La compléter réécrirait l'ancienne version par-dessus la récente.
