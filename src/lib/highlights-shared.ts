@@ -76,6 +76,6 @@ export function sourceLabel(h: Pick<Highlight, "source" | "page">): string {
 }
 
 /** Le passage prêt à coller : citation entre guillemets, appel de citation, puis la référence complète. */
-export function citationBlock(h: Highlight): string {
-  return `« ${h.text} » ${citeInline(h.article, h.page)}\n\n${apaFromSnapshot(h.article)}`;
+export function citationBlock(h: Highlight, retracted = false): string {
+  return `« ${h.text} » ${citeInline(h.article, h.page)}\n\n${apaFromSnapshot(h.article, retracted)}`;
 }

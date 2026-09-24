@@ -94,7 +94,7 @@ export function CitationsList({ initial, collections, loadError = false }: Props
 
   async function copyAll() {
     try {
-      await navigator.clipboard.writeText(shown.map(citationBlock).join("\n\n---\n\n"));
+      await navigator.clipboard.writeText(shown.map((h) => citationBlock(h)).join("\n\n---\n\n"));
       toast.success(shown.length > 1 ? `${shown.length} citations copiées avec leurs références.` : "Citation copiée avec sa référence.");
     } catch {
       toast.error("Presse-papiers indisponible.");

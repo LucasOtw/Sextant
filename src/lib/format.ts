@@ -153,9 +153,14 @@ export function toBibtex(w: Work): string {
     lines.push(`  pages = {${w.biblio.first_page}${w.biblio.last_page ? `--${w.biblio.last_page}` : ""}},`);
   }
   if (w.doi) lines.push(`  doi = {${w.doi.replace(/^https?:\/\/doi\.org\//, "")}},`);
+  if (w.is_retracted) lines.push(`  note = {${RETRACTED_BIBTEX_NOTE}},`);
   lines.push("}");
   return lines.join("\n");
 }
+
+/** Mention ajoutée aux références d'un article rétracté : on peut le citer, jamais sans le savoir. */
+export const RETRACTED_APA_SUFFIX = " [Article rétracté]";
+export const RETRACTED_BIBTEX_NOTE = "Retracted";
 
 /** Citation au format APA 7 (approximatif, suffisant pour un copier-coller). */
 export function toApa(w: Work): string {
@@ -179,7 +184,7 @@ export function toApa(w: Work): string {
     ? `, ${w.biblio.first_page}${w.biblio.last_page ? `–${w.biblio.last_page}` : ""}`
     : "";
   const doi = w.doi ? ` ${w.doi}` : "";
-  return `${authors} ${year}. ${workTitle(w)}.${venue ? ` ${venue}${vol}${issue}${pages}.` : ""}${doi}`;
+  return `${authors} ${year}. ${workTitle(w)}.${venue ? ` ${venue}${vol}${issue}${pages}.` : ""}${doi}${w.is_retracted ? RETRACTED_APA_SUFFIX : ""}`;
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {

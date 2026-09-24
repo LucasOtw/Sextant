@@ -280,6 +280,30 @@ export async function getWork(id: string): Promise<Work | null> {
   }
 }
 
+/** Valeurs au plus dans un filtre « ou » d'OpenAlex (`ids.openalex:A|B|…`). */
+const OR_FILTER_MAX = 100;
+
+/**
+ * Parmi `ids`, ceux qu'OpenAlex marque aujourd'hui comme rétractés. Sert aux favoris, listes et outils MCP, dont les
+ * instantanés datent de l'enregistrement : la rétractation est toujours recalculée ici, jamais lue d'un instantané.
+ * Une requête par lot de 100 (seuls les rétractés reviennent, d'où `select=id`), mise en cache une heure.
+ */
+export async function getRetractedIds(ids: string[]): Promise<Set<string>> {
+  const unique = [...new Set(ids.map((id) => shortId(id).toUpperCase()).filter((id) => /^W\d+$/.test(id)))];
+  const lots: string[][] = [];
+  for (let i = 0; i < unique.length; i += OR_FILTER_MAX) lots.push(unique.slice(i, i + OR_FILTER_MAX));
+  const pages = await Promise.all(
+    lots.map((lot) =>
+      get<Page<{ id: string }>>(
+        "/works",
+        { filter: `ids.openalex:${lot.join("|")},is_retracted:true`, select: "id", "per-page": OR_FILTER_MAX },
+        3600,
+      ),
+    ),
+  );
+  return new Set(pages.flatMap((p) => p.results.map((w) => shortId(w.id).toUpperCase())));
+}
+
 /** Récupère plusieurs travaux par identifiant, dans l'ordre demandé. */
 export async function getWorksByIds(ids: string[]): Promise<Work[]> {
   const short = ids.map(shortId).filter(Boolean).slice(0, 50);

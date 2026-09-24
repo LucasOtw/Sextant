@@ -48,14 +48,17 @@ interface Props {
   initialCollections?: Collection[];
   /** Le serveur n'a pas pu lire les favoris : on l'affiche au lieu d'un faux « vide ». */
   loadError?: boolean;
+  /** Identifiants rétractés selon OpenAlex, vérifiés côté serveur à chaque visite (badge et mention dans le BibTeX). */
+  retracted?: string[];
 }
 
 /**
  * Favoris et listes : rendus avec les données serveur, puis reflètent l'état client (ajouts, retraits, listes).
  * La liste sélectionnée vit dans l'URL (`?liste=id`) : partageable, rechargeable, et suivie par le bouton Retour.
  */
-export function FavoritesList({ initial, initialCollections = [], loadError = false }: Props) {
+export function FavoritesList({ initial, initialCollections = [], loadError = false, retracted = [] }: Props) {
   const favorites = useFavorites();
+  const retractedIds = useMemo(() => new Set(retracted), [retracted]);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const selectedId = searchParams.get("liste");
@@ -138,7 +141,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
 
   async function copyBibtex() {
     try {
-      await navigator.clipboard.writeText(bibtexAll(shown));
+      await navigator.clipboard.writeText(bibtexAll(shown, retractedIds));
       toast.success(`BibTeX copié : ${shown.length} référence${shown.length > 1 ? "s" : ""}.`);
     } catch {
       toast.error("Presse-papiers indisponible.");
@@ -146,7 +149,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
   }
 
   function downloadBibtex() {
-    const blob = new Blob([bibtexAll(shown)], { type: "application/x-bibtex;charset=utf-8" });
+    const blob = new Blob([bibtexAll(shown, retractedIds)], { type: "application/x-bibtex;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -334,6 +337,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
                 <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                   <Badge variant="secondary">{typeLabel(f.type)}</Badge>
                   {f.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
+                  {retractedIds.has(f.id) && <Badge variant="destructive">Rétracté</Badge>}
                   {f.topic && <span className="truncate">· {f.topic}</span>}
                 </div>
                 <h3 className="title-display text-xl leading-snug">

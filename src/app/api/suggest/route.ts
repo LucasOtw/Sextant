@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { shortId, VERIFIED_TYPES, withCredentials } from "@/lib/openalex";
+import { logError } from "@/lib/log";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export interface Suggestion {
@@ -26,12 +27,16 @@ export async function GET(req: Request) {
 
   const url = new URL("https://api.openalex.org/autocomplete/works");
   url.searchParams.set("q", q);
-  url.searchParams.set("filter", `type:${VERIFIED_TYPES},primary_location.source.is_core:true,is_paratext:false`);
+  // Mêmes exclusions que la recherche (BASE_FILTERS) : pas de paratexte, pas de rétractés.
+  url.searchParams.set("filter", `type:${VERIFIED_TYPES},primary_location.source.is_core:true,is_paratext:false,is_retracted:false`);
   withCredentials(url);
 
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return NextResponse.json({ results: [] });
+    if (!res.ok) {
+      logError("suggest.GET", new Error(`OpenAlex ${res.status}`), { status: res.status });
+      return NextResponse.json({ results: [] });
+    }
     const data = (await res.json()) as { results: AutocompleteResult[] };
     const results: Suggestion[] = data.results
       .filter((r) => r.entity_type === "work" && r.display_name)
@@ -39,7 +44,8 @@ export async function GET(req: Request) {
       .slice(0, 6)
       .map((r) => ({ id: shortId(r.id), title: r.display_name, hint: r.hint, citations: r.cited_by_count ?? 0 }));
     return NextResponse.json({ results }, { headers: { "cache-control": "public, max-age=300, s-maxage=300" } });
-  } catch {
+  } catch (e) {
+    logError("suggest.GET", e);
     return NextResponse.json({ results: [] });
   }
 }
