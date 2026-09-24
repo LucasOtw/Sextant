@@ -37,6 +37,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const hero = size === "hero";
 
@@ -106,13 +107,25 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
     } else if (e.key === "Enter" && active >= 0) {
       e.preventDefault();
       go(items[active]);
-    } else if (e.key === "Escape") {
-      setOpen(false);
     }
   }
 
   return (
-    <div ref={wrapRef} className={cn("relative w-full", className)}>
+    <div
+      ref={wrapRef}
+      className={cn("relative w-full", className)}
+      // La liste se ferme dès que le focus sort du composant : elle ne doit pas recouvrir l'élément focalisé ensuite.
+      onBlur={(e) => {
+        if (!wrapRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
+      }}
+      // Échap ferme la liste d'où que vienne la touche dans le composant, et rend le focus au champ.
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && showList) {
+          setOpen(false);
+          inputRef.current?.focus();
+        }
+      }}
+    >
       <form
         role="search"
         className="flex w-full items-center gap-2"
@@ -129,6 +142,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             )}
           />
           <Input
+            ref={inputRef}
             type="search"
             name="q"
             value={query}
@@ -138,7 +152,10 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
               setActive(-1);
               setOpen(true);
             }}
-            onFocus={() => setOpen(true)}
+            // Pas d'ouverture au simple passage du focus sur un champ prérempli (/search, /theme) : il faut avoir saisi.
+            onFocus={() => {
+              if (query !== defaultValue) setOpen(true);
+            }}
             onKeyDown={onKeyDown}
             placeholder={hero ? "Mots-clés, titre, auteur…" : "Rechercher…"}
             autoComplete="off"
@@ -170,6 +187,10 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             <li key={item.href} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
               <Link
                 href={item.href}
+                // Motif combobox : les options se parcourent aux flèches, pas à la tabulation, et le focus reste dans le
+                // champ au clic (sinon Safari, qui ne focalise pas les liens, fermerait la liste avant la navigation).
+                tabIndex={-1}
+                onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => setOpen(false)}
                 className={cn(
