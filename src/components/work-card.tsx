@@ -24,8 +24,9 @@ interface Props {
 export function WorkCard({ work, variant = "list" }: Props) {
   const href = `/article/${shortId(work.id)}`;
   const venue = venueName(work);
-  const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const compact = variant === "compact";
+  // La variante compacte n'affiche pas le résumé : pas de reconstruction inutile (et « Pour vous » ne l'envoie plus).
+  const abstract = compact ? null : abstractFromInvertedIndex(work.abstract_inverted_index);
   // Le cœur est toujours proposé : sans session, il ouvre la connexion. (Pas d'import serveur ici : la carte sert aussi côté client.)
   const favorites = true;
 

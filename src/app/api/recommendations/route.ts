@@ -10,6 +10,27 @@ const RESULTS = 6;
 const MAX_TOPICS = 3;
 const MAX_SEEDS = 20;
 
+/**
+ * Allège un article pour la carte compacte (PERF-25) : ni affiliations ni identifiants d'auteurs (le résumé n'est déjà
+ * pas demandé à OpenAlex, cf. RECO_SELECT).
+ * On garde le nom de chaque auteur : « et N autres » et l'instantané de favori (BibTeX, APA) en dépendent,
+ * comme `doi`, `open_access`, `primary_topic` et le nom de la revue.
+ */
+function slim(w: Work): Work {
+  const source = (loc: Work["primary_location"]) =>
+    loc && { ...loc, source: loc.source && { id: loc.source.id, display_name: loc.source.display_name, type: null } };
+  return {
+    ...w,
+    authorships: w.authorships.map((a) => ({
+      author_position: a.author_position,
+      author: { id: null, display_name: a.author.display_name, orcid: null },
+      institutions: [],
+    })),
+    primary_location: source(w.primary_location),
+    best_oa_location: source(w.best_oa_location),
+  };
+}
+
 /** OpenAlex refuse tout le lot si un identifiant est hors format (« W1 ») : on ne garde que des identifiants plausibles. */
 const PLAUSIBLE_ID = /^W\d{2,15}$/;
 
@@ -86,12 +107,12 @@ export async function GET(req: Request) {
       Promise.all(topTopics.map(([tid]) => getRecentByTopic(tid, since, RESULTS).catch(recover("recommendations.topic", [] as Work[])))),
     ]);
 
-    const relatedQueue: Recommendation[] = relatedWorks.map((w) => ({ work: w, reason: { kind: "related", seeds: related.get(shortId(w.id))?.seeds ?? [] } }));
+    const relatedQueue: Recommendation[] = relatedWorks.map((w) => ({ work: slim(w), reason: { kind: "related", seeds: related.get(shortId(w.id))?.seeds ?? [] } }));
     const topicQueue: Recommendation[] = [];
     for (let i = 0; i < RESULTS; i++) {
       topTopics.forEach(([, t], k) => {
         const w = perTopic[k][i];
-        if (w) topicQueue.push({ work: w, reason: { kind: "topic", topic: t.name, seeds: t.seeds.slice(0, 1) } });
+        if (w) topicQueue.push({ work: slim(w), reason: { kind: "topic", topic: t.name, seeds: t.seeds.slice(0, 1) } });
       });
     }
 
