@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
-import { toast } from "sonner";
 import { BookmarkIcon, LogOutIcon, UserRoundIcon, HighlighterIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -16,9 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { firebaseAuth } from "@/lib/firebase/client";
 import type { SessionUser } from "@/lib/auth";
-import { completeRedirectSignIn, SignInDialog } from "@/components/auth/sign-in-dialog";
+import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { useLogout } from "@/components/auth/use-logout";
 
 interface Props {
   user: SessionUser | null;
@@ -26,25 +23,8 @@ interface Props {
 
 /** Bouton du header : « Se connecter » ou avatar avec menu. L'état vient du serveur (cookie de session). */
 export function AuthButton({ user }: Props) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
-
-  // Si l'utilisateur revient d'une connexion par redirection, on termine l'ouverture de session.
-  useEffect(() => {
-    if (user) return;
-    completeRedirectSignIn().then((done) => done && router.refresh());
-  }, [user, router]);
-
-  async function logout() {
-    await fetch("/api/auth/session", { method: "DELETE" });
-    try {
-      await signOut(firebaseAuth());
-    } catch {
-      /* Firebase non initialisé : rien à faire */
-    }
-    toast("Vous êtes déconnecté.", { description: "À bientôt sur Sextant." });
-    router.refresh();
-  }
+  const { logout } = useLogout();
 
   if (!user) {
     return (
