@@ -155,15 +155,24 @@ async function downloadPdf(url: string, signal: AbortSignal, onProgress: (loaded
     return bytes;
   }
   const reader = res.body.getReader();
+  // Taille annoncée : écriture directe dans un tampon préalloué (pic mémoire = taille du PDF, pas le double).
+  // Sinon, ou si la réponse dépasse l'annonce, accumulation des morceaux puis copie finale.
+  let buffer: Uint8Array | null = total > 0 ? new Uint8Array(total) : null;
   const chunks: Uint8Array[] = [];
   let loaded = 0;
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
-    chunks.push(value);
+    if (buffer && loaded + value.length > buffer.length) {
+      chunks.push(buffer.subarray(0, loaded));
+      buffer = null;
+    }
+    if (buffer) buffer.set(value, loaded);
+    else chunks.push(value);
     loaded += value.length;
     onProgress(loaded, total);
   }
+  if (buffer) return loaded === buffer.length ? buffer : buffer.subarray(0, loaded);
   const bytes = new Uint8Array(loaded);
   let offset = 0;
   for (const chunk of chunks) {

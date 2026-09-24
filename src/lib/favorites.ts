@@ -57,11 +57,13 @@ export async function getFavoritesByIds(uid: string, ids: string[]): Promise<Fav
   return pages.flat().flatMap((d) => (d.exists ? [toFavorite(d.data() ?? {}, d.id)] : []));
 }
 
-/** Identifiants des favoris (une lecture), reconstruits et persistés une fois si le champ manque. */
+/** Identifiants des favoris (une lecture), reconstruits et persistés une fois si le champ manque d'un profil existant. */
 export async function listFavoriteIds(uid: string): Promise<string[]> {
   const db = await adminDb();
   const userRef = db.doc(`users/${uid}`);
   const user = await userRef.get();
+  // Profil absent (compte supprimé, cookie encore valide ailleurs) : ne rien recréer sous users/{uid}.
+  if (!user.exists) return [];
   const ids = user.get("favoriteIds");
   if (Array.isArray(ids)) return ids.filter((x): x is string => typeof x === "string");
   const snap = await userRef.collection("favorites").select().get();

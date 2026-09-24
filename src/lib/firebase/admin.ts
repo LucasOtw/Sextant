@@ -2,6 +2,7 @@ import "server-only";
 import type { App } from "firebase-admin/app";
 import type { Auth } from "firebase-admin/auth";
 import type { Firestore } from "firebase-admin/firestore";
+import { logError } from "@/lib/log";
 
 /**
  * Firebase côté serveur (SDK Admin). Identifiants dans FIREBASE_SERVICE_ACCOUNT : le JSON de la clé
@@ -94,8 +95,10 @@ export async function adminDb(): Promise<Firestore> {
   const firebaseApp = await adminApp();
   try {
     db = initializeFirestore(firebaseApp, { preferRest: true });
-  } catch {
+  } catch (e) {
     // Instance déjà créée avec d'autres réglages dans ce processus (rechargement à chaud en dev) : on la reprend.
+    // Journalisé : un repli inattendu en gRPC (en production) doit rester visible.
+    logError("firebase.adminDb", e);
     db = getFirestore(firebaseApp);
   }
   return db;

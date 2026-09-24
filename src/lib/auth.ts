@@ -66,7 +66,9 @@ async function readSession(strict: boolean): Promise<SessionUser | null> {
  * Utilisateur courant d'après le cookie de session, ou null, pour les rendus et les lectures. Mémorisé pour la
  * durée de la requête. Sans contrôle de révocation (PERF-05) : un compte supprimé ou désactivé ailleurs reste
  * reconnu jusqu'à l'expiration du cookie (14 jours au plus) pour les lectures, qui ne portent que sur ses
- * propres données (supprimées avec le compte). Les écritures passent par `getCurrentUserStrict`.
+ * propres données (supprimées avec le compte). Une lecture ne doit donc jamais écrire sous `users/{uid}` quand le
+ * profil n'existe pas (cf. `listFavoriteIds`) : elle recréerait un document orphelin pour un compte supprimé.
+ * Les écritures passent par `getCurrentUserStrict`.
  */
 export const getCurrentUser = cache((): Promise<SessionUser | null> => readSession(false));
 
