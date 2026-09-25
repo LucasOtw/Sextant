@@ -56,6 +56,17 @@ describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
     expect(out!.authorNames[0]).toHaveLength(120);
   });
 
+  it("SEC-06 — retire les caractères de contrôle et de mise en forme (bidi U+202E) des champs texte", () => {
+    const out = sanitizeSnapshot(
+      makeSnapshot({ title: "Vrai\u202E titre\u0000", authors: "A\u200B B", authorNames: ["Nom\u2066 masqué", "\u202E"], venue: "Revue\u202D", topic: "\u0007Sujet" }),
+    )!;
+    expect(out.title).toBe("Vrai titre");
+    expect(out.authors).toBe("A B");
+    expect(out.authorNames).toEqual(["Nom masqué"]);
+    expect(out.venue).toBe("Revue");
+    expect(out.topic).toBe("Sujet");
+  });
+
   it("normalise les champs typés : année entière, citations positives, DOI doi.org seulement", () => {
     const out = sanitizeSnapshot(makeSnapshot({ year: 2018.7, citedByCount: -5, doi: "javascript:alert(1)" }))!;
     expect(out.year).toBe(2018);

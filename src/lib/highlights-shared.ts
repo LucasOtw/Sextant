@@ -1,4 +1,8 @@
 import { type FavoriteSnapshot, apaFromSnapshot, citeInline, sanitizeSnapshot } from "@/lib/favorites-shared";
+import { cleanText } from "@/lib/text";
+
+// Déplacé dans src/lib/text.ts (utilisé aussi par favorites-shared) ; réexporté pour les appelants existants.
+export { cleanText };
 
 /**
  * Surlignages : un passage retenu, rattaché à son article (`W…`), sa page, sa date et une note.
@@ -30,13 +34,6 @@ export const MAX_CONTEXT = 120;
 export const MAX_PAGE = 100_000;
 
 const SOURCES: HighlightSource[] = ["abstract", "pdf", "manual"];
-
-/** Texte normalisé : caractères de contrôle retirés, espaces réduits (les sauts de ligne sont gardés si `keepLines`), borné. */
-export function cleanText(input: unknown, max: number, keepLines = false): string {
-  if (typeof input !== "string") return "";
-  const flat = input.replace(/\r\n?/g, "\n").replace(/[\p{Cc}\p{Cf}]/gu, (c) => (c === "\n" ? "\n" : "")).replace(keepLines ? /[^\S\n]+/g : /\s+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-  return Array.from(flat).slice(0, max).join("").trim();
-}
 
 /** Le texte dépasse-t-il la borne (comptée en points de code) ? Sert à refuser plutôt que tronquer en silence. */
 export function tooLong(input: unknown, max: number): boolean {
