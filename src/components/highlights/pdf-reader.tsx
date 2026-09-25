@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
+import { isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { cn } from "cn";
 
 type PdfLib = typeof import("pdfjs-dist");
@@ -113,13 +114,82 @@ function formatBytes(n: number): string {
   return `${Math.max(1, Math.round(n / 1024))} Ko`;
 }
 
-/** Télécharge le PDF en entier, en signalant la progression (`total` = 0 si la taille n'est pas annoncée). */
-async function downloadPdf(url: string, signal: AbortSignal, onProgress: (loaded: number, total: number) => void): Promise<Uint8Array> {
+/**
+ * Réponse du relais pour le fichier entier : taille, et de quoi demander des plages (PERF-06) quand le relais les
+ * propose (`x-sextant-ranges`) pour un fichier assez gros.
+ */
+interface PdfDownload {
+  res: Response;
+  /** Taille annoncée, 0 si inconnue (réponse compressée : Content-Length compterait les octets compressés). */
+  total: number;
+  /** Index de la copie qui sert le fichier, si les plages sont possibles. */
+  candidate: string | null;
+}
+
+async function openPdf(url: string, signal: AbortSignal): Promise<PdfDownload> {
   const res = await fetch(url, { signal });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  // Réponse compressée : Content-Length compte les octets compressés, pas ceux lus → taille totale inconnue.
   const encoded = (res.headers.get("content-encoding") ?? "identity") !== "identity";
   const total = encoded ? 0 : Number(res.headers.get("content-length")) || 0;
+  const candidate = res.headers.get("x-sextant-candidate");
+  const ranges = res.headers.get("x-sextant-ranges") === "1" && total >= RANGE_MIN_TOTAL_BYTES && candidate !== null && /^[0-4]$/.test(candidate) && res.body !== null;
+  return { res, total, candidate: ranges ? candidate : null };
+}
+
+/**
+ * Lit le corps morceau par morceau. Les morceaux arrivés avant `attach` sont gardés ; `attach(sink)` les rend (pour
+ * `initialData`) et envoie les suivants directement à `sink`, sans rien garder (PDF.js a sa propre copie).
+ */
+function streamBody(res: Response, onProgress: (loaded: number) => void) {
+  const early: Uint8Array[] = [];
+  const target: { sink: ((chunk: Uint8Array) => void) | null } = { sink: null };
+  let loaded = 0;
+  const done = (async () => {
+    const reader = res.body!.getReader();
+    for (;;) {
+      const { done: finished, value } = await reader.read();
+      if (finished) return;
+      loaded += value.length;
+      if (target.sink) target.sink(value);
+      else early.push(value);
+      onProgress(loaded);
+    }
+  })();
+  return {
+    done,
+    attach(next: (chunk: Uint8Array) => void): Uint8Array {
+      target.sink = next;
+      return concat(early.splice(0));
+    },
+  };
+}
+
+function concat(chunks: Uint8Array[]): Uint8Array {
+  const length = chunks.reduce((n, c) => n + c.length, 0);
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
+/** Une plage `[begin, end[` chez la copie `candidate`, vérifiée (début, fin, taille totale) ; null sinon. */
+async function fetchRange(url: string, candidate: string, begin: number, end: number, total: number, signal: AbortSignal): Promise<Uint8Array | null> {
+  try {
+    const res = await fetch(`${url}&c=${candidate}`, { headers: { range: `bytes=${begin}-${end - 1}` }, signal, cache: "no-store" });
+    const cr = parseContentRange(res.headers.get("content-range"));
+    if (res.status !== 206 || !isExpectedRange(cr, begin, end - 1) || cr?.total !== total || cr.end !== end - 1) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    return bytes.length === end - begin ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Télécharge le PDF en entier, en signalant la progression (`total` = 0 si la taille n'est pas annoncée). */
+async function readAll({ res, total }: PdfDownload, onProgress: (loaded: number, total: number) => void): Promise<Uint8Array> {
   if (!res.body) {
     const bytes = new Uint8Array(await res.arrayBuffer());
     onProgress(bytes.length, total);
@@ -144,13 +214,7 @@ async function downloadPdf(url: string, signal: AbortSignal, onProgress: (loaded
     onProgress(loaded, total);
   }
   if (buffer) return loaded === buffer.length ? buffer : buffer.subarray(0, loaded);
-  const bytes = new Uint8Array(loaded);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return bytes;
+  return concat(chunks);
 }
 
 function pageOf(node: Node | null | undefined): string | undefined {
@@ -181,25 +245,59 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
     let task: PDFDocumentLoadingTask | null = null;
     let worker: PDFWorker | null = null;
     const download = new AbortController();
+    let loaded = false;
     (async () => {
       try {
         // Le PDF part tout de suite, en parallèle du module PDF.js et du worker (au lieu d'attendre que le worker
-        // le demande). /api/pdf n'annonce pas de requêtes partielles : PDF.js attendait de toute façon le fichier entier.
-        const data = downloadPdf(url, download.signal, (loaded, total) => {
-          if (!cancelled) setProgress({ loaded, total });
-        });
-        data.catch(() => undefined); // l'échec est traité plus bas, au moment d'attendre les données
+        // le demande).
+        const opened = openPdf(url, download.signal);
+        const report = (loadedBytes: number, total: number) => {
+          if (!cancelled) setProgress({ loaded: loadedBytes, total });
+        };
+        // Gros fichier et plages possibles (PERF-06) : les octets sont confiés à PDF.js au fil de l'eau, et PDF.js demande
+        // par plages ce qui lui manque pour la première page. Sinon, fichier entier d'abord, comme avant.
+        const streamed = opened.then((o) => (o.candidate ? streamBody(o.res, (n) => report(n, o.total)) : null));
+        const whole = opened.then((o) => (o.candidate ? null : readAll(o, report)));
+        whole.catch(() => undefined); // l'échec est traité plus bas, au moment d'attendre les données
+        streamed.catch(() => undefined);
         const pdfjs = await import("pdfjs-dist");
         if (cancelled) return;
         const base = pdfjsAssetsBase(pdfjs.version);
         pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.min.mjs`;
         worker = new pdfjs.PDFWorker(); // le worker se charge pendant que le PDF finit d'arriver
-        const bytes = await data;
+        const { total, candidate } = await opened;
+        const stream = await streamed;
+        const bytes = await whole;
         if (cancelled) return;
+        let range: InstanceType<PdfLib["PDFDataRangeTransport"]> | undefined;
+        if (stream && candidate) {
+          // Création et branchement dans le même tour : aucun morceau ne peut arriver entre les deux.
+          const initial = stream.attach((chunk) => range?.onDataProgressiveRead(chunk));
+          const transport = new pdfjs.PDFDataRangeTransport(total, initial.length > 0 ? initial : null, false);
+          transport.requestDataRange = (begin: number, end: number) => {
+            // Plage refusée ou non conforme : ignorée, le téléchargement complet apportera les mêmes octets.
+            void fetchRange(url, candidate, begin, end, total, download.signal).then((chunk) => {
+              if (!chunk || cancelled) return;
+              try {
+                transport.onDataRange(begin, chunk);
+              } catch {
+                /* requête déjà servie par le téléchargement complet */
+              }
+            });
+          };
+          range = transport;
+          stream.done.then(
+            () => transport.onDataProgressiveDone(),
+            () => {
+              // Coupure avant l'ouverture du document : repli sur le PDF original, comme un échec du relais.
+              if (!cancelled && !loaded) setError("Le PDF n'a pas pu être chargé dans le lecteur.");
+            },
+          );
+        }
         // Ressources optionnelles de PDF.js servies depuis /public : décodeurs WebAssembly (JBIG2, JPX des scans anciens),
         // polices standard non embarquées, CMaps (CJK), profils ICC. Sans elles, les images sont ignorées et la page reste blanche.
         task = pdfjs.getDocument({
-          data: bytes,
+          ...(range ? { range } : { data: bytes! }),
           worker,
           wasmUrl: `${base}/wasm/`,
           iccUrl: `${base}/iccs/`,
@@ -208,6 +306,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           cMapPacked: true,
         });
         const d = await task.promise;
+        loaded = true;
         // Hauteur provisoire des pages non rendues : proportion de la première page (comme le visualiseur PDF.js),
         // pas un A4 fixe. Sinon, sur un PDF au format Letter ou en paysage, les pages changent de hauteur en se rendant
         // et « aller à la page N » atterrit à côté. `getPage` est mis en cache par PDF.js : rien n'est lu deux fois.
