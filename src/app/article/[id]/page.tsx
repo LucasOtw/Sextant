@@ -160,7 +160,8 @@ export default async function ArticlePage({ params }: Props) {
           {doiUrl && (
             <Stat label="DOI">
               <a href={doiUrl} target="_blank" rel="noreferrer" className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
-                {doiUrl.replace(/^https?:\/\/doi\.org\//, "")}
+                {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
+                {(work.doi ?? doiUrl).replace(/^https?:\/\/doi\.org\//i, "")}
               </a>
             </Stat>
           )}

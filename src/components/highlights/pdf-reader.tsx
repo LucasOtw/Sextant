@@ -332,7 +332,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           <p className="mt-1 text-muted-foreground">
             {embedUrl
               ? "Il s'affiche ci-dessous avec le lecteur de votre navigateur. Le surlignage n'y est pas possible : notez vos citations à la main, elles seront gardées avec l'article."
-              : "Le surlignage n'y sera pas possible : notez vos citations à la main, elles seront gardées avec l'article."}{" "}
+              : "Ouvrez-le dans un nouvel onglet : le surlignage n'y sera pas possible, notez vos citations à la main, elles seront gardées avec l'article."}{" "}
             <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrir le PDF dans un nouvel onglet</a>
           </p>
         </div>

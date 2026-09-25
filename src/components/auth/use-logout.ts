@@ -2,9 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
 import { toast } from "sonner";
-import { firebaseAuth } from "@/lib/firebase/client";
+import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 
 /**
  * Déconnexion partagée (menu du header, page « Mon compte »). Le succès n'est annoncé que si le serveur a bien
@@ -22,13 +21,9 @@ export function useLogout(redirectTo?: string) {
     } catch {
       /* réseau indisponible : traité comme un échec */
     }
-    // Nettoyage local du SDK client dans tous les cas : il ne peut pas rouvrir de session seul
-    // (le serveur exige une connexion Google de moins de 5 minutes).
-    try {
-      await signOut(firebaseAuth());
-    } catch {
-      /* Firebase non initialisé : rien à faire */
-    }
+    // Aucun utilisateur Firebase ne reste dans le navigateur depuis SEC-12 (withGooglePopup le vide) : pas de signOut,
+    // qui chargerait le SDK et recréerait la base IndexedDB. Seule la purge de l'état laissé par les anciennes versions.
+    purgeStoredFirebaseAuth();
     setPending(false);
     if (!ok) {
       toast.error("La déconnexion a échoué.", { description: "Vérifiez votre connexion puis réessayez." });

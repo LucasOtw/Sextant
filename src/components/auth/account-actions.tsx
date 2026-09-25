@@ -2,14 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
 import { toast } from "sonner";
 import { Loader2Icon, LogOutIcon, MonitorSmartphoneIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { firebaseAuth } from "@/lib/firebase/client";
 import { useLogout } from "@/components/auth/use-logout";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
+import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 
 /** Déconnexion (cet appareil ou tous), et suppression du compte, depuis la page « Mon compte ». */
 export function AccountActions() {
@@ -24,6 +23,9 @@ export function AccountActions() {
   const { logout, pending } = useLogout("/");
 
   async function deleteAccount() {
+    // Fenêtre de confirmation (r)ouverte en état occupé : après la ré-authentification, la suppression rejouée prend
+    // plusieurs secondes et ne doit ni passer inaperçue ni pouvoir être relancée en parallèle.
+    setConfirm(true);
     setBusy(true);
     setError(null);
     let res: Response;
@@ -48,11 +50,8 @@ export function AccountActions() {
       setBusy(false);
       return;
     }
-    try {
-      await signOut(firebaseAuth());
-    } catch {
-      /* rien */
-    }
+    // Fenêtre laissée en état occupé jusqu'au départ de la page : rien à relancer.
+    purgeStoredFirebaseAuth();
     toast.success("Compte supprimé.", { description: "Votre profil et vos données ont été effacés." });
     router.push("/");
     router.refresh();
@@ -90,7 +89,7 @@ export function AccountActions() {
       <Button variant="outline" onClick={() => setConfirmAll(true)}>
         <MonitorSmartphoneIcon /> Se déconnecter de tous les appareils
       </Button>
-      <Button variant="destructive" onClick={() => setConfirm(true)}>
+      <Button variant="destructive" onClick={() => setConfirm(true)} disabled={busy}>
         <Trash2Icon /> Supprimer mon compte
       </Button>
 
@@ -111,7 +110,7 @@ export function AccountActions() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={confirm} onOpenChange={setConfirm}>
+      <Dialog open={confirm} onOpenChange={(o) => !busy && setConfirm(o)}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Supprimer votre compte ?</DialogTitle>
           <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
