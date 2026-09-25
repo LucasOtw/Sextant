@@ -5,6 +5,8 @@
  * Un `mailto` (OPENALEX_MAILTO) identifie poliment l'application.
  */
 
+import { safeHttpUrl } from "@/lib/text";
+
 const BASE = "https://api.openalex.org";
 
 export interface Author {
@@ -234,6 +236,10 @@ async function fetchWithDeadline(url: URL, revalidate: number, path: string): Pr
   }
 }
 
+/**
+ * `path` est concaténé tel quel à l'adresse de l'API : tout identifiant venu de l'extérieur y est encodé
+ * (encodeURIComponent) pour qu'un `?`, un `#` ou un `/` ne puisse pas sortir de son segment (SEC-15).
+ */
 async function get<T>(
   path: string,
   params: Record<string, string | number | undefined>,
@@ -303,7 +309,7 @@ export async function searchWorks(p: SearchParams): Promise<Page<Work>> {
 
 export async function getWork(id: string): Promise<Work | null> {
   try {
-    return await get<Work>(`/works/${shortId(id)}`, { select: DETAIL_SELECT }, 3600);
+    return await get<Work>(`/works/${encodeURIComponent(shortId(id))}`, { select: DETAIL_SELECT }, 3600);
   } catch (e) {
     if (e instanceof OpenAlexError && e.status === 404) return null;
     throw e;
@@ -431,7 +437,7 @@ export async function getTopicsForField(fieldId: string, n = 12): Promise<Topic[
 
 export async function getTopic(topicId: string): Promise<Topic | null> {
   try {
-    return await get<Topic>(`/topics/${shortId(topicId)}`, {}, 86400);
+    return await get<Topic>(`/topics/${encodeURIComponent(shortId(topicId))}`, {}, 86400);
   } catch (e) {
     if (e instanceof OpenAlexError && e.status === 404) return null;
     throw e;
@@ -490,7 +496,7 @@ export async function getAuthorProfile(id: string, fallbackInstitutionId?: strin
   let a: RawAuthor;
   try {
     a = await get<RawAuthor>(
-      `/authors/${shortId(id)}`,
+      `/authors/${encodeURIComponent(shortId(id))}`,
       { select: "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions" },
       86400,
     );
@@ -504,11 +510,11 @@ export async function getAuthorProfile(id: string, fallbackInstitutionId?: strin
   if (instId) {
     try {
       const i = await get<{ display_name: string; homepage_url: string | null; country_code: string | null }>(
-        `/institutions/${shortId(instId)}`,
+        `/institutions/${encodeURIComponent(shortId(instId))}`,
         { select: "display_name,homepage_url,country_code" },
         86400,
       );
-      homepage = i.homepage_url;
+      homepage = safeHttpUrl(i.homepage_url);
       inst ??= { display_name: i.display_name, country_code: i.country_code };
     } catch {
       /* institution sans fiche : pas de lien */
@@ -517,7 +523,7 @@ export async function getAuthorProfile(id: string, fallbackInstitutionId?: strin
   return {
     id: shortId(a.id),
     name: a.display_name,
-    orcid: a.orcid,
+    orcid: safeHttpUrl(a.orcid),
     worksCount: a.works_count,
     citedByCount: a.cited_by_count,
     hIndex: a.summary_stats?.h_index ?? null,

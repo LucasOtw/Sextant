@@ -27,13 +27,15 @@ function goToPage(page: number) {
 interface LayoutProps {
   url: string;
   originalUrl: string;
+  /** PDF embarquable par le lecteur du navigateur si le relais échoue (https, hôte public), sinon null : lien seul. */
+  embedUrl: string | null;
 }
 
 /**
  * Lecteur à gauche, « Mes surlignages » à droite (défilable) ; sur mobile, la liste se replie au-dessus du lecteur.
  * « Plein écran » passe le lecteur en plein écran (API du navigateur, ou repli fixe quand elle manque, iPhone par exemple).
  */
-export function ReaderLayout({ url, originalUrl }: LayoutProps) {
+export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
   const { highlights } = useHighlights();
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
@@ -100,7 +102,7 @@ export function ReaderLayout({ url, originalUrl }: LayoutProps) {
             {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
           </Button>
         </div>
-        <PdfReader url={url} originalUrl={originalUrl} />
+        <PdfReader url={url} originalUrl={originalUrl} embedUrl={embedUrl} />
       </div>
     </div>
   );
@@ -158,10 +160,11 @@ function pageOf(node: Node | null | undefined): string | undefined {
 interface ReaderProps {
   url: string;
   originalUrl: string;
+  embedUrl: string | null;
 }
 
 /** Affiche le PDF page par page (PDF.js) avec une couche texte sélectionnable ; une sélection propose « Surligner ». */
-export function PdfReader({ url, originalUrl }: ReaderProps) {
+export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
   const { highlights, add } = useHighlights();
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -327,17 +330,22 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         <div className="rounded-xl border border-dashed p-5 text-[15px]">
           <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
           <p className="mt-1 text-muted-foreground">
-            Il s'affiche ci-dessous avec le lecteur de votre navigateur. Le surlignage n'y est pas possible : notez vos citations à la main, elles seront gardées avec l'article.{" "}
+            {embedUrl
+              ? "Il s'affiche ci-dessous avec le lecteur de votre navigateur. Le surlignage n'y est pas possible : notez vos citations à la main, elles seront gardées avec l'article."
+              : "Le surlignage n'y sera pas possible : notez vos citations à la main, elles seront gardées avec l'article."}{" "}
             <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrir le PDF dans un nouvel onglet</a>
           </p>
         </div>
-        <object data={originalUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-foreground/10" aria-label="PDF original">
-          <div className="rounded-xl border border-dashed p-8 text-center">
-            <p className="text-base text-muted-foreground">
-              Votre navigateur n'affiche pas ce PDF ici. <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrez-le dans un nouvel onglet</a>.
-            </p>
-          </div>
-        </object>
+        {/* Repli embarqué seulement pour une adresse vérifiée (https, hôte public) : jamais l'adresse brute d'OpenAlex (SEC-16). */}
+        {embedUrl && (
+          <object data={embedUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-foreground/10" aria-label="PDF original">
+            <div className="rounded-xl border border-dashed p-8 text-center">
+              <p className="text-base text-muted-foreground">
+                Votre navigateur n'affiche pas ce PDF ici. <a href={embedUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrez-le dans un nouvel onglet</a>.
+              </p>
+            </div>
+          </object>
+        )}
       </div>
     );
   }

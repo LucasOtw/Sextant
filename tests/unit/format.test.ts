@@ -4,13 +4,16 @@ import {
   formatAuthors,
   isPublicPdfUrl,
   languageName,
+  embeddablePdfUrl,
   openAccessPdfUrls,
   openAccessUrl,
+  publisherUrl,
   RETRACTED_APA_SUFFIX,
   toApa,
   toBibtex,
   truncateWords,
 } from "@/lib/format";
+import { safeHttpUrl } from "@/lib/text";
 import { location, makeWork } from "../fixtures";
 
 describe("isPublicPdfUrl (garde SSRF du relais PDF)", () => {
@@ -86,6 +89,54 @@ describe("openAccessUrl", () => {
     expect(openAccessUrl(makeWork({ best_oa_location: location({ pdf_url: "https://a.org/x.pdf" }) }))).toEqual({ url: "https://a.org/x.pdf", isPdf: true });
     expect(openAccessUrl(makeWork({ open_access: { is_oa: true, oa_status: "gold", oa_url: "https://a.org/x" } }))).toEqual({ url: "https://a.org/x", isPdf: false });
     expect(openAccessUrl(makeWork())).toBeNull();
+  });
+
+  it("écarte une adresse hors http(s) et passe à la suivante (SEC-16)", () => {
+    const w = makeWork({
+      open_access: { is_oa: true, oa_status: "green", oa_url: "https://depot.example.org/notice" },
+      best_oa_location: location({ pdf_url: "data:text/html,<h1>faux</h1>" }),
+      primary_location: location({ pdf_url: "https://depot.example.org/a.pdf" }),
+    });
+    expect(openAccessUrl(w)).toEqual({ url: "https://depot.example.org/a.pdf", isPdf: true });
+    const noPdf = makeWork({ open_access: { is_oa: true, oa_status: "green", oa_url: "blob:https://x/1" }, best_oa_location: location({ landing_page_url: "https://depot.example.org/n" }) });
+    expect(openAccessUrl(noPdf)).toEqual({ url: "https://depot.example.org/n", isPdf: false });
+  });
+});
+
+describe("publisherUrl", () => {
+  it("DOI d'abord, sinon la page de l'éditeur, jamais un schéma exotique", () => {
+    expect(publisherUrl(makeWork())).toBe("https://doi.org/10.1000/xyz123");
+    expect(publisherUrl(makeWork({ doi: null, primary_location: location({ landing_page_url: "https://editeur.example.com/a" }) }))).toBe("https://editeur.example.com/a");
+    expect(publisherUrl(makeWork({ doi: "javascript:alert(1)", primary_location: location({ landing_page_url: "file:///etc/passwd" }) }))).toBeNull();
+  });
+});
+
+describe("embeddablePdfUrl (repli <object> du lecteur, SEC-16)", () => {
+  it("un PDF en accès ouvert, en https et sur un hôte public", () => {
+    const w = makeWork({
+      open_access: { is_oa: true, oa_status: "green", oa_url: null },
+      best_oa_location: location({ is_oa: true, pdf_url: "http://depot.example.org/a.pdf" }),
+      locations: [location({ is_oa: true, pdf_url: "https://10.0.0.1/b.pdf" }), location({ is_oa: true, pdf_url: "https://hal.science/hal-1/document" })],
+    });
+    expect(embeddablePdfUrl(w)).toBe("https://hal.science/hal-1/document");
+  });
+
+  it("null sans candidat sûr : http seul, hôte privé, ou article fermé", () => {
+    const httpOnly = makeWork({ open_access: { is_oa: true, oa_status: "green", oa_url: null }, best_oa_location: location({ is_oa: true, pdf_url: "http://depot.example.org/a.pdf" }) });
+    expect(embeddablePdfUrl(httpOnly)).toBeNull();
+    const privateHost = makeWork({ open_access: { is_oa: true, oa_status: "green", oa_url: null }, best_oa_location: location({ is_oa: true, pdf_url: "https://intranet.local/a.pdf" }) });
+    expect(embeddablePdfUrl(privateHost)).toBeNull();
+    expect(embeddablePdfUrl(makeWork({ best_oa_location: location({ pdf_url: "https://arxiv.org/pdf/1.pdf" }) }))).toBeNull();
+  });
+});
+
+describe("safeHttpUrl", () => {
+  it.each(["https://doi.org/10.1/x", "http://example.org/a?b=c#d"])("accepte %s", (u) => {
+    expect(safeHttpUrl(u)).toBe(u);
+  });
+
+  it.each([null, undefined, "", "pas une adresse", "javascript:alert(1)", "data:text/html,x", "blob:https://x/1", "file:///etc/passwd", "ftp://example.org/a", "https://user:mdp@example.org/"])("refuse %s", (u) => {
+    expect(safeHttpUrl(u)).toBeNull();
   });
 });
 
