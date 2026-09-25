@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 
 /**
  * « Se déconnecter de tous les appareils » (SEC-08) : révoque les jetons Firebase du compte (un cookie de session
- * copié ailleurs ne permet plus d'écrire, ni de créer une clé, ni de supprimer le compte, au plus 5 minutes après),
+ * copié ailleurs ne permet plus ni de lire ni d'écrire, au plus 5 minutes après : lib/auth.ts),
  * supprime les clés MCP (une clé créée avec un cookie volé survivrait sinon à la révocation), puis efface le cookie
  * de cet appareil. Pas de ré-authentification : la victime d'un vol doit pouvoir couper l'accès sans délai.
  */

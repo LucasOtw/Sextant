@@ -98,7 +98,7 @@ export function AccountActions() {
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Se déconnecter partout ?</DialogTitle>
           <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
-            Toutes vos sessions seront fermées, sur cet appareil comme sur les autres, et vos clés d'assistant IA seront révoquées :
+            Toutes vos sessions seront fermées, sur cet appareil aussitôt et sur les autres dans les 5 minutes, et vos clés d'assistant IA seront révoquées :
             il faudra en créer de nouvelles. À utiliser si un appareil a été perdu ou si une session vous semble suspecte.
           </DialogDescription>
           {errorAll && <p className="text-sm text-destructive">{errorAll}</p>}

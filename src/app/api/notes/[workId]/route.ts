@@ -18,7 +18,7 @@ async function guard(req: Request, ctx: Ctx, write: boolean) {
     const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 32_768);
     if (refused) return { refused };
   }
-  // Écriture : contrôle de révocation (PERF-05) ; lecture : cookie vérifié localement.
+  // Écriture : échec fermé si Firebase Auth ne répond pas ; lecture : servie quand même (lib/auth.ts).
   const user = await (write ? getCurrentUserStrict() : getCurrentUser());
   if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
   if (!rateLimit(`notes:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
