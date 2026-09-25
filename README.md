@@ -160,7 +160,23 @@ src/
   lib/themes.ts   les 16 thématiques (slug → field OpenAlex)
   lib/recent.ts   historique local
 docs/             logo, captures d'écran
+tests/            tests unitaires (Vitest), fixtures et garde-fous
 ```
+
+### Tests et CI
+
+```bash
+npm run lint        # ESLint, 0 avertissement toléré (règles jsx-a11y recommandées en erreur)
+npm run typecheck   # types des routes générés (next typegen) puis tsc
+npm test            # tests unitaires Vitest (tests/unit/)
+npm run build
+```
+
+- Node 24 (`engines`, `.nvmrc`).
+- Les tests unitaires ne touchent **jamais** la base (la seule base Firestore est celle de la production) : `@/lib/firebase/admin` y est remplacé par un module qui lève une erreur, `fetch` est interdit, les variables de secrets sont effacées (`vitest.config.mts`, `tests/setup.ts`). Session et stockage se simulent avec `vi.mock` (exemple : `tests/unit/api-notes.test.ts`).
+- Les tests marqués `it.fails` décrivent un défaut connu de l'audit (SEC-05, QUAL-32) : le correctif retire `.fails`.
+- GitHub Actions (`.github/workflows/ci.yml`) rejoue lint, typage, tests et build à chaque push et pull request vers `dev` et `main`, sans aucun secret. Dependabot (`.github/dependabot.yml`) propose chaque lundi des mises à jour groupées vers `dev`.
+- À venir : transactions Firestore sur l'émulateur (Java requis, base `demo-…` uniquement) et banc d'accessibilité Playwright + axe.
 
 ### Branches
 

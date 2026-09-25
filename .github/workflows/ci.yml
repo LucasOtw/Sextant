@@ -1,0 +1,35 @@
+# Intégration continue : lint, typage, tests unitaires et build à chaque push et PR vers dev et main.
+# Aucun secret : les tests unitaires ne touchent jamais Firestore (alias et garde-fous dans vitest.config.mts),
+# et le build passe sans variable d'environnement (comptes et résumé IA désactivés, OpenAlex en anonyme).
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build

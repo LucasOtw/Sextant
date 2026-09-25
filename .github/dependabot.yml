@@ -1,0 +1,43 @@
+# Mises à jour hebdomadaires, groupées pour limiter le nombre de PR (vers dev, jamais main directement).
+# Les montées majeures arrivent à part : elles demandent une vérification (ex. firebase-admin 14 exige Node 22+,
+# à tester sur verifySessionCookie, recursiveDelete et les transactions ; typescript 7 et eslint 10 sont des migrations).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    groups:
+      # Next et eslint-config-next sont figés ensemble (version exacte) : ils montent dans la même PR.
+      next:
+        patterns: [next, eslint-config-next]
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Montée majeure de Next : manuelle, guide de migration à lire (node_modules/next/dist/docs/).
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint-config-next
+        update-types: ["version-update:semver-major"]
+      # Node 24 en production (engines) : les types suivent la version majeure du runtime.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    groups:
+      actions:
+        patterns: ["*"]
