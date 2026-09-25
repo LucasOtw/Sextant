@@ -7,9 +7,10 @@ import { NextResponse } from "next/server";
 import { isExpectedAuthError, logError } from "@/lib/log";
 import { REAUTH_MAX_AGE_S, REAUTH_REQUIRED } from "@/lib/reauth-shared";
 
-export const SESSION_COOKIE = "sextant_session";
-/** Durée de la session : 14 jours (maximum autorisé par Firebase). */
-export const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+import { SESSION_COOKIE } from "@/lib/session-shared";
+
+// Noms et durée des cookies de session : module partagé avec le proxy et le navigateur (indice de connexion, PERF-01).
+export { SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/session-shared";
 
 export interface SessionUser {
   uid: string;

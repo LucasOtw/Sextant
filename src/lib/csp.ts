@@ -5,8 +5,16 @@
  * console et, en production, vers /api/csp-report (journaux Vercel). Une fois quelques jours de rapports lus sans
  * surprise, passer l'en-tête en `Content-Security-Policy` dans src/proxy.ts.
  *
+ * Deux variantes (PERF-01) :
+ * - pages rendues à la demande : nonce par requête (src/proxy.ts), que Next pose sur ses propres scripts ;
+ * - pages en cache (STATIC_PAGES) : rendues une fois pour tous, sans nonce possible. La politique, posée par
+ *   next.config.ts, admet alors les scripts en ligne ('unsafe-inline') : ce sont ceux de Next et le script d'avant
+ *   hydratation, sur des pages sans contenu venu d'un utilisateur. À trancher avant le passage en mode bloquant :
+ *   garder ce compromis, ou renoncer au cache de ces pages.
+ *
  * Ce que la page doit pouvoir charger :
- * - scripts : ceux de Next (nonce posé par Next lui-même) et le script de thème (nonce passé par layout.tsx) ;
+ * - scripts : ceux de Next (nonce posé par Next lui-même) et le script d'avant hydratation (thème, indice de
+ *   connexion), autorisé par son empreinte (lib/pre-hydration.ts) ;
  *   `'strict-dynamic'` autorise ce qu'ils chargent ensuite (morceaux Next, `apis.google.com/js/api.js` chargé par
  *   Firebase Auth pour sa fenêtre Google). `https://apis.google.com` reste pour les navigateurs sans strict-dynamic ;
  * - Firebase Auth : iframe cachée sur `<projet>.firebaseapp.com` (ou le domaine d'auth personnalisé), appels à
@@ -15,8 +23,18 @@
  * - repli `<object data>` du lecteur vers le PDF de l'hébergeur (n'importe quel hôte https) ;
  * - avatars Google (`*.googleusercontent.com`) ; polices servies par Next depuis le site (next/font).
  */
+/**
+ * Pages sans donnée personnelle ni paramètre de requête, prérendues et mises en cache au bord (PERF-01). Exclues du
+ * proxy (pas de nonce), avec la politique sans nonce de next.config.ts. Le motif `matcher` de src/proxy.ts, qui doit
+ * rester littéral, les reprend une à une (vérifié par tests/unit/csp.test.ts).
+ */
+export const STATIC_PAGES = ["/", "/a-propos", "/conditions", "/confidentialite", "/mentions-legales"] as const;
+
 export interface CspOptions {
-  nonce: string;
+  /** Nonce de la requête ; null pour une page en cache (scripts en ligne admis, cf. plus haut). */
+  nonce: string | null;
+  /** Empreintes ('sha256-…') des scripts en ligne fixes, avec un nonce seulement. */
+  scriptHashes?: string[];
   /** Développement : `'unsafe-eval'` (piles d'erreur de React) et WebSocket du rechargement à chaud. */
   dev: boolean;
   /** Projet Firebase (NEXT_PUBLIC_FIREBASE_PROJECT_ID) : hôte de l'iframe d'authentification. */
@@ -27,11 +45,14 @@ export interface CspOptions {
   reportUri?: string;
 }
 
-export function buildCsp({ nonce, dev, firebaseProject, authDomain, reportUri }: CspOptions): string {
+export function buildCsp({ nonce, scriptHashes = [], dev, firebaseProject, authDomain, reportUri }: CspOptions): string {
   const authFrames = [firebaseProject && `https://${firebaseProject}.firebaseapp.com`, authDomain?.trim() && `https://${authDomain.trim()}`].filter(Boolean);
   const directives: [string, ...string[]][] = [
     ["default-src", "'self'"],
-    ["script-src", "'self'", `'nonce-${nonce}'`, "'strict-dynamic'", "https://apis.google.com", ...(dev ? ["'unsafe-eval'"] : [])],
+    // Sans nonce, ni empreinte ni 'strict-dynamic' : ils désactiveraient 'unsafe-inline' dans les navigateurs récents.
+    nonce
+      ? ["script-src", "'self'", `'nonce-${nonce}'`, ...scriptHashes, "'strict-dynamic'", "https://apis.google.com", ...(dev ? ["'unsafe-eval'"] : [])]
+      : ["script-src", "'self'", "'unsafe-inline'", "https://apis.google.com", ...(dev ? ["'unsafe-eval'"] : [])],
     // Styles en ligne : attributs `style` de React, feuilles injectées par Sonner et Base UI. Pas de nonce ici, sinon
     // 'unsafe-inline' serait ignoré.
     ["style-src", "'self'", "'unsafe-inline'"],

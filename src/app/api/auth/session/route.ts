@@ -4,6 +4,7 @@ import { getCurrentUser, isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } fro
 import { WRONG_ACCOUNT } from "@/lib/reauth-shared";
 import { isExpectedAuthError, logError } from "@/lib/log";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { setSessionHint, toClientUser } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
 
@@ -85,8 +86,11 @@ export async function POST(req: Request) {
       // Profil non écrit : la connexion reste valable (le cookie suffit), mais la panne doit se voir.
       .catch((e) => logError("session.profile", e));
 
-    const res = NextResponse.json({ ok: true });
+    // L'identité revient avec la réponse : l'en-tête passe à l'avatar sans autre requête (pages en cache, PERF-01).
+    const user = toClientUser({ uid: decoded.uid, name: decoded.name ?? null, email: decoded.email ?? null, picture: decoded.picture ?? null });
+    const res = NextResponse.json({ ok: true, user }, { headers: { "cache-control": "private, no-store" } });
     res.cookies.set(SESSION_COOKIE, sessionCookie, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS / 1000 });
+    setSessionHint(res, "on");
     return res;
   } catch (e) {
     // Jeton refusé par Firebase : 401. Tout le reste (SDK Admin, réseau, Firestore) est une panne : 503, journalisée.
@@ -105,5 +109,6 @@ export async function DELETE(req: Request) {
   if (refused) return refused;
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, "", { ...cookieOptions, maxAge: 0 });
+  setSessionHint(res, "off");
   return res;
 }

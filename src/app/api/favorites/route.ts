@@ -6,6 +6,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 import { listCollections } from "@/lib/collections";
 import { logError, recover } from "@/lib/log";
+import { readCookie, SESSION_COOKIE, SESSION_HINT_COOKIE, setSessionHint, toClientUser } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
 
@@ -20,20 +21,32 @@ const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez
 /**
  * Par défaut : les identifiants seulement (une lecture Firestore), ce qu'il faut pour les cœurs.
  * `?collections=1` : ajoute les listes (une lecture par liste), demandé par les écrans qui les affichent.
+ * La réponse porte aussi l'identité (`user`) : c'est par cet appel, déjà fait à chaque chargement de page par un
+ * connecté, que l'en-tête apprend qui est connecté, les pages étant mises en cache identiques pour tous (PERF-01).
+ * Sans session valide : 401, et l'indice de connexion lisible par le navigateur est effacé.
  */
 export async function GET(req: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (!user) {
+    const res = NextResponse.json({ error: "Non connecté." }, { status: 401, headers: PRIVATE });
+    // Cookie de session présent mais refusé (révoqué, expiré) : marqué `0` une heure, pour que le proxy ne rétablisse
+    // pas l'indice à chaque page ; sans cookie de session, l'indice est simplement effacé.
+    const cookie = req.headers.get("cookie") ?? "";
+    if (readCookie(cookie, SESSION_COOKIE) !== undefined) setSessionHint(res, "rejected");
+    else if (readCookie(cookie, SESSION_HINT_COOKIE) !== undefined) setSessionHint(res, "off");
+    return res;
+  }
   if (tooMany(user.uid)) return TOO_MANY();
   const params = new URL(req.url).searchParams;
   try {
     const withCollections = params.get("collections") === "1";
     // Les listes n'empêchent pas les cœurs : leur échec renvoie `null`, le client garde ce qu'il sait.
     const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), withCollections ? listCollections(user.uid).catch(recover("favorites.collections", null)) : undefined]);
-    return NextResponse.json({ ids, count: ids.length, ...(withCollections ? { collections } : {}) }, { headers: PRIVATE });
+    return NextResponse.json({ user: toClientUser(user), ids, count: ids.length, ...(withCollections ? { collections } : {}) }, { headers: PRIVATE });
   } catch (e) {
     logError("favorites.GET", e);
-    return NextResponse.json({ error: "Favoris indisponibles." }, { status: 502 });
+    // L'identité reste servie : l'en-tête montre le compte même quand Firestore ne répond pas.
+    return NextResponse.json({ error: "Favoris indisponibles.", user: toClientUser(user) }, { status: 502, headers: PRIVATE });
   }
 }
 

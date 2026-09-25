@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { buildCsp, STATIC_PAGES } from "./src/lib/csp";
 
 /**
  * En-têtes de sécurité fixes (SEC-03, étape 1), sur tout le site sauf les pages d'aide Firebase relayées
@@ -21,6 +22,18 @@ const SECURITY_HEADERS = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+/**
+ * CSP en Report-Only des pages en cache (PERF-01) : sans nonce (rendues une fois pour tous), donc scripts en ligne
+ * admis ; les pages rendues à la demande reçoivent la leur, à nonce, de src/proxy.ts. Cf. lib/csp.ts.
+ */
+const STATIC_PAGE_CSP = buildCsp({
+  nonce: null,
+  dev: process.env.NODE_ENV === "development",
+  firebaseProject: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  reportUri: process.env.NODE_ENV === "production" ? "/api/csp-report" : undefined,
+});
+
 const nextConfig: NextConfig = {
   // Pas de badge Next.js en bas à gauche en développement (captures d'écran propres).
   devIndicators: false,
@@ -33,6 +46,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path((?!__/auth/).*)", headers: SECURITY_HEADERS },
+      ...STATIC_PAGES.map((source) => ({ source, headers: [{ key: "Content-Security-Policy-Report-Only", value: STATIC_PAGE_CSP }] })),
       { source: "/pdfjs/:path*", headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
     ];
   },

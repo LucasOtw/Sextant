@@ -6,6 +6,7 @@ import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
 import { detachAuthor, invalidateFeedbackList, withdrawVotes } from "@/lib/feedback";
 import { logError } from "@/lib/log";
+import { setSessionHint } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
 
@@ -45,5 +46,6 @@ export async function DELETE(req: Request) {
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });
+  setSessionHint(res, "off");
   return res;
 }

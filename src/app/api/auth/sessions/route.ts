@@ -5,6 +5,7 @@ import { deleteAllKeys } from "@/lib/api-keys";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { logError } from "@/lib/log";
+import { setSessionHint } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
 
@@ -32,5 +33,6 @@ export async function DELETE(req: Request) {
   }
   const res = NextResponse.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
   res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
+  setSessionHint(res, "off");
   return res;
 }

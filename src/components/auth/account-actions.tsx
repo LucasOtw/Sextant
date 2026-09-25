@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { useLogout } from "@/components/auth/use-logout";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
+import { useSession } from "@/components/auth/session-provider";
 
 /** Déconnexion (cet appareil ou tous), et suppression du compte, depuis la page « Mon compte ». */
 export function AccountActions() {
   const router = useRouter();
+  const { signedOut } = useSession();
   const [confirm, setConfirm] = useState(false);
   const [reauth, setReauth] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -52,6 +54,7 @@ export function AccountActions() {
     }
     // Fenêtre laissée en état occupé jusqu'au départ de la page : rien à relancer.
     purgeStoredFirebaseAuth();
+    signedOut();
     toast.success("Compte supprimé.", { description: "Votre profil et vos données ont été effacés." });
     router.push("/");
     router.refresh();
@@ -76,6 +79,7 @@ export function AccountActions() {
       return;
     }
     setConfirmAll(false);
+    signedOut();
     toast("Vous êtes déconnecté de tous vos appareils.", { description: "Vos clés d'assistant IA ont été révoquées." });
     router.push("/");
     router.refresh();

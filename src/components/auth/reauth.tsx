@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { GoogleButton } from "@/components/auth/google-button";
-import { GooglePopupCancelled, withGooglePopup } from "@/components/auth/google-popup";
+import { GooglePopupCancelled, loadFirebaseAuth, withGooglePopup } from "@/components/auth/google-popup";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
 import { REAUTH_REQUIRED } from "@/lib/reauth-shared";
 
 /** La réponse exige-t-elle une connexion Google récente (401 `reauth_required`, SEC-09) ? Lit une copie du corps. */
@@ -50,11 +50,8 @@ export function ReauthDialog({ open, onOpenChange, description, onConfirmed }: P
   // Comme la fenêtre de connexion : SDK et iframe préparés pendant l'affichage, pour Safari et le mobile.
   useEffect(() => {
     if (!open || !isFirebaseConfigured) return;
-    try {
-      firebaseAuth();
-    } catch {
-      /* configuration absente : l'erreur s'affichera au clic */
-    }
+    // Échec (réseau, configuration absente) : l'erreur s'affichera au clic, qui réessaie.
+    loadFirebaseAuth().catch(() => undefined);
   }, [open]);
 
   async function confirm() {

@@ -1,10 +1,38 @@
 "use client";
 
-import { signInWithPopup, signOut, type UserCredential } from "firebase/auth";
-import { firebaseAuth, googleProvider } from "@/lib/firebase/client";
+import type { Auth, GoogleAuthProvider, UserCredential } from "firebase/auth";
 
 /** L'utilisateur a fermé la fenêtre Google : rien à afficher. */
 export class GooglePopupCancelled extends Error {}
+
+interface FirebaseAuthKit {
+  sdk: typeof import("firebase/auth");
+  auth: Auth;
+  googleProvider: () => GoogleAuthProvider;
+}
+
+let kit: Promise<FirebaseAuthKit> | null = null;
+
+/**
+ * SDK Firebase Auth chargé à la demande (morceau séparé, ~110 Ko), puis instance initialisée ; mémorisé (PERF-02).
+ * À appeler dès l'ouverture d'une fenêtre de connexion : sur mobile et Safari, `getAuth()` précharge alors l'iframe
+ * Google pendant l'affichage, et `signInWithPopup` ouvre la fenêtre dans la foulée du clic (sinon le bloqueur de
+ * fenêtres surgissantes l'arrêterait). Un échec (réseau, configuration absente) n'est pas mémorisé : le clic réessaie.
+ */
+export function loadFirebaseAuth(): Promise<FirebaseAuthKit> {
+  if (!kit) {
+    const loading = Promise.all([import("firebase/auth"), import("@/lib/firebase/client")]).then(([sdk, client]) => ({
+      sdk,
+      auth: client.firebaseAuth(),
+      googleProvider: client.googleProvider,
+    }));
+    kit = loading;
+    loading.catch(() => {
+      if (kit === loading) kit = null;
+    });
+  }
+  return kit;
+}
 
 /**
  * Ouvre la fenêtre Google (à appeler dans le prolongement direct d'un clic) et renvoie le jeton d'identité, puis vide
@@ -14,10 +42,10 @@ export class GooglePopupCancelled extends Error {}
  * Erreurs : GooglePopupCancelled (fenêtre fermée), ou Error au message prêt à afficher.
  */
 export async function withGooglePopup<T>(exchange: (idToken: string, credential: UserCredential) => Promise<T>): Promise<T> {
-  const auth = firebaseAuth();
+  const { sdk, auth, googleProvider } = await loadFirebaseAuth();
   let credential: UserCredential;
   try {
-    credential = await signInWithPopup(auth, googleProvider());
+    credential = await sdk.signInWithPopup(auth, googleProvider());
   } catch (e) {
     const code = (e as { code?: string }).code;
     // Pas de repli par redirection : avec l'authDomain Firebase (autre domaine que le site), Safari 16.1+,
@@ -32,7 +60,7 @@ export async function withGooglePopup<T>(exchange: (idToken: string, credential:
   try {
     return await exchange(await credential.user.getIdToken(), credential);
   } finally {
-    await signOut(auth).catch(() => undefined);
+    await sdk.signOut(auth).catch(() => undefined);
   }
 }
 

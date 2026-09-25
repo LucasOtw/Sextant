@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, DownloadIcon, FolderIcon, Link2Icon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
@@ -46,6 +46,8 @@ interface Props {
   initial: Favorite[];
   /** Listes connues du rendu serveur : affichées sans attendre le chargement client. */
   initialCollections?: Collection[];
+  /** Le serveur a bien lu les listes (pas un repli vide après une erreur) : elles font foi, sans relecture client. */
+  collectionsFresh?: boolean;
   /** Le serveur n'a pas pu lire les favoris : on l'affiche au lieu d'un faux « vide ». */
   loadError?: boolean;
   /** Identifiants rétractés selon OpenAlex, vérifiés côté serveur à chaque visite (badge et mention dans le BibTeX). */
@@ -56,7 +58,7 @@ interface Props {
  * Favoris et listes : rendus avec les données serveur, puis reflètent l'état client (ajouts, retraits, listes).
  * La liste sélectionnée vit dans l'URL (`?liste=id`) : partageable, rechargeable, et suivie par le bouton Retour.
  */
-export function FavoritesList({ initial, initialCollections = [], loadError = false, retracted = [] }: Props) {
+export function FavoritesList({ initial, initialCollections = [], collectionsFresh = false, loadError = false, retracted = [] }: Props) {
   const favorites = useFavorites();
   const retractedIds = useMemo(() => new Set(retracted), [retracted]);
   const pathname = usePathname();
@@ -70,9 +72,11 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
   const [sharing, setSharing] = useState(false);
   const { loadCollections } = favorites;
 
-  // À l'arrivée sur la page, on se réaligne avec le serveur (favoris et listes posés depuis un autre appareil).
-  useEffect(() => {
-    void loadCollections(initialCollections);
+  // À l'arrivée sur la page, on se réaligne avec le serveur (favoris et listes posés depuis un autre appareil). Les
+  // listes que le serveur vient de lire font foi : pas de seconde lecture côté client (PERF-10). Effet de mise en page,
+  // exécuté avant les effets des sélecteurs de liste de chaque carte, qui sinon relanceraient la lecture des listes.
+  useLayoutEffect(() => {
+    void loadCollections(initialCollections, { fresh: collectionsFresh });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une fois au montage
   }, []);
 

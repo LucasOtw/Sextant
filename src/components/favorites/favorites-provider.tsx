@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { Favorite, FavoriteSnapshot } from "@/lib/favorites-shared";
 import type { Collection } from "@/lib/collections-shared";
+import type { ClientUser } from "@/lib/session-shared";
+import { useSession } from "@/components/auth/session-provider";
 
 /** Article à enregistrer dès que la connexion aboutit (clic sur un cœur sans compte). */
 export const PENDING_FAVORITE_KEY = "sextant:pendingFavorite";
@@ -38,6 +40,11 @@ export function clearPendingFavorite() {
 interface FavoritesContext {
   /** L'utilisateur est connecté (les favoris sont possibles). */
   enabled: boolean;
+  /**
+   * La session n'est pas encore connue (rendu serveur, premier rendu client : les pages en cache sont les mêmes pour
+   * tous). Les composants gardent alors l'état fourni par le serveur de la page (`initialActive`) ou restent neutres.
+   */
+  pending: boolean;
   /** Les identifiants ont été chargés avec succès au moins une fois. */
   ready: boolean;
   /** Le dernier chargement a échoué (on garde ce qu'on sait). */
@@ -56,8 +63,11 @@ interface FavoritesContext {
   collections: Collection[];
   /** Les listes ont été chargées depuis le serveur pour l'utilisateur courant. */
   collectionsLoaded: boolean;
-  /** Demande le chargement des listes ; `seed` = listes déjà connues du rendu serveur, affichées sans attendre. */
-  loadCollections: (seed?: Collection[]) => Promise<void>;
+  /**
+   * Demande le chargement des listes ; `seed` = listes déjà connues du rendu serveur, affichées sans attendre. Avec
+   * `fresh`, `seed` vient d'être lu par le serveur pour cette session : il fait foi, sans relecture (PERF-10).
+   */
+  loadCollections: (seed?: Collection[], options?: { fresh?: boolean }) => Promise<void>;
   /** Listes qui contiennent l'article. */
   listsOf: (id: string) => Collection[];
   /** Crée une liste ; avec `snapshot`, y range aussitôt l'article. */
@@ -74,8 +84,13 @@ interface FavoritesContext {
 const Ctx = createContext<FavoritesContext | null>(null);
 
 interface Props {
-  userId: string | null;
   children: React.ReactNode;
+}
+
+interface FavoritesResponse {
+  user?: ClientUser;
+  ids?: string[];
+  collections?: Collection[] | null;
 }
 
 async function postFavorite(snapshot: FavoriteSnapshot): Promise<Favorite> {
@@ -106,9 +121,15 @@ function withId(c: Collection, id: string): Collection {
 /**
  * État des favoris côté client : identifiants chargés en une requête légère, mises à jour optimistes,
  * partagé par tous les cœurs, la liste /favoris, les sélecteurs de liste et le compteur du header.
+ * Rattaché à la session du navigateur (SessionProvider) : sa clé change à chaque connexion ou déconnexion, et la
+ * réponse de GET /api/favorites lui confirme l'identité (PERF-01).
  */
-export function FavoritesProvider({ userId, children }: Props) {
+export function FavoritesProvider({ children }: Props) {
   const router = useRouter();
+  const session = useSession();
+  const { identify } = session;
+  /** Clé de la session courante (nulle hors connexion) : les réponses d'une session remplacée sont ignorées. */
+  const userId = session.key;
   const [ids, setIds] = useState<Set<string>>(new Set());
   const [added, setAdded] = useState<Map<string, Favorite>>(new Map());
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -126,6 +147,10 @@ export function FavoritesProvider({ userId, children }: Props) {
   const mutationSeq = useRef(0);
   const lastRefreshAt = useRef(0);
   const inFlight = useRef<Promise<Set<string> | null> | null>(null);
+  /** La requête en cours embarque les listes. */
+  const inFlightLists = useRef(false);
+  /** Le dernier chargement a reçu un 401 : la session a expiré ou a été révoquée. */
+  const unauthorized = useRef(false);
   const restoreRef = useRef<((snapshot: FavoriteSnapshot, lists: string[]) => Promise<void>) | null>(null);
 
   const applyIds = useCallback((next: Set<string>) => {
@@ -143,18 +168,22 @@ export function FavoritesProvider({ userId, children }: Props) {
     setCollectionsLoaded(loaded);
   }, []);
 
-  const refresh = useCallback(async (): Promise<Set<string> | null> => {
+  const refresh = useCallback(async (options?: { lists?: boolean }): Promise<Set<string> | null> => {
     // Une seule requête à la fois : focus + visibilitychange, ou plusieurs écrans montés ensemble, partagent la réponse.
     if (inFlight.current) return inFlight.current;
     const seq = mutationSeq.current;
     const forUser = userId;
-    const withCollections = collectionsWanted.current;
+    const withCollections = options?.lists ?? collectionsWanted.current;
     lastRefreshAt.current = Date.now();
     const run = (async () => {
       try {
         const res = await fetch(withCollections ? "/api/favorites?collections=1" : "/api/favorites", { cache: "no-store" });
-        if (!res.ok) throw new Error(String(res.status));
-        const data = (await res.json()) as { ids: string[]; collections?: Collection[] | null };
+        unauthorized.current = res.status === 401;
+        const data = (await res.json().catch(() => ({}))) as FavoritesResponse;
+        // Identité confirmée (y compris quand Firestore échoue), ou session expirée : l'en-tête suit.
+        if (res.status === 401) identify(null, forUser);
+        else if (data.user) identify(data.user, forUser);
+        if (!res.ok || !Array.isArray(data.ids)) throw new Error(String(res.status));
         // Réponse périmée : une mutation a eu lieu, ou l'utilisateur a changé entre-temps.
         if (seq !== mutationSeq.current || forUser !== loadedFor.current) return idsRef.current;
         const next = new Set(data.ids);
@@ -173,22 +202,50 @@ export function FavoritesProvider({ userId, children }: Props) {
         return null;
       } finally {
         inFlight.current = null;
+        inFlightLists.current = false;
       }
     })();
     inFlight.current = run;
+    inFlightLists.current = withCollections;
     return run;
-  }, [userId, applyIds, applyCollections, markCollectionsLoaded]);
+  }, [userId, identify, applyIds, applyCollections, markCollectionsLoaded]);
+
+  /** Listes seules (GET /api/collections), en parallèle d'un chargement des favoris parti sans elles. */
+  const fetchCollections = useCallback(async () => {
+    const seq = mutationSeq.current;
+    const forUser = userId;
+    try {
+      const res = await fetch("/api/collections", { cache: "no-store" });
+      if (!res.ok) return;
+      const data = (await res.json()) as { collections?: Collection[] };
+      if (!Array.isArray(data.collections) || seq !== mutationSeq.current || forUser !== loadedFor.current) return;
+      const fresh = data.collections;
+      applyCollections(() => fresh);
+      markCollectionsLoaded(true);
+    } catch {
+      /* réseau : le prochain chargement (retour sur l'onglet) réessaiera */
+    }
+  }, [userId, applyCollections, markCollectionsLoaded]);
 
   const loadCollections = useCallback<FavoritesContext["loadCollections"]>(
-    async (seed) => {
+    async (seed, options) => {
       collectionsWanted.current = true;
+      if (seed && options?.fresh) {
+        // Lu à l'instant par le serveur de la page pour cette session : rien à relire (jusqu'à 50 lectures évitées).
+        applyCollections(() => seed);
+        markCollectionsLoaded(true);
+        return;
+      }
       if (seed && !collectionsLoadedRef.current && collectionsRef.current.length === 0) applyCollections(() => seed);
-      // Avant le premier chargement (effet parent, exécuté après ceux des enfants), c'est lui qui embarquera les listes.
-      if (!userId || loadedFor.current !== userId) return;
+      // Premier chargement pas encore lancé pour cette session : c'est lui qui embarquera les listes.
+      if (!userId || loadedFor.current !== userId || collectionsLoadedRef.current) return;
+      // Chargement des favoris déjà parti sans les listes (le sélecteur de listes s'hydrate après le fournisseur quand
+      // une frontière Suspense les sépare) : les listes partent en parallèle au lieu d'attendre puis de tout relancer.
+      if (inFlight.current && !inFlightLists.current) return fetchCollections();
       if (inFlight.current) await inFlight.current;
       if (!collectionsLoadedRef.current) await refresh();
     },
-    [userId, refresh, applyCollections],
+    [userId, refresh, fetchCollections, applyCollections, markCollectionsLoaded],
   );
 
   /** Enregistre l'article mis en attente avant la connexion, s'il est récent et pas déjà présent. */
@@ -220,8 +277,10 @@ export function FavoritesProvider({ userId, children }: Props) {
 
   useEffect(() => {
     if (!userId) {
+      // Rien de chargé (session pas encore connue, ou anonyme) : on garde ce que les écrans ont déjà posé (listes lues
+      // par le serveur de /favoris). Sinon, déconnexion : on vide l'état local.
+      if (loadedFor.current === null) return;
       loadedFor.current = null;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- déconnexion : on vide l'état local
       applyIds(new Set());
       setAdded(new Map());
       applyCollections(() => []);
@@ -231,8 +290,11 @@ export function FavoritesProvider({ userId, children }: Props) {
       return;
     }
     if (loadedFor.current === userId) return;
+    // Autre compte (ouvert dans un autre onglet) : ses listes sont à relire.
+    if (loadedFor.current !== null) markCollectionsLoaded(false);
     loadedFor.current = userId;
-    void refresh().then((known) => consumePending(known));
+    // Listes embarquées seulement si un écran les montre et que le serveur de la page ne les a pas déjà fournies.
+    void refresh({ lists: collectionsWanted.current && !collectionsLoadedRef.current }).then((known) => consumePending(known));
   }, [userId, refresh, consumePending, applyIds, applyCollections, markCollectionsLoaded]);
 
   // Retour sur l'onglet : on se réaligne avec ce qui a pu être fait sur un autre appareil.
@@ -259,6 +321,8 @@ export function FavoritesProvider({ userId, children }: Props) {
       if (!ready) {
         const loaded = await refresh();
         if (!loaded) {
+          // Session expirée entre-temps : l'en-tête est repassé en anonyme, on propose de se reconnecter.
+          if (unauthorized.current) return "signin";
           toast.error("Vos favoris sont indisponibles pour le moment.");
           return "error";
         }
@@ -447,6 +511,7 @@ export function FavoritesProvider({ userId, children }: Props) {
   const value = useMemo<FavoritesContext>(
     () => ({
       enabled: Boolean(userId),
+      pending: session.status === "unknown",
       ready,
       error,
       count: ids.size,
@@ -465,7 +530,7 @@ export function FavoritesProvider({ userId, children }: Props) {
       setShared,
       setInCollection,
     }),
-    [userId, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, updateCollection, deleteCollection, setShared, setInCollection],
+    [userId, session.status, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, updateCollection, deleteCollection, setShared, setInCollection],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

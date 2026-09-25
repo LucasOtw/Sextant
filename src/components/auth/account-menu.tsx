@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import type { SessionUser } from "@/lib/auth";
+import type { ClientUser } from "@/lib/session-shared";
 import { useLogout } from "@/components/auth/use-logout";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 
@@ -21,7 +21,7 @@ import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
  * Avatar et menu du compte (utilisateur connecté). Chargé à la demande par AuthButton : Base UI Menu et le
  * positionnement flottant ne sont ainsi jamais téléchargés par un visiteur anonyme.
  */
-export default function AccountMenu({ user }: { user: SessionUser }) {
+export default function AccountMenu({ user }: { user: ClientUser }) {
   const { logout } = useLogout();
   // Session ouverte avant SEC-12 : l'état Firebase resté dans le navigateur est effacé (le cookie seul suffit).
   useEffect(() => purgeStoredFirebaseAuth(), []);

@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GoogleButton } from "@/components/auth/google-button";
-import { GooglePopupCancelled, withGooglePopup } from "@/components/auth/google-popup";
+import { GooglePopupCancelled, loadFirebaseAuth, withGooglePopup } from "@/components/auth/google-popup";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
+import { useSession } from "@/components/auth/session-provider";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
+import type { ClientUser } from "@/lib/session-shared";
 
 interface Props {
   open: boolean;
@@ -19,32 +21,36 @@ interface Props {
   onSuccess?: () => void;
 }
 
-/** Après Google, on échange le jeton contre un cookie de session côté serveur, puis on rafraîchit les composants serveur. */
-async function establishSession(idToken: string) {
+/**
+ * Après Google, on échange le jeton contre un cookie de session côté serveur ; la réponse porte l'identité, que
+ * l'en-tête affiche aussitôt (SessionProvider), puis on rafraîchit les composants serveur.
+ */
+async function establishSession(idToken: string): Promise<ClientUser> {
   const res = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ idToken }),
   });
-  if (!res.ok) throw new Error("La session n'a pas pu être ouverte.");
+  const data = (await res.json().catch(() => ({}))) as { user?: ClientUser };
+  if (!res.ok || !data.user) throw new Error("La session n'a pas pu être ouverte.");
+  return data.user;
 }
 
 export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSuccess }: Props) {
   const router = useRouter();
+  const { signedIn } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Firebase Auth n'est initialisé qu'à l'ouverture de cette fenêtre, jamais au chargement d'une page : un visiteur qui
-  // ne se connecte pas ne contacte pas Google (iframe d'authentification, base IndexedDB). Sur mobile et Safari, `getAuth()`
-  // précharge alors l'iframe pendant que la fenêtre s'affiche, pour que `signInWithPopup` ouvre la fenêtre Google
-  // dans la foulée du clic (sinon le bloqueur de fenêtres surgissantes l'arrêterait).
+  // Le SDK Firebase Auth n'est téléchargé et initialisé qu'à l'ouverture de cette fenêtre, jamais au chargement d'une
+  // page : un visiteur qui ne se connecte pas ne télécharge pas le SDK et ne contacte pas Google (iframe
+  // d'authentification, base IndexedDB). Sur mobile et Safari, `getAuth()` précharge alors l'iframe pendant que la
+  // fenêtre s'affiche, pour que `signInWithPopup` ouvre la fenêtre Google dans la foulée du clic (sinon le bloqueur de
+  // fenêtres surgissantes l'arrêterait).
   useEffect(() => {
     if (!open || !isFirebaseConfigured) return;
-    try {
-      firebaseAuth();
-    } catch {
-      /* configuration absente : l'erreur s'affichera au clic */
-    }
+    // Échec (réseau, configuration absente) : l'erreur s'affichera au clic, qui réessaie.
+    loadFirebaseAuth().catch(() => undefined);
   }, [open]);
 
   async function signInWithGoogle() {
@@ -53,10 +59,8 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
     onBeforeSignIn?.();
     try {
       // L'état Firebase du navigateur est vidé juste après l'échange, réussi ou non (SEC-12) : seul le cookie compte.
-      const credential = await withGooglePopup(async (idToken, cred) => {
-        await establishSession(idToken);
-        return cred;
-      });
+      const { credential, user } = await withGooglePopup(async (idToken, cred) => ({ credential: cred, user: await establishSession(idToken) }));
+      signedIn(user);
       onSuccess?.();
       onOpenChange(false);
       toast.success(`Bienvenue${credential.user.displayName ? `, ${credential.user.displayName.split(" ")[0]}` : ""} !`, {

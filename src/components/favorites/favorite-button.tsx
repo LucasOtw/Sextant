@@ -27,7 +27,8 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
   const [pending, setPending] = useState(false);
   /** Vrai quand la fenêtre se ferme parce que la connexion a réussi : l'intention doit survivre. */
   const succeeded = useRef(false);
-  const active = favorites.ready ? favorites.has(snapshot.id) : favorites.enabled ? initialActive : false;
+  // Avant les favoris du client : l'état du serveur de la page, aussi pendant que la session se détermine (PERF-01).
+  const active = favorites.ready ? favorites.has(snapshot.id) : favorites.enabled || favorites.pending ? initialActive : false;
 
   // Si l'utilisateur quitte la page pendant que la fenêtre est ouverte, on n'enregistre rien à son insu plus tard.
   useEffect(() => {
