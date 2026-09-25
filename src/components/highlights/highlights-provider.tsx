@@ -12,6 +12,8 @@ interface HighlightsContext {
   /** Utilisateur connecté : on peut enregistrer. Sinon, toute action ouvre la connexion. */
   enabled: boolean;
   snapshot: FavoriteSnapshot;
+  /** Article rétracté (OpenAlex) : les références copiées le signalent. */
+  retracted: boolean;
   highlights: Highlight[];
   add: (input: NewHighlight) => Promise<Highlight | null>;
   updateNote: (id: string, note: string) => Promise<boolean>;
@@ -31,12 +33,13 @@ async function jsonOrError(res: Response): Promise<Record<string, unknown>> {
 interface Props {
   enabled: boolean;
   snapshot: FavoriteSnapshot;
+  retracted?: boolean;
   initial: Highlight[];
   children: React.ReactNode;
 }
 
 /** Surlignages d'un article, partagés entre le résumé, le lecteur PDF et la section « Mes surlignages ». */
-export function HighlightsProvider({ enabled, snapshot, initial, children }: Props) {
+export function HighlightsProvider({ enabled, snapshot, retracted = false, initial, children }: Props) {
   const [highlights, setHighlights] = useState<Highlight[]>(initial);
   const [signIn, setSignIn] = useState(false);
   /** Miroir de la liste, lisible depuis les callbacks sans les recréer à chaque rendu. */
@@ -46,6 +49,26 @@ export function HighlightsProvider({ enabled, snapshot, initial, children }: Pro
   }, [highlights]);
 
   const requestSignIn = useCallback(() => setSignIn(true), []);
+
+  /** Mutations lancées depuis l'affichage : la relecture serveur ne doit pas écraser un changement local. */
+  const mutations = useRef(0);
+
+  // Relecture à l'affichage : au retour arrière, Next réutilise la page déjà rendue, donc une liste périmée
+  // (note modifiée ou passage supprimé depuis « Mes citations »). La modifier écraserait la version récente.
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void fetch(`/api/highlights?work=${encodeURIComponent(snapshot.id)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? (res.json() as Promise<{ highlights?: Highlight[] }>) : null))
+      .then((data) => {
+        if (cancelled || !data?.highlights || mutations.current > 0) return;
+        setHighlights(data.highlights);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, snapshot.id]);
 
   const add = useCallback<HighlightsContext["add"]>(
     async (input) => {
@@ -57,6 +80,7 @@ export function HighlightsProvider({ enabled, snapshot, initial, children }: Pro
         toast.error(`Passage trop long : ${MAX_HIGHLIGHT_TEXT} caractères au plus. Sélectionnez un extrait plus court.`);
         return null;
       }
+      mutations.current++;
       try {
         const data = await jsonOrError(
           await fetch("/api/highlights", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...input, article: snapshot }) }),
@@ -79,6 +103,7 @@ export function HighlightsProvider({ enabled, snapshot, initial, children }: Pro
   const updateNote = useCallback<HighlightsContext["updateNote"]>(async (id, note) => {
     const previous = listRef.current.find((h) => h.id === id)?.note;
     if (previous === undefined || previous === note) return true;
+    mutations.current++;
     setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
     try {
       await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ note }) }));
@@ -94,6 +119,7 @@ export function HighlightsProvider({ enabled, snapshot, initial, children }: Pro
     async (id) => {
       const previous = listRef.current;
       const removed = previous.find((h) => h.id === id);
+      mutations.current++;
       setHighlights((prev) => prev.filter((h) => h.id !== id));
       try {
         await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
@@ -110,8 +136,8 @@ export function HighlightsProvider({ enabled, snapshot, initial, children }: Pro
   );
 
   const value = useMemo<HighlightsContext>(
-    () => ({ enabled, snapshot, highlights, add, updateNote, remove, requestSignIn }),
-    [enabled, snapshot, highlights, add, updateNote, remove, requestSignIn],
+    () => ({ enabled, snapshot, retracted, highlights, add, updateNote, remove, requestSignIn }),
+    [enabled, snapshot, retracted, highlights, add, updateNote, remove, requestSignIn],
   );
 
   return (

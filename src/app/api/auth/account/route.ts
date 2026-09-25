@@ -4,6 +4,7 @@ import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
 import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
 import { detachAuthor } from "@/lib/feedback";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,8 @@ export async function DELETE(req: Request) {
     await detachAuthor(user.uid);
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
-  } catch {
+  } catch (e) {
+    logError("auth.account.DELETE", e);
     return NextResponse.json({ error: "La suppression a échoué, réessayez." }, { status: 500 });
   }
 

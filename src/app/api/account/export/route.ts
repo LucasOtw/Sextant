@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
-import { adminDb } from "@/lib/firebase/admin";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { listHighlights } from "@/lib/highlights";
 import { listKeys } from "@/lib/api-keys";
 import { listNotes } from "@/lib/notes";
+import { logError } from "@/lib/log";
 import { rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -29,6 +30,16 @@ export async function GET() {
       listKeys(user.uid),
     ]);
     const created = profileSnap.get("createdAt") as { toDate?: () => Date } | undefined;
+    // Repli sur Firebase Auth quand le profil n'a pas de date d'inscription : la donnée exportée reste exacte.
+    const createdAt =
+      created?.toDate?.().toISOString() ??
+      (await (await adminAuth())
+        .getUser(user.uid)
+        .then((u) => (u.metadata.creationTime ? new Date(u.metadata.creationTime).toISOString() : null))
+        .catch((e) => {
+          logError("export.getUser", e);
+          return null;
+        }));
     const data = {
       format: "Sextant — export des données du compte",
       exportedAt: new Date().toISOString(),
@@ -38,7 +49,7 @@ export async function GET() {
         email: user.email,
         picture: user.picture,
         provider: "Google (Firebase Authentication)",
-        createdAt: created?.toDate?.().toISOString() ?? null,
+        createdAt,
       },
       favorites,
       lists,
@@ -55,7 +66,8 @@ export async function GET() {
         "cache-control": "private, no-store",
       },
     });
-  } catch {
+  } catch (e) {
+    logError("export.GET", e);
     return NextResponse.json({ error: "L'export a échoué, réessayez." }, { status: 502 });
   }
 }

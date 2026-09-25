@@ -19,7 +19,7 @@ interface Props {
 
 /**
  * Cœur d'enregistrement. Sans compte, propose de se connecter ; l'article visé est mémorisé au moment
- * où l'utilisateur lance la connexion et enregistré dès que la session est ouverte (fenêtre ou redirection).
+ * où l'utilisateur lance la connexion et enregistré dès que la session est ouverte par la fenêtre de connexion Google.
  */
 export function FavoriteButton({ snapshot, variant = "icon", initialActive = false, className }: Props) {
   const favorites = useFavorites();

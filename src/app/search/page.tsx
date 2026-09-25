@@ -4,6 +4,7 @@ import { SearchBox } from "@/components/search-box";
 import { Results, parseSearchParams, type RawSearchParams } from "@/components/results";
 import { getAuthorProfile, getTopic, getWork } from "@/lib/openalex";
 import { workTitle } from "@/lib/format";
+import { recover } from "@/lib/log";
 
 interface Props {
   searchParams: Promise<RawSearchParams>;
@@ -21,9 +22,9 @@ export default async function SearchPage({ searchParams }: Props) {
 
   // Contexte affiché quand la recherche est restreinte à un sujet ou aux citations d'un article.
   const [topic, cited, author] = await Promise.all([
-    params.topic ? getTopic(params.topic).catch(() => null) : null,
-    params.cites ? getWork(params.cites).catch(() => null) : null,
-    params.author ? getAuthorProfile(params.author).catch(() => null) : null,
+    params.topic ? getTopic(params.topic).catch(recover("search.topic", null)) : null,
+    params.cites ? getWork(params.cites).catch(recover("search.cites", null)) : null,
+    params.author ? getAuthorProfile(params.author).catch(recover("search.author", null)) : null,
   ]);
 
   return (

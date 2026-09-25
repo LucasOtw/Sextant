@@ -184,6 +184,26 @@ export function withCredentials(url: URL): URL {
 
 const RETRYABLE = new Set([429, 500, 502, 503, 504]);
 
+/** Attente maximale d'une réponse d'OpenAlex (une notice absurde peut le faire tourner une dizaine de secondes). */
+const DEADLINE_MS = 8000;
+
+/**
+ * `fetch` borné dans le temps. Volontairement sans `AbortSignal` : Next ne déduplique pas un fetch qui en porte un, et
+ * `generateMetadata` et la page lisent la même notice dans le même rendu. La requête abandonnée finit en arrière-plan
+ * (et alimente le cache si elle aboutit).
+ */
+async function fetchWithDeadline(url: URL, revalidate: number, path: string): Promise<Response> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new OpenAlexError(`OpenAlex hors délai (${DEADLINE_MS} ms) sur ${path}`, 504)), DEADLINE_MS);
+  });
+  try {
+    return await Promise.race([fetch(url, { next: { revalidate } }), deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function get<T>(
   path: string,
   params: Record<string, string | number | undefined>,
@@ -196,10 +216,11 @@ async function get<T>(
   withCredentials(url);
 
   // Une seule relance rapide : suffit pour les à-coups, sans faire attendre l'utilisateur sur un vrai 429.
-  let res = await fetch(url, { next: { revalidate } });
+  // Pas de relance après un délai dépassé : OpenAlex est alors saturé, on répond tout de suite.
+  let res = await fetchWithDeadline(url, revalidate, path);
   if (RETRYABLE.has(res.status)) {
     await new Promise((r) => setTimeout(r, 1200));
-    res = await fetch(url, { next: { revalidate } });
+    res = await fetchWithDeadline(url, revalidate, path);
   }
   if (!res.ok) {
     throw new OpenAlexError(`OpenAlex ${res.status} sur ${path}`, res.status);
@@ -257,6 +278,30 @@ export async function getWork(id: string): Promise<Work | null> {
     if (e instanceof OpenAlexError && e.status === 404) return null;
     throw e;
   }
+}
+
+/** Valeurs au plus dans un filtre « ou » d'OpenAlex (`ids.openalex:A|B|…`). */
+const OR_FILTER_MAX = 100;
+
+/**
+ * Parmi `ids`, ceux qu'OpenAlex marque aujourd'hui comme rétractés. Sert aux favoris, listes et outils MCP, dont les
+ * instantanés datent de l'enregistrement : la rétractation est toujours recalculée ici, jamais lue d'un instantané.
+ * Une requête par lot de 100 (seuls les rétractés reviennent, d'où `select=id`), mise en cache une heure.
+ */
+export async function getRetractedIds(ids: string[]): Promise<Set<string>> {
+  const unique = [...new Set(ids.map((id) => shortId(id).toUpperCase()).filter((id) => /^W\d+$/.test(id)))];
+  const lots: string[][] = [];
+  for (let i = 0; i < unique.length; i += OR_FILTER_MAX) lots.push(unique.slice(i, i + OR_FILTER_MAX));
+  const pages = await Promise.all(
+    lots.map((lot) =>
+      get<Page<{ id: string }>>(
+        "/works",
+        { filter: `ids.openalex:${lot.join("|")},is_retracted:true`, select: "id", "per-page": OR_FILTER_MAX },
+        3600,
+      ),
+    ),
+  );
+  return new Set(pages.flatMap((p) => p.results.map((w) => shortId(w.id).toUpperCase())));
 }
 
 /** Récupère plusieurs travaux par identifiant, dans l'ordre demandé. */

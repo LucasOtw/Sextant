@@ -8,7 +8,8 @@ import { abstractFromInvertedIndex, formatAuthors, openAccessUrl, toApa, typeLab
 import { citationBlock, sourceLabel, type Highlight } from "@/lib/highlights-shared";
 import { findHighlights, listHighlights } from "@/lib/highlights";
 import { getNote, listNotes } from "@/lib/notes";
-import { getWork, getWorksByIds, getWorksBySameTopic, searchWorks, shortId, type Work } from "@/lib/openalex";
+import { logError } from "@/lib/log";
+import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, shortId, type Work } from "@/lib/openalex";
 import { SITE } from "@/lib/site";
 
 /**
@@ -55,8 +56,24 @@ function workLine(w: Work, i?: number): string {
   ].join("\n");
 }
 
-function favoriteLine(f: Favorite, i: number): string {
-  return `${i + 1}. ${f.title} (${f.year ?? "s. d."})\n   ${f.authors}${f.venue ? ` — ${f.venue}` : ""} — id ${f.id} · ${SITE.url}/article/${f.id}`;
+function favoriteLine(f: Favorite, i: number, retracted: ReadonlySet<string>): string {
+  return `${i + 1}. ${retracted.has(f.id) ? RETRACTED_TAG : ""}${f.title} (${f.year ?? "s. d."})\n   ${f.authors}${f.venue ? ` — ${f.venue}` : ""} — id ${f.id} · ${SITE.url}/article/${f.id}`;
+}
+
+const RETRACTED_TAG = "[RÉTRACTÉ] ";
+const RETRACTED_WARNING = "ATTENTION : cet article a été rétracté (OpenAlex). Ne pas le citer comme source fiable.";
+
+/**
+ * Articles rétractés parmi ceux affichés (les instantanés de la bibliothèque datent de l'enregistrement).
+ * Si OpenAlex ne répond pas, la réponse le dit plutôt que de laisser croire qu'aucun ne l'est.
+ */
+async function retractedAmong(ids: string[]): Promise<{ retracted: Set<string>; caveat: string }> {
+  try {
+    return { retracted: await getRetractedIds(ids), caveat: "" };
+  } catch (e) {
+    logError("mcp.retracted", e);
+    return { retracted: new Set(), caveat: "\n\n(Vérification des articles rétractés momentanément indisponible.)" };
+  }
 }
 
 export function registerSextantTools(server: McpServer) {
@@ -107,6 +124,7 @@ export function registerSextantTools(server: McpServer) {
       return text(
         [
           `# ${workTitle(w)}`,
+          w.is_retracted ? RETRACTED_WARNING : "",
           `Auteurs : ${authors}${w.authorships.length > 15 ? ` et ${w.authorships.length - 15} autres` : ""}`,
           `Publication : ${venueName(w) ?? "—"}, ${w.publication_date ?? w.publication_year ?? "s. d."} — ${typeLabel(w.type)}${w.language ? ` — langue : ${w.language}` : ""}`,
           `Citations : ${w.cited_by_count}${w.doi ? ` — DOI : ${w.doi}` : ""}`,
@@ -144,8 +162,9 @@ export function registerSextantTools(server: McpServer) {
         const seen = new Set(similar.map((x) => x.id));
         similar = [...similar, ...more.filter((x) => !seen.has(x.id))];
       }
-      if (similar.length === 0) return text(`Pas d'article proche trouvé pour « ${workTitle(w)} ».`);
-      return text(`Articles proches de « ${workTitle(w)} » :\n\n${similar.slice(0, n).map(workLine).join("\n\n")}`);
+      const warning = w.is_retracted ? `${RETRACTED_WARNING}\n\n` : "";
+      if (similar.length === 0) return text(`${warning}Pas d'article proche trouvé pour « ${workTitle(w)} ».`);
+      return text(`${warning}Articles proches de « ${workTitle(w)} » :\n\n${similar.slice(0, n).map(workLine).join("\n\n")}`);
     },
   );
 
@@ -171,7 +190,8 @@ export function registerSextantTools(server: McpServer) {
       ]);
       const capped = q && total > MCP_SCAN_MAX ? ` (recherche limitée aux ${MCP_SCAN_MAX} favoris les plus récents)` : "";
       if (shown.length === 0) return text(q ? `Aucun favori ne correspond à « ${query} »${capped}.` : "Aucun favori pour l'instant.");
-      return text(`${total} favori(s) au total${q ? `, ${shown.length} pour « ${query} »${capped}` : ""} :\n\n${shown.map(favoriteLine).join("\n")}`);
+      const { retracted, caveat } = await retractedAmong(shown.map((f) => f.id));
+      return text(`${total} favori(s) au total${q ? `, ${shown.length} pour « ${query} »${capped}` : ""} :\n\n${shown.map((f, i) => favoriteLine(f, i, retracted)).join("\n")}${caveat}`);
     },
   );
 
@@ -206,8 +226,17 @@ export function registerSextantTools(server: McpServer) {
       const found = lists.find((l) => l.id === list.trim()) ?? lists.find((l) => fold(l.name) === q) ?? lists.find((l) => fold(l.name).includes(q));
       if (!found) return text(`Aucune liste « ${list} ». Listes existantes : ${lists.map((l) => l.name).join(", ") || "aucune"}.`);
       const items: Favorite[] = await getFavoritesByIds(uid, found.articleIds);
+      const { retracted, caveat } = await retractedAmong(items.map((f) => f.id));
       return text(
-        [`# ${found.name}`, found.description, `${items.length} article(s) :`, "", ...items.map((f, i) => `${favoriteLine(f, i)}\n   APA : ${apaFromSnapshot(f)}`)].filter(Boolean).join("\n"),
+        [
+          `# ${found.name}`,
+          found.description,
+          `${items.length} article(s) :`,
+          "",
+          ...items.map((f, i) => `${favoriteLine(f, i, retracted)}\n   APA : ${apaFromSnapshot(f, retracted.has(f.id))}`),
+        ]
+          .filter(Boolean)
+          .join("\n") + caveat,
       );
     },
   );
@@ -238,10 +267,11 @@ export function registerSextantTools(server: McpServer) {
       // Le parcours filtré s'arrête après MCP_SCAN_MAX passages : on le dit quand il a pu ne pas tout voir.
       const capped = q && !article_id && shown.length < n ? `\n\n(Recherche limitée aux ${MCP_SCAN_MAX} passages les plus récents.)` : "";
       if (shown.length === 0) return text(`Aucune citation ne correspond.${capped}`);
+      const { retracted, caveat } = await retractedAmong(shown.map((h) => h.workId));
       return text(
         shown
-          .map((h, i) => `${i + 1}. ${citationBlock(h)}\n   Source : ${sourceLabel(h)} — article ${h.workId}${h.note ? `\n   Note : ${h.note}` : ""}`)
-          .join("\n\n") + capped,
+          .map((h, i) => `${i + 1}. ${retracted.has(h.workId) ? RETRACTED_TAG : ""}${citationBlock(h, retracted.has(h.workId))}\n   Source : ${sourceLabel(h)} — article ${h.workId}${h.note ? `\n   Note : ${h.note}` : ""}`)
+          .join("\n\n") + capped + caveat,
       );
     },
   );
@@ -258,11 +288,16 @@ export function registerSextantTools(server: McpServer) {
       const uid = uidOf(ctx as Ctx);
       if (article_id) {
         const note = await getNote(uid, shortId(article_id).toUpperCase());
-        return text(note ? `Note sur « ${note.article.title} » :\n\n${note.text}` : `Pas de note sur l'article ${article_id}.`);
+        if (!note) return text(`Pas de note sur l'article ${article_id}.`);
+        const { retracted, caveat } = await retractedAmong([note.workId]);
+        return text(`${retracted.has(note.workId) ? `${RETRACTED_WARNING}\n\n` : ""}Note sur « ${note.article.title} » :\n\n${note.text}${caveat}`);
       }
       const notes = await listNotes(uid, limit ?? 30);
       if (notes.length === 0) return text("Aucune note pour l'instant.");
-      return text(notes.map((n) => `## ${n.article.title} (${n.article.year ?? "s. d."}) — ${n.workId}\n${n.text}`).join("\n\n"));
+      const { retracted, caveat } = await retractedAmong(notes.map((n) => n.workId));
+      return text(
+        notes.map((n) => `## ${retracted.has(n.workId) ? RETRACTED_TAG : ""}${n.article.title} (${n.article.year ?? "s. d."}) — ${n.workId}\n${n.text}`).join("\n\n") + caveat,
+      );
     },
   );
 }

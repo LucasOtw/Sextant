@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
+import { isExpectedAuthError, logError } from "@/lib/log";
 import { rejectCrossSite } from "@/lib/security";
 
 export const runtime = "nodejs";
@@ -34,9 +35,19 @@ export async function POST(req: Request) {
     }
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_MAX_AGE_MS });
     const db = await adminDb();
-    const { FieldValue } = await import("firebase-admin/firestore");
+    const { FieldValue, Timestamp } = await import("firebase-admin/firestore");
+    // Date d'inscription : celle de Firebase Auth, identique à chaque connexion. La réécrire ne change donc rien, et
+    // un profil créé avant ce correctif retrouve sa vraie date à la connexion suivante.
+    const creationTime = await auth
+      .getUser(decoded.uid)
+      .then((u) => u.metadata.creationTime)
+      .catch((e) => {
+        logError("session.getUser", e);
+        return undefined;
+      });
+    const createdAt = creationTime ? new Date(creationTime) : null;
 
-    // Profil minimal, créé ou rafraîchi à chaque connexion.
+    // Profil minimal, créé ou rafraîchi à chaque connexion (une seule écriture).
     await db
       .doc(`users/${decoded.uid}`)
       .set(
@@ -45,21 +56,21 @@ export async function POST(req: Request) {
           name: decoded.name ?? null,
           picture: decoded.picture ?? null,
           lastLoginAt: FieldValue.serverTimestamp(),
-          createdAt: FieldValue.serverTimestamp(),
+          ...(createdAt && !Number.isNaN(createdAt.getTime()) ? { createdAt: Timestamp.fromDate(createdAt) } : {}),
         },
-        { mergeFields: ["email", "name", "picture", "lastLoginAt"] },
+        { merge: true },
       )
-      .catch(() => undefined);
-    await db
-      .doc(`users/${decoded.uid}`)
-      .set({ createdAt: FieldValue.serverTimestamp() }, { merge: true })
-      .catch(() => undefined);
+      // Profil non écrit : la connexion reste valable (le cookie suffit), mais la panne doit se voir.
+      .catch((e) => logError("session.profile", e));
 
     const res = NextResponse.json({ ok: true });
     res.cookies.set(SESSION_COOKIE, sessionCookie, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS / 1000 });
     return res;
-  } catch {
-    return NextResponse.json({ error: "Jeton invalide." }, { status: 401 });
+  } catch (e) {
+    // Jeton refusé par Firebase : 401. Tout le reste (SDK Admin, réseau, Firestore) est une panne : 503, journalisée.
+    if (isExpectedAuthError(e)) return NextResponse.json({ error: "Jeton invalide." }, { status: 401 });
+    logError("session.create", e);
+    return NextResponse.json({ error: "Connexion momentanément impossible, réessayez." }, { status: 503 });
   }
 }
 

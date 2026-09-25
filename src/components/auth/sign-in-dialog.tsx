@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { getRedirectResult, signInWithPopup, signInWithRedirect } from "firebase/auth";
+import { signInWithPopup } from "firebase/auth";
 import { toast } from "sonner";
 import { GoogleButton } from "@/components/auth/google-button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -45,15 +45,17 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
         credential = await signInWithPopup(auth, googleProvider());
       } catch (e) {
         const code = (e as { code?: string }).code;
-        if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
-          onSuccess?.(); // la page va être quittée : ce n'est pas un abandon
-          await signInWithRedirect(auth, googleProvider());
+        // Pas de repli par redirection : avec l'authDomain Firebase (autre domaine que le site), Safari 16.1+,
+        // Firefox 109+ et Chrome sans cookies tiers ramènent l'utilisateur déconnecté, sans message. On explique plutôt.
+        if (code === "auth/popup-blocked") {
+          setError("Votre navigateur a bloqué la fenêtre de connexion Google. Autorisez les fenêtres surgissantes pour ce site, puis réessayez.");
           return;
         }
-        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-          setBusy(false);
+        if (code === "auth/operation-not-supported-in-this-environment") {
+          setError("Ouvrez Sextant dans votre navigateur (Safari, Chrome…) pour vous connecter.");
           return;
         }
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
         throw e;
       }
       await establishSession(await credential.user.getIdToken());
@@ -86,19 +88,3 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
     </Dialog>
   );
 }
-
-/** Reprend une connexion faite par redirection (repli quand la fenêtre surgissante est bloquée). */
-export async function completeRedirectSignIn(): Promise<boolean> {
-  try {
-    const result = await getRedirectResult(firebaseAuth());
-    if (!result) return false;
-    await establishSession(await result.user.getIdToken());
-    toast.success(`Bienvenue${result.user.displayName ? `, ${result.user.displayName.split(" ")[0]}` : ""} !`, {
-      description: "Vous êtes connecté.",
-    });
-    return true;
-  } catch {
-    return false;
-  }
-}
-

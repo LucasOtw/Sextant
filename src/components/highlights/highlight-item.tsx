@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, CopyIcon, QuoteIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ const LONG_TEXT = 420;
 
 interface Props {
   highlight: Highlight;
+  /** Article rétracté : la référence copiée le signale. */
+  retracted?: boolean;
   onNote: (note: string) => Promise<boolean>;
   onDelete: () => Promise<boolean>;
   /** Clic sur la page (lecteur PDF) : aller à la page. */
@@ -22,7 +24,7 @@ interface Props {
 }
 
 /** Un passage retenu : la citation au surligneur, sa source, une note modifiable, copier avec la référence, supprimer. */
-export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, compact = false }: Props) {
+export function HighlightItem({ highlight: h, retracted = false, onNote, onDelete, onGoToPage, compact = false }: Props) {
   const [copied, setCopied] = useState(false);
   const [note, setNote] = useState(h.note);
   const [editing, setEditing] = useState(false);
@@ -30,6 +32,15 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
   /** Vrai dès que l'édition se ferme : le blur émis par Chrome au démontage du champ ne doit pas ré-enregistrer. */
   const closedRef = useRef(false);
   const long = h.text.length > LONG_TEXT;
+  const unsaved = editing && note.trim() !== h.note;
+
+  // Note en cours de saisie (enregistrée seulement au blur ou à Cmd+Entrée) : le navigateur prévient avant de quitter.
+  useEffect(() => {
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsaved]);
 
   function startEditing() {
     closedRef.current = false;
@@ -38,7 +49,7 @@ export function HighlightItem({ highlight: h, onNote, onDelete, onGoToPage, comp
 
   async function copy() {
     try {
-      await navigator.clipboard.writeText(citationBlock(h));
+      await navigator.clipboard.writeText(citationBlock(h, retracted));
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch {

@@ -4,6 +4,7 @@ import { deleteHighlight, HighlightNotFoundError, updateHighlightNote } from "@/
 import { cleanText, MAX_NOTE } from "@/lib/highlights-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -41,6 +42,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ ok: true, note }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof HighlightNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
+    logError("highlights.id.PATCH", e);
     return NextResponse.json({ error: "La modification a échoué." }, { status: 502 });
   }
 }
@@ -51,7 +53,8 @@ export async function DELETE(req: Request, ctx: Ctx) {
   try {
     await deleteHighlight(g.user.uid, g.id);
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("highlights.id.DELETE", e);
     return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
   }
 }

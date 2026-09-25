@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockIcon, LockOpenIcon, QuoteIcon, SearchIcon } from "lucide-react";
 import { AiSummary } from "@/components/ai-summary";
+import { SourceUnavailable } from "@/components/source-unavailable";
 import { AuthorChip } from "@/components/author-chip";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { CollectionPicker } from "@/components/collections/collection-picker";
@@ -40,32 +41,48 @@ import {
   venueName,
   workTitle,
 } from "@/lib/format";
-import { getWork, getWorksByIds, getWorksBySameTopic, shortId, type Work } from "@/lib/openalex";
+import { getWork, getWorksByIds, getWorksBySameTopic, OpenAlexError, shortId, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
+import { logError, recover } from "@/lib/log";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  // Même contrôle que la page : un identifiant mal formé (« W…?per-page=1 ») ne doit pas emprunter le titre d'un vrai article.
+  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
   let work: Awaited<ReturnType<typeof getWork>>;
   try {
-    work = await getWork((await params).id);
+    work = await getWork(id);
   } catch {
-    // Panne de la source (OpenAlex) : la page d'erreur serveur prend le relais, le titre ne doit pas parler d'article absent.
-    return { title: "Erreur serveur", robots: { index: false } };
+    // Panne de la source (OpenAlex) : le titre ne doit pas parler d'article absent.
+    return { title: "Article momentanément indisponible", robots: { index: false } };
   }
   if (!work) return { title: "Article introuvable", robots: { index: false } };
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   return { title: workTitle(work), description: abstract?.slice(0, 160) };
 }
 
+/**
+ * Pas de loading.tsx sur ce segment : un squelette démarrerait le flux avec un statut 200 avant `notFound()`,
+ * et un article introuvable répondrait « 200 + noindex » (soft 404). Ici l'article est lu avant tout envoi,
+ * donc un identifiant absent d'OpenAlex renvoie un vrai 404 (fiche comme lecteur /lire, qui hérite du segment).
+ */
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
   if (!/^W\d+$/i.test(id)) notFound();
-  const work = await getWork(id);
+  let work: Work | null;
+  try {
+    work = await getWork(id);
+  } catch (e) {
+    if (!(e instanceof OpenAlexError)) throw e;
+    logError("article.getWork", e, { work: id });
+    return <SourceUnavailable rateLimited={e.isRateLimited} retryHref={`/article/${id}`} />;
+  }
   if (!work) notFound();
 
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
@@ -81,9 +98,9 @@ export default async function ArticlePage({ params }: Props) {
   const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
   const [initiallyFavorite, initialHighlights, initialNote] = sessionUser
     ? await Promise.all([
-        isFavorite(sessionUser.uid, shortId(work.id)).catch(() => false),
-        listHighlights(sessionUser.uid, shortId(work.id)).catch(() => []),
-        getNote(sessionUser.uid, shortId(work.id)).catch(() => null),
+        isFavorite(sessionUser.uid, shortId(work.id)).catch(recover("article.isFavorite", false)),
+        listHighlights(sessionUser.uid, shortId(work.id)).catch(recover("article.highlights", [])),
+        getNote(sessionUser.uid, shortId(work.id)).catch(recover("article.note", null)),
       ])
     : [false, [], null];
 
@@ -98,7 +115,7 @@ export default async function ArticlePage({ params }: Props) {
         isOa={work.open_access.is_oa}
       />
       <article className="mx-auto max-w-3xl">
-      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialHighlights}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initialHighlights}>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
@@ -289,7 +306,8 @@ async function Similar({ work }: { work: Work }) {
       const seen = new Set(similar.map((w) => w.id));
       similar = [...similar, ...more.filter((w) => !seen.has(w.id))];
     }
-  } catch {
+  } catch (e) {
+    logError("article.similar", e, { work: shortId(work.id) });
     return <p className="mt-4 text-sm text-muted-foreground">Suggestions indisponibles pour le moment.</p>;
   }
   if (similar.length === 0) return <p className="mt-4 text-sm text-muted-foreground">Aucune suggestion pour cet article.</p>;

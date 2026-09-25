@@ -6,6 +6,7 @@ import { getNote, setNote } from "@/lib/notes";
 import { MAX_ARTICLE_NOTE } from "@/lib/notes-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -30,7 +31,8 @@ export async function GET(req: Request, ctx: Ctx) {
   if (g.refused) return g.refused;
   try {
     return NextResponse.json({ note: await getNote(g.user.uid, g.workId) }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("notes.workId.GET", e);
     return NextResponse.json({ error: "Note indisponible." }, { status: 502 });
   }
 }
@@ -53,7 +55,8 @@ export async function PUT(req: Request, ctx: Ctx) {
   if (!article || article.id !== g.workId) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
   try {
     return NextResponse.json({ note: await setNote(g.user.uid, article, cleanText(body.text, MAX_ARTICLE_NOTE, true)) }, { headers: PRIVATE });
-  } catch {
+  } catch (e) {
+    logError("notes.workId.PUT", e);
     return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
   }
 }

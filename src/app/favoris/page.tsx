@@ -8,6 +8,8 @@ import { listCollections } from "@/lib/collections";
 import type { Collection } from "@/lib/collections-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { listFavorites } from "@/lib/favorites";
+import { logError } from "@/lib/log";
+import { retractedWithin } from "@/lib/retracted";
 import type { Favorite } from "@/lib/favorites-shared";
 
 export const metadata: Metadata = { title: "Mes favoris" };
@@ -20,13 +22,20 @@ export default async function FavoritesPage() {
   let favorites: Favorite[] = [];
   let collections: Collection[] = [];
   let loadError = false;
+  let retracted: string[] = [];
   // Jusqu'à un millier de lectures par rendu pour une bibliothèque pleine : limite par compte (par instance).
   const limited = user ? !rateLimit(`page-lib:${user.uid}`, 30, 60_000) : false;
   if (user && !limited) {
     const [f, c] = await Promise.allSettled([listFavorites(user.uid), listCollections(user.uid)]);
     if (f.status === "fulfilled") favorites = f.value;
-    else loadError = true;
+    else {
+      loadError = true;
+      logError("favoris.list", f.reason);
+    }
     if (c.status === "fulfilled") collections = c.value;
+    else logError("favoris.collections", c.reason);
+    // Rétractations recalculées à chaque visite (un article peut l'être après son enregistrement), bornées dans le temps.
+    retracted = [...(await retractedWithin(favorites.map((x) => x.id), "favoris.retracted"))];
   }
 
   return (
@@ -36,7 +45,7 @@ export default async function FavoritesPage() {
         <p className="mt-3 text-lg text-muted-foreground">
           Les articles que vous avez enregistrés, sur tous vos appareils. Classez-les en listes, exportez-les en BibTeX.
         </p>
-        <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <FavoritesList initial={favorites} initialCollections={collections} loadError={loadError} />) : <SignInPrompt />}</div>
+        <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <FavoritesList initial={favorites} initialCollections={collections} loadError={loadError} retracted={retracted} />) : <SignInPrompt />}</div>
       </div>
     </div>
   );

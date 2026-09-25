@@ -7,7 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
 import { McpKeys } from "@/components/account/mcp-keys";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
-import { adminDb } from "@/lib/firebase/admin";
+import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { logError } from "@/lib/log";
 import { countFavorites } from "@/lib/favorites";
 import { countCollections } from "@/lib/collections";
 import { countHighlights } from "@/lib/highlights";
@@ -19,11 +20,27 @@ async function memberSince(uid: string): Promise<string | null> {
   try {
     const snap = await (await adminDb()).doc(`users/${uid}`).get();
     const ts = snap.get("createdAt") as { toDate?: () => Date } | undefined;
-    const d = ts?.toDate?.();
+    // Repli sur Firebase Auth : un profil sans date (écriture de connexion ratée) garde sa vraie date d'inscription.
+    const d = ts?.toDate?.() ?? (await authCreationDate(uid));
     return d ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d) : null;
-  } catch {
+  } catch (e) {
+    logError("compte.memberSince", e);
     return null;
   }
+}
+
+async function authCreationDate(uid: string): Promise<Date | null> {
+  const creationTime = (await (await adminAuth()).getUser(uid)).metadata.creationTime;
+  const d = creationTime ? new Date(creationTime) : null;
+  return d && !Number.isNaN(d.getTime()) ? d : null;
+}
+
+/** Un compteur illisible s'affiche « — » (et se journalise) plutôt que « 0 », qui ferait croire la bibliothèque vide. */
+function countOrNull(scope: string, p: Promise<number>): Promise<number | null> {
+  return p.catch((e) => {
+    logError(scope, e);
+    return null;
+  });
 }
 
 export default async function AccountPage() {
@@ -33,10 +50,10 @@ export default async function AccountPage() {
 
   const [since, favoritesCount, collectionsCount, highlightsCount, notesCount] = await Promise.all([
     memberSince(user.uid),
-    countFavorites(user.uid).catch(() => 0),
-    countCollections(user.uid).catch(() => 0),
-    countHighlights(user.uid).catch(() => 0),
-    countNotes(user.uid).catch(() => 0),
+    countOrNull("compte.countFavorites", countFavorites(user.uid)),
+    countOrNull("compte.countCollections", countCollections(user.uid)),
+    countOrNull("compte.countHighlights", countHighlights(user.uid)),
+    countOrNull("compte.countNotes", countNotes(user.uid)),
   ]);
   const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 
@@ -62,10 +79,10 @@ export default async function AccountPage() {
         <section className="mt-10" aria-labelledby="bibliotheque">
           <h2 id="bibliotheque" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ma bibliothèque</h2>
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Tile icon={<BookmarkIcon />} label="Favoris" value={String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
-            <Tile icon={<FolderIcon />} label="Listes" value={String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
-            <Tile icon={<HighlighterIcon />} label="Citations" value={String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
-            <Tile icon={<NotebookPenIcon />} label="Notes" value={String(notesCount)} hint="Ce que vous retenez d'un article, sur sa fiche." />
+            <Tile icon={<BookmarkIcon />} label="Favoris" value={favoritesCount === null ? "—" : String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
+            <Tile icon={<FolderIcon />} label="Listes" value={collectionsCount === null ? "—" : String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
+            <Tile icon={<HighlighterIcon />} label="Citations" value={highlightsCount === null ? "—" : String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
+            <Tile icon={<NotebookPenIcon />} label="Notes" value={notesCount === null ? "—" : String(notesCount)} hint="Ce que vous retenez d'un article, sur sa fiche." />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>
         </section>

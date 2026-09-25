@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { SHARE_TOKEN } from "@/lib/collections-shared";
 import { formatCount, typeLabel } from "@/lib/format";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { retractedWithin } from "@/lib/retracted";
 import { getSharedList, type SharedList } from "@/lib/shares";
 
 // Lu à chaque visite : un lien désactivé cesse de fonctionner tout de suite.
@@ -28,7 +29,9 @@ interface Props {
 const load = cache(async (token: string): Promise<SharedList | "limited" | null> => {
   if (!SHARE_TOKEN.test(token)) return null;
   if (!rateLimit(`share-view:${clientIp(await headers())}`, 120, 60_000)) return "limited";
-  return getSharedList(token).catch(() => null);
+  // Pas de catch : getSharedList renvoie déjà null pour un lien inconnu ou désactivé. Une panne Firestore remonte
+  // jusqu'à la page d'erreur (journalisée par Next) au lieu de passer pour un lien « introuvable ».
+  return getSharedList(token);
 });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -55,6 +58,8 @@ export default async function SharedListPage({ params }: Props) {
   }
   if (!list) notFound();
   const n = list.articles.length;
+  // Rétractations recalculées à chaque visite (les instantanés datent de l'enregistrement), bornées dans le temps.
+  const retracted = await retractedWithin(list.articles.map((a) => a.id), "liste.retracted");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -66,7 +71,7 @@ export default async function SharedListPage({ params }: Props) {
         {list.description && <p className="mt-3 text-lg text-muted-foreground">{list.description}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[15px] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
-          <SharedListActions name={list.name} articles={list.articles} />
+          <SharedListActions name={list.name} articles={list.articles} retracted={[...retracted]} />
         </div>
 
         {n === 0 ? (
@@ -82,6 +87,7 @@ export default async function SharedListPage({ params }: Props) {
                   <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                     <Badge variant="secondary">{typeLabel(a.type)}</Badge>
                     {a.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
+                    {retracted.has(a.id) && <Badge variant="destructive">Rétracté</Badge>}
                     {a.topic && <span className="truncate">· {a.topic}</span>}
                   </div>
                   <h2 className="title-display text-xl leading-snug">

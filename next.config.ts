@@ -5,11 +5,12 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // firebase-admin (et ses dépendances Google Cloud) ne supportent pas d'être bundlés : chargés tels quels côté serveur.
   serverExternalPackages: ["firebase-admin"],
-  // Firebase Auth : les pages d'aide (/__/auth/*) sont servies depuis notre domaine, pour que
-  // la connexion Google fonctionne malgré le blocage des cookies tiers (Safari, Chrome).
+  // Firebase Auth sur notre propre domaine (option, cf. src/lib/firebase/client.ts) : les pages d'aide (/__/auth/*)
+  // sont alors servies depuis le site. Inactif tant que NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN n'est pas définie :
+  // l'authDomain reste <projet>.firebaseapp.com et ce relais ne servirait à rien.
   async rewrites() {
     const project = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-    if (!project) return [];
+    if (!project || !process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN?.trim()) return [];
     return [{ source: "/__/auth/:path*", destination: `https://${project}.firebaseapp.com/__/auth/:path*` }];
   },
 };

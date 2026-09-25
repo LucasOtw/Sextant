@@ -3,20 +3,24 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { HighlightsProvider } from "@/components/highlights/highlights-provider";
+import { SourceUnavailable } from "@/components/source-unavailable";
 import { ReaderLayout } from "@/components/highlights/pdf-reader";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { snapshotFromWork } from "@/lib/favorites-shared";
 import { openAccessPdfUrls, openAccessUrl, workTitle } from "@/lib/format";
 import { listHighlights } from "@/lib/highlights";
-import { getWork, shortId } from "@/lib/openalex";
+import { getWork, OpenAlexError, shortId, type Work } from "@/lib/openalex";
+import { logError, recover } from "@/lib/log";
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const work = await getWork((await params).id).catch(() => null);
+  const { id } = await params;
+  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
+  const work = await getWork(id).catch(() => null);
   return { title: work ? `Lire · ${workTitle(work)}` : "Lecteur", robots: { index: false } };
 }
 
@@ -24,14 +28,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReaderPage({ params }: Props) {
   const { id } = await params;
   if (!/^W\d+$/i.test(id)) notFound();
-  const work = await getWork(id);
+  let work: Work | null;
+  try {
+    work = await getWork(id);
+  } catch (e) {
+    if (!(e instanceof OpenAlexError)) throw e;
+    logError("reader.getWork", e, { work: id });
+    return <SourceUnavailable rateLimited={e.isRateLimited} retryHref={`/article/${id}/lire`} />;
+  }
   if (!work) notFound();
   const wid = shortId(work.id);
   const oa = openAccessUrl(work);
   if (!oa?.isPdf || openAccessPdfUrls(work).length === 0) redirect(`/article/${wid}`);
 
   const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
-  const initial = sessionUser ? await listHighlights(sessionUser.uid, wid).catch(() => []) : [];
+  const initial = sessionUser ? await listHighlights(sessionUser.uid, wid).catch(recover("reader.highlights", [])) : [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
@@ -45,7 +56,7 @@ export default async function ReaderPage({ params }: Props) {
           <ExternalLinkIcon /> PDF original
         </a>
       </div>
-      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initial}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initial}>
         <ReaderLayout url={`/api/pdf?work=${wid}`} originalUrl={oa.url} />
       </HighlightsProvider>
     </div>

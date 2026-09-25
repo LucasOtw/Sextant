@@ -3,11 +3,17 @@ import { NextResponse } from "next/server";
 import { activeProvider, AiError, completeOpenAiCompatible, modelFor } from "@/lib/ai";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { abstractFromInvertedIndex, formatAuthors, venueName, workTitle } from "@/lib/format";
-import { getWork } from "@/lib/openalex";
+import { logError } from "@/lib/log";
+import { getWork, type Work } from "@/lib/openalex";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
+/**
+ * Au-delà de la lecture OpenAlex (8 s, jusqu'à ~17 s avec sa relance) et de l'appel IA (20 s, sans relance, pour
+ * Anthropic comme pour les fournisseurs compatibles OpenAI) : la réponse reste un JSON lisible, jamais un 504 de Vercel.
+ */
+export const maxDuration = 40;
 
 /** Cache mémoire par instance : un résumé par article et par modèle, borné (les plus anciens sortent d'abord). */
 const cache = new Map<string, string>();
@@ -55,7 +61,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
   }
 
-  const work = await getWork(id).catch(() => null);
+  let work: Work | null;
+  try {
+    work = await getWork(id);
+  } catch (e) {
+    // Panne ou limite d'OpenAlex : ce n'est pas un article absent.
+    logError("summary.getWork", e, { work: id });
+    return NextResponse.json({ error: "Article momentanément indisponible, réessayez." }, { status: 502 });
+  }
   if (!work) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   if (!abstract) return NextResponse.json({ error: "Pas de résumé original à synthétiser." }, { status: 422 });
@@ -79,10 +92,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ summary: text, model });
   } catch (e) {
     if (e instanceof AiError) return NextResponse.json({ error: e.message }, { status: e.status });
-    if (e instanceof Anthropic.AuthenticationError) return NextResponse.json({ error: "Clé API invalide côté serveur." }, { status: 500 });
+    if (e instanceof Anthropic.AuthenticationError) {
+      logError("summary.anthropicKey", e);
+      return NextResponse.json({ error: "Clé API invalide côté serveur." }, { status: 500 });
+    }
     if (e instanceof Anthropic.RateLimitError) return NextResponse.json({ error: "Trop de demandes, réessayez dans un instant." }, { status: 429 });
-    if (e instanceof Anthropic.APIError) return NextResponse.json({ error: `Erreur du service IA (${e.status}).` }, { status: 502 });
-    throw e;
+    // Délai dépassé ou coupure réseau (sous-classes d'APIError sans statut HTTP).
+    if (e instanceof Anthropic.APIConnectionError) {
+      logError("summary.anthropic", e);
+      return NextResponse.json({ error: "Le service IA ne répond pas, réessayez." }, { status: 504 });
+    }
+    if (e instanceof Anthropic.APIError) {
+      logError("summary.anthropic", e);
+      return NextResponse.json({ error: `Erreur du service IA${e.status ? ` (${e.status})` : ""}.` }, { status: 502 });
+    }
+    // Erreur inattendue : trace côté serveur, et toujours un JSON lisible pour le client (jamais un corps vide).
+    logError("summary.POST", e, { work: id });
+    return NextResponse.json({ error: "Synthèse indisponible pour le moment, réessayez." }, { status: 502 });
   }
 }
 
@@ -95,7 +121,8 @@ function stripMarkdown(text: string): string {
 }
 
 async function completeAnthropic(model: string, userContent: string): Promise<string> {
-  const client = new Anthropic();
+  // Même borne que les fournisseurs compatibles OpenAI : le SDK attendrait sinon 10 min, avec deux relances.
+  const client = new Anthropic({ timeout: 20_000, maxRetries: 0 });
   const response = await client.beta.messages.create({
     model,
     max_tokens: 1024,

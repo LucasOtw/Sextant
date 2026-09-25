@@ -5,6 +5,7 @@ import { FavoritesLimitError } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 const PRIVATE = { "cache-control": "private, no-store" };
@@ -41,6 +42,7 @@ export async function POST(req: Request, ctx: Ctx) {
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof CollectionsLimitError || e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
+    logError("collections.id.articles.POST", e);
     return NextResponse.json({ error: "L'ajout a échoué." }, { status: 502 });
   }
 }
@@ -55,6 +57,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
     return NextResponse.json({ collection: await removeFromCollection(g.user.uid, g.id, workId) }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
+    logError("collections.id.articles.DELETE", e);
     return NextResponse.json({ error: "Le retrait a échoué." }, { status: 502 });
   }
 }

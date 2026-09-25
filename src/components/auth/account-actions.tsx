@@ -8,6 +8,7 @@ import { Loader2Icon, LogOutIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { firebaseAuth } from "@/lib/firebase/client";
+import { useLogout } from "@/components/auth/use-logout";
 
 /** Déconnexion et suppression du compte, depuis la page « Mon compte ». */
 export function AccountActions() {
@@ -15,18 +16,7 @@ export function AccountActions() {
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  async function logout() {
-    await fetch("/api/auth/session", { method: "DELETE" });
-    try {
-      await signOut(firebaseAuth());
-    } catch {
-      /* rien */
-    }
-    toast("Vous êtes déconnecté.", { description: "À bientôt sur Sextant." });
-    router.push("/");
-    router.refresh();
-  }
+  const { logout, pending } = useLogout("/");
 
   async function deleteAccount() {
     setBusy(true);
@@ -50,8 +40,8 @@ export function AccountActions() {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" onClick={logout}>
-        <LogOutIcon /> Se déconnecter
+      <Button variant="outline" onClick={logout} disabled={pending}>
+        {pending ? <Loader2Icon className="animate-spin" /> : <LogOutIcon />} Se déconnecter
       </Button>
       <Button variant="destructive" onClick={() => setConfirm(true)}>
         <Trash2Icon /> Supprimer mon compte

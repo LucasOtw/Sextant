@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getQualityWorksByIds, getRecentByTopic, getSeedMeta, shortId, type Work } from "@/lib/openalex";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import type { Recommendation, RecommendationSeed } from "@/lib/recommendations-shared";
+import { logError, recover } from "@/lib/log";
 
 export const runtime = "nodejs";
 
@@ -81,8 +82,8 @@ export async function GET(req: Request) {
     const since = new Date().getFullYear() - 4;
 
     const [relatedWorks, perTopic] = await Promise.all([
-      getQualityWorksByIds(relatedRanked.map(([rid]) => rid)).catch(() => [] as Work[]),
-      Promise.all(topTopics.map(([tid]) => getRecentByTopic(tid, since, RESULTS).catch(() => [] as Work[]))),
+      getQualityWorksByIds(relatedRanked.map(([rid]) => rid)).catch(recover("recommendations.related", [] as Work[])),
+      Promise.all(topTopics.map(([tid]) => getRecentByTopic(tid, since, RESULTS).catch(recover("recommendations.topic", [] as Work[])))),
     ]);
 
     const relatedQueue: Recommendation[] = relatedWorks.map((w) => ({ work: w, reason: { kind: "related", seeds: related.get(shortId(w.id))?.seeds ?? [] } }));
@@ -113,7 +114,8 @@ export async function GET(req: Request) {
       if (out.length < RESULTS) take(topicQueue);
     }
     return NextResponse.json({ items: out }, { headers: cache });
-  } catch {
+  } catch (e) {
+    logError("recommendations.GET", e);
     return NextResponse.json({ error: "Recommandations indisponibles." }, { status: 502 });
   }
 }

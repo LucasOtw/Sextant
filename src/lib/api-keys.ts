@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { adminDb } from "@/lib/firebase/admin";
+import { logError } from "@/lib/log";
 import { API_KEY_FORMAT, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
 
 /**
@@ -62,7 +63,10 @@ export async function verifyKey(key: string): Promise<{ uid: string; keyId: stri
   const last = (snap.get("lastUsedAt") as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
   if (Date.now() - last > 60 * 60 * 1000) {
     const { FieldValue } = await import("firebase-admin/firestore");
-    void snap.ref.update({ lastUsedAt: FieldValue.serverTimestamp() }).catch(() => undefined);
+    // Attendue (quelques dizaines de ms, une fois par heure et par clé) : une écriture lancée sans attente peut être
+    // coupée quand la fonction serverless est gelée après la réponse. Un échec n'empêche pas l'accès, mais laisse une trace :
+    // « Utilisée le … » est l'indice qui permet de repérer une clé exposée.
+    await snap.ref.update({ lastUsedAt: FieldValue.serverTimestamp() }).catch((e) => logError("mcp.lastUsedAt", e));
   }
   return { uid, keyId: id };
 }

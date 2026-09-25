@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { adminAuth, isAdminConfigured } from "@/lib/firebase/admin";
+import { isExpectedAuthError, logError } from "@/lib/log";
 
 export const SESSION_COOKIE = "sextant_session";
 /** Durée de la session : 14 jours (maximum autorisé par Firebase). */
@@ -35,7 +36,9 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
       name: (claims.name as string | undefined) ?? null,
       picture: (claims.picture as string | undefined) ?? null,
     };
-  } catch {
+  } catch (e) {
+    // On échoue fermé (déconnecté), mais une panne du SDK Admin ou du réseau doit laisser une trace.
+    if (!isExpectedAuthError(e)) logError("auth.session", e);
     return null;
   }
 });

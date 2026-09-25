@@ -1,6 +1,6 @@
 import type { Work } from "@/lib/openalex";
 import { shortId } from "@/lib/openalex";
-import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
+import { authorNames, formatAuthors, RETRACTED_APA_SUFFIX, RETRACTED_BIBTEX_NOTE, venueName, workTitle } from "@/lib/format";
 
 /**
  * Instantané d'un article enregistré en favori : assez de métadonnées pour afficher la liste
@@ -113,13 +113,14 @@ function bibKey(s: FavoriteSnapshot): string {
 }
 
 /** BibTeX depuis un instantané (export de la liste des favoris). */
-export function bibtexFromSnapshot(s: FavoriteSnapshot): string {
+export function bibtexFromSnapshot(s: FavoriteSnapshot, retracted = false): string {
   const kind = s.type === "book" ? "book" : s.type === "dissertation" ? "phdthesis" : "article";
   const lines = [`@${kind}{${bibKey(s)},`, `  title = {${bibField(s.title)}},`];
   if (s.authorNames.length) lines.push(`  author = {${s.authorNames.map(bibField).join(" and ")}},`);
   if (s.year) lines.push(`  year = {${s.year}},`);
   if (s.venue) lines.push(`  ${kind === "book" ? "publisher" : kind === "phdthesis" ? "school" : "journal"} = {${bibField(s.venue)}},`);
   if (s.doi) lines.push(`  doi = {${s.doi.replace(/^https?:\/\/doi\.org\//, "")}},`);
+  if (retracted) lines.push(`  note = {${RETRACTED_BIBTEX_NOTE}},`);
   lines.push("}");
   return lines.join("\n");
 }
@@ -129,15 +130,18 @@ function apaName(full: string): string {
   return initials ? `${last}, ${initials}` : last;
 }
 
-/** Référence APA (7e éd.) depuis un instantané : auteurs, année, titre, revue, DOI. */
-export function apaFromSnapshot(s: FavoriteSnapshot): string {
+/**
+ * Référence APA (7e éd.) depuis un instantané : auteurs, année, titre, revue, DOI. `retracted` vient toujours d'une
+ * vérification serveur (getRetractedIds), jamais de l'instantané lui-même, écrit par le client.
+ */
+export function apaFromSnapshot(s: FavoriteSnapshot, retracted = false): string {
   const names = s.authorNames.map(apaName);
   let authors = "Anonyme";
   if (names.length === 1) authors = names[0];
   else if (names.length > 1 && names.length <= 20) authors = `${names.slice(0, -1).join(", ")}, & ${names[names.length - 1]}`;
   else if (names.length > 20) authors = `${names.slice(0, 19).join(", ")}, … ${names[names.length - 1]}`;
   const year = s.year ? `(${s.year})` : "(s. d.)";
-  return `${authors} ${year}. ${s.title}.${s.venue ? ` ${s.venue}.` : ""}${s.doi ? ` ${s.doi}` : ""}`;
+  return `${authors} ${year}. ${s.title}.${s.venue ? ` ${s.venue}.` : ""}${s.doi ? ` ${s.doi}` : ""}${retracted ? RETRACTED_APA_SUFFIX : ""}`;
 }
 
 /** Appel de citation court : (Piwowar et al., 2018, p. 4). */
@@ -147,12 +151,15 @@ export function citeInline(s: FavoriteSnapshot, page?: number | null): string {
   return `(${who}, ${s.year ?? "s. d."}${page ? `, p. ${page}` : ""})`;
 }
 
-/** BibTeX de plusieurs références, clés rendues uniques (suffixe b, c, d… en cas de doublon). */
-export function bibtexAll(items: FavoriteSnapshot[]): string {
+/**
+ * BibTeX de plusieurs références, clés rendues uniques (suffixe b, c, d… en cas de doublon).
+ * `retracted` : identifiants rétractés selon le serveur, marqués `note = {Retracted}`.
+ */
+export function bibtexAll(items: FavoriteSnapshot[], retracted?: ReadonlySet<string>): string {
   const used = new Map<string, number>();
   return items
     .map((f) => {
-      const entry = bibtexFromSnapshot(f);
+      const entry = bibtexFromSnapshot(f, retracted?.has(f.id) ?? false);
       const m = entry.match(/^@\w+\{([^,]+),/);
       if (!m) return entry;
       const n = used.get(m[1]) ?? 0;

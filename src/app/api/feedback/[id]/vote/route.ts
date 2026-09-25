@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { FeedbackNotFoundError, toggleVote } from "@/lib/feedback";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
+import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json(await toggleVote(user.uid, id), { headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     if (e instanceof FeedbackNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
+    logError("feedback.id.vote.POST", e);
     return NextResponse.json({ error: "Le vote n'a pas pu être enregistré." }, { status: 502 });
   }
 }

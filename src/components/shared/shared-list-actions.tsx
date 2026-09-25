@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CheckIcon, CopyIcon, DownloadIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { bibtexAll, fileSlug, type FavoriteSnapshot } from "@/lib/favorites-shared";
 
-/** Export BibTeX d'une liste partagée : copier ou télécharger le .bib. */
-export function SharedListActions({ name, articles }: { name: string; articles: FavoriteSnapshot[] }) {
+/** Export BibTeX d'une liste partagée : copier ou télécharger le .bib. `retracted` : vérifié côté serveur. */
+export function SharedListActions({ name, articles, retracted = [] }: { name: string; articles: FavoriteSnapshot[]; retracted?: string[] }) {
   const [copied, setCopied] = useState(false);
-  const bib = () => bibtexAll(articles);
+  const retractedIds = useMemo(() => new Set(retracted), [retracted]);
+  const bib = () => bibtexAll(articles, retractedIds);
 
   async function copy() {
     try {

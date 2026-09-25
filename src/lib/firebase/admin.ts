@@ -12,21 +12,54 @@ import type { Firestore } from "firebase-admin/firestore";
  */
 let app: App | undefined;
 
+interface ServiceAccount {
+  project_id: string;
+  client_email: string;
+  private_key: string;
+}
+
+/** Résultat mémorisé de la lecture de FIREBASE_SERVICE_ACCOUNT (la variable ne change pas pendant la vie du processus). */
+let parsed: { ok: true; sa: ServiceAccount } | { ok: false; reason: string } | undefined;
+
+function readServiceAccount(): { ok: true; sa: ServiceAccount } | { ok: false; reason: string } {
+  if (parsed) return parsed;
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (!raw) return (parsed = { ok: false, reason: "FIREBASE_SERVICE_ACCOUNT manquant." });
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    // Jamais l'erreur d'origine : le message de JSON.parse peut citer un extrait de la valeur (le compte de service).
+    parsed = { ok: false, reason: "FIREBASE_SERVICE_ACCOUNT invalide : JSON illisible (vérifier le collage sur une ligne)." };
+    console.error(`[firebase-admin] ${parsed.reason} Comptes désactivés.`);
+    return parsed;
+  }
+  const sa = value as Partial<Record<keyof ServiceAccount, unknown>> | null;
+  const missing = (["project_id", "client_email", "private_key"] as const).filter(
+    (k) => typeof sa?.[k] !== "string" || !(sa[k] as string).trim(),
+  );
+  if (missing.length > 0) {
+    // Seuls les noms des champs absents sont journalisés, jamais leur valeur.
+    parsed = { ok: false, reason: `FIREBASE_SERVICE_ACCOUNT incomplet : ${missing.join(", ")} manquant(s).` };
+    console.error(`[firebase-admin] ${parsed.reason} Comptes désactivés.`);
+    return parsed;
+  }
+  return (parsed = { ok: true, sa: value as ServiceAccount });
+}
+
+/**
+ * Vrai si le compte de service est présent ET exploitable. Un JSON mal collé masque le bouton « Se connecter »
+ * (et laisse une ligne dans les journaux) au lieu de faire échouer chaque connexion après le passage par Google.
+ */
 export function isAdminConfigured(): boolean {
-  return Boolean(process.env.FIREBASE_SERVICE_ACCOUNT);
+  return readServiceAccount().ok;
 }
 
 async function adminApp(): Promise<App> {
   if (app) return app;
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
-  if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT manquant.");
-  let sa: { project_id: string; client_email: string; private_key: string };
-  try {
-    sa = JSON.parse(raw) as typeof sa;
-  } catch {
-    // Jamais l'erreur d'origine : le message de JSON.parse cite un extrait de la valeur (le compte de service).
-    throw new Error("FIREBASE_SERVICE_ACCOUNT invalide : JSON illisible (vérifier le collage sur une ligne).");
-  }
+  const read = readServiceAccount();
+  if (!read.ok) throw new Error(read.reason);
+  const { sa } = read;
   const { cert, getApps, initializeApp } = await import("firebase-admin/app");
   app =
     getApps()[0] ??
