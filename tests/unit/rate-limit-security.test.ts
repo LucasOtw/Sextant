@@ -33,10 +33,16 @@ describe("rateLimit", () => {
     expect(rateLimit("test:a", 1, 60_000)).toBe(false);
   });
 
-  it("reste correct après le ménage des clés expirées (plus de 10 000 clés)", () => {
+  it("le ménage (plus de 10 000 clés) ne supprime pas une clé encore active", () => {
+    // Clé active, épuisée, dont la fenêtre court encore après le ménage.
+    expect(rateLimit("test:actif", 1, 60_000)).toBe(true);
+    expect(rateLimit("test:actif", 1, 60_000)).toBe(false);
     for (let i = 0; i < 10_001; i++) rateLimit(`test:masse:${i}`, 1, 1_000);
     vi.advanceTimersByTime(1_000);
+    // Nouvelle clé : la table dépasse 10 000 entrées, le ménage des clés expirées se déclenche.
     expect(rateLimit("test:apres-menage", 1, 60_000)).toBe(true);
+    // Supprimée à tort, la clé active repartirait de zéro et serait acceptée.
+    expect(rateLimit("test:actif", 1, 60_000)).toBe(false);
     expect(rateLimit("test:apres-menage", 1, 60_000)).toBe(false);
     expect(rateLimit("test:masse:0", 1, 1_000)).toBe(true);
   });
