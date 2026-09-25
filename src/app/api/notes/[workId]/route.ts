@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { cleanText } from "@/lib/highlights-shared";
-import { getNote, setNote } from "@/lib/notes";
+import { getNote, NotesLimitError, setNote } from "@/lib/notes";
 import { MAX_ARTICLE_NOTE } from "@/lib/notes-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -57,6 +57,7 @@ export async function PUT(req: Request, ctx: Ctx) {
   try {
     return NextResponse.json({ note: await setNote(g.user.uid, article, cleanText(body.text, MAX_ARTICLE_NOTE, true)) }, { headers: PRIVATE });
   } catch (e) {
+    if (e instanceof NotesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
     logError("notes.workId.PUT", e);
     return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
   }

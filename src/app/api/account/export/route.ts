@@ -5,7 +5,7 @@ import { listFavorites } from "@/lib/favorites";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { listHighlights } from "@/lib/highlights";
 import { listKeys } from "@/lib/api-keys";
-import { listNotes } from "@/lib/notes";
+import { listAllNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -26,7 +26,8 @@ export async function GET() {
       listFavorites(user.uid),
       listCollections(user.uid),
       listHighlights(user.uid),
-      listNotes(user.uid, 2000),
+      // Toutes les notes, par pages : l'export ne se tronque pas en silence (SEC-19).
+      listAllNotes(user.uid),
       listKeys(user.uid),
     ]);
     const created = profileSnap.get("createdAt") as { toDate?: () => Date } | undefined;

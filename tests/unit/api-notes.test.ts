@@ -7,7 +7,7 @@ import { makeSnapshot } from "../fixtures";
  */
 const user = { uid: "u1", email: null, name: null, picture: null };
 const auth = vi.hoisted(() => ({ getCurrentUser: vi.fn(), getCurrentUserStrict: vi.fn() }));
-const notes = vi.hoisted(() => ({ getNote: vi.fn(), setNote: vi.fn() }));
+const notes = vi.hoisted(() => ({ getNote: vi.fn(), setNote: vi.fn(), NotesLimitError: class NotesLimitError extends Error {} }));
 vi.mock("@/lib/auth", () => auth);
 vi.mock("@/lib/notes", () => notes);
 
@@ -48,6 +48,13 @@ describe("PUT /api/notes/[workId]", () => {
   it("refuse un corps annoncé trop gros", async () => {
     const res = await put("W4200000001", { text: "x", article: makeSnapshot() }, { "content-length": "40000" });
     expect(res.status).toBe(413);
+  });
+
+  it("plafond de notes atteint : 409 avec le message, pas une panne (502)", async () => {
+    notes.setNote.mockRejectedValue(new notes.NotesLimitError("Limite de 2000 notes atteinte."));
+    const res = await put("W4200000001", { text: "x", article: makeSnapshot() });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "Limite de 2000 notes atteinte." });
   });
 
   it("401 sans session", async () => {

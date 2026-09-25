@@ -9,3 +9,5 @@ export interface ArticleNote {
 }
 
 export const MAX_ARTICLE_NOTE = 4000;
+/** Notes au plus par compte, comme les 2 000 surlignages (SEC-19) : une note existante reste modifiable au plafond. */
+export const MAX_NOTES = 2000;
