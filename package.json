@@ -13,6 +13,8 @@
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:emulator": "firebase emulators:exec --only firestore,auth --project demo-sextant 'vitest run -c vitest.emulator.config.mts'",
+    "test:a11y": "playwright test tests/a11y.spec.ts",
     "postinstall": "node scripts/copy-pdfjs-assets.mjs"
   },
   "dependencies": {
@@ -34,6 +36,8 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.13.6",
     "@types/react": "^19",
@@ -41,6 +45,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "firebase-tools": "^15.31.0",
     "happy-dom": "^20.14.5",
     "shadcn": "^4.21.0",
     "tailwindcss": "^4",
