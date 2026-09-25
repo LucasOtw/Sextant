@@ -3,8 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { Favorite, FavoriteSnapshot } from "@/lib/favorites-shared";
-import type { Collection } from "@/lib/collections-shared";
+import { sameIdSet, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { sameCollections, type Collection } from "@/lib/collections-shared";
 import type { ClientUser } from "@/lib/session-shared";
 import { useSession } from "@/components/auth/session-provider";
 
@@ -186,11 +186,12 @@ export function FavoritesProvider({ children }: Props) {
         if (!res.ok || !Array.isArray(data.ids)) throw new Error(String(res.status));
         // Réponse périmée : une mutation a eu lieu, ou l'utilisateur a changé entre-temps.
         if (seq !== mutationSeq.current || forUser !== loadedFor.current) return idsRef.current;
-        const next = new Set(data.ids);
-        applyIds(next);
+        // Rien de changé (cas courant du retour sur l'onglet) : l'état reste le même objet, aucun cœur ne se re-rend (PERF-12).
+        if (!sameIdSet(idsRef.current, data.ids)) applyIds(new Set(data.ids));
+        const next = idsRef.current;
         if (Array.isArray(data.collections)) {
           const fresh = data.collections;
-          applyCollections(() => fresh);
+          if (!collectionsLoadedRef.current || !sameCollections(collectionsRef.current, fresh)) applyCollections(() => fresh);
           markCollectionsLoaded(true);
         }
         setReady(true);
@@ -220,7 +221,7 @@ export function FavoritesProvider({ children }: Props) {
       const data = (await res.json()) as { collections?: Collection[] };
       if (!Array.isArray(data.collections) || seq !== mutationSeq.current || forUser !== loadedFor.current) return;
       const fresh = data.collections;
-      applyCollections(() => fresh);
+      if (!collectionsLoadedRef.current || !sameCollections(collectionsRef.current, fresh)) applyCollections(() => fresh);
       markCollectionsLoaded(true);
     } catch {
       /* réseau : le prochain chargement (retour sur l'onglet) réessaiera */
@@ -508,6 +509,13 @@ export function FavoritesProvider({ children }: Props) {
     return m;
   }, [collections]);
 
+  // Fonctions et tableaux dérivés recréés seulement quand leur source change : /favoris peut s'en servir comme
+  // dépendances de mémoïsation sans tout recalculer à chaque changement du contexte (PERF-12).
+  const has = useCallback((id: string) => ids.has(id), [ids]);
+  const favoriteIds = useMemo(() => [...ids].reverse(), [ids]);
+  const addedList = useMemo(() => [...added.values()].filter((f) => ids.has(f.id)), [added, ids]);
+  const listsOf = useCallback((id: string) => membership.get(id) ?? NO_LISTS, [membership]);
+
   const value = useMemo<FavoritesContext>(
     () => ({
       enabled: Boolean(userId),
@@ -515,22 +523,22 @@ export function FavoritesProvider({ children }: Props) {
       ready,
       error,
       count: ids.size,
-      has: (id) => ids.has(id),
-      favoriteIds: [...ids].reverse(),
-      added: [...added.values()].filter((f) => ids.has(f.id)),
+      has,
+      favoriteIds,
+      added: addedList,
       toggle,
       refresh,
       collections,
       collectionsLoaded,
       loadCollections,
-      listsOf: (id) => membership.get(id) ?? NO_LISTS,
+      listsOf,
       createCollection,
       updateCollection,
       deleteCollection,
       setShared,
       setInCollection,
     }),
-    [userId, session.status, ready, error, ids, added, toggle, refresh, collections, collectionsLoaded, loadCollections, membership, createCollection, updateCollection, deleteCollection, setShared, setInCollection],
+    [userId, session.status, ready, error, ids, has, favoriteIds, addedList, toggle, refresh, collections, collectionsLoaded, loadCollections, listsOf, createCollection, updateCollection, deleteCollection, setShared, setInCollection],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

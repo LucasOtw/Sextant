@@ -11,6 +11,26 @@ export interface Collection {
   shareToken: string | null;
 }
 
+/**
+ * Mêmes listes, dans le même ordre, avec les mêmes noms, descriptions, liens de partage et articles (dans le même
+ * ordre) : un rechargement sans changement garde l'état en place et ne re-rend rien (PERF-12).
+ */
+export function sameCollections(a: readonly Collection[], b: readonly Collection[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((c, i) => {
+    const d = b[i];
+    return (
+      c.id === d.id &&
+      c.name === d.name &&
+      c.description === d.description &&
+      c.shareToken === d.shareToken &&
+      c.createdAt === d.createdAt &&
+      c.articleIds.length === d.articleIds.length &&
+      c.articleIds.every((id, j) => id === d.articleIds[j])
+    );
+  });
+}
+
 /** Jeton de partage : 22 caractères base64url (128 bits aléatoires). */
 export const SHARE_TOKEN = /^[A-Za-z0-9_-]{22}$/;
 
