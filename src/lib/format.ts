@@ -53,6 +53,9 @@ export function openAccessUrl(w: Work): { url: string; isPdf: boolean } | null {
 /**
  * Une adresse de PDF relayable : http(s) public, sans IP littérale, sans hôte local ni port exotique.
  * Les adresses viennent d'OpenAlex (moissonnées chez des milliers de dépôts) : on ne relaie jamais vers l'intérieur.
+ * Premier filtre, sur l'adresse seule : un nom public qui résout vers une adresse privée (DNS joker du type
+ * `127.0.0.1.nip.io`) ne se voit pas ici. Le relais contrôle aussi les adresses résolues et chaque redirection
+ * (src/lib/public-fetch.ts).
  */
 export function isPublicPdfUrl(raw: string): boolean {
   let u: URL;
@@ -63,7 +66,8 @@ export function isPublicPdfUrl(raw: string): boolean {
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") return false;
   if (u.port && u.port !== "80" && u.port !== "443") return false;
-  const h = u.hostname.toLowerCase();
+  // Point final retiré : « localhost. » et « metadata.google.internal. » désignent les mêmes hôtes que sans le point.
+  const h = u.hostname.toLowerCase().replace(/\.+$/, "");
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal") || h.endsWith(".arpa")) return false;
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.startsWith("[") || h.includes(":")) return false;
   return h.includes(".");

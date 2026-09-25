@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { isPublicPdfUrl, openAccessPdfUrls } from "@/lib/format";
+import { fetchPublic } from "@/lib/public-fetch";
 import { getWork } from "@/lib/openalex";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { recover } from "@/lib/log";
@@ -117,7 +118,8 @@ const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (
 /**
  * Première adresse qui répond par un vrai PDF (signature `%PDF` vérifiée avant de promettre quoi que ce soit).
  * Le délai ne couvre que l'attente des en-têtes et du premier octet : une fois la copie validée, le flux n'est plus borné
- * que par `maxDuration`. L'hôte final (après redirections) est revalidé.
+ * que par `maxDuration`. Chaque saut (adresse de départ puis chaque redirection, 5 au plus) est validé AVANT d'être
+ * demandé, et les adresses IP résolues doivent être publiques (fetchPublic) : jamais de requête vers l'intérieur.
  */
 async function openFirstPdf(urls: string[], deadline: number) {
   for (const url of urls) {
@@ -126,13 +128,14 @@ async function openFirstPdf(urls: string[], deadline: number) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), Math.min(12_000, left));
     try {
-      const upstream = await fetch(url, {
+      const upstream = await fetchPublic(url, {
         headers: { accept: "application/pdf,*/*;q=0.8", "accept-encoding": "identity", "user-agent": UA },
-        redirect: "follow",
         signal: ctrl.signal,
+        isAllowed: isPublicPdfUrl,
       });
-      if (!upstream.ok || !upstream.body || !isPublicPdfUrl(upstream.url)) {
-        upstream.body?.cancel().catch(() => undefined);
+      if (!upstream) continue;
+      if (!upstream.ok) {
+        upstream.body.cancel().catch(() => undefined);
         continue;
       }
       const reader = upstream.body.getReader();

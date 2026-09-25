@@ -45,14 +45,16 @@ describe("isPublicPdfUrl (garde SSRF du relais PDF)", () => {
     expect(isPublicPdfUrl(url)).toBe(false);
   });
 
-  // Contournements connus du filtre par nom d'hôte (SEC-05, lot 6 de l'audit). Ces tests échouent tant que la faille
-  // existe (`it.fails`) : le correctif SEC-05 doit retirer `.fails` pour les rendre bloquants.
-  // Le DNS joker (`127.0.0.1.nip.io`) n'est volontairement pas ici : un nom public qui résout vers une adresse privée
-  // ne se voit pas dans l'URL. Il se teste au niveau du relais (api/pdf/route.ts), avec `node:dns` simulé
-  // (`vi.mock("node:dns")`, lookup → 127.0.0.1), dans le test de route écrit avec le correctif SEC-05.
-  it.fails.each([
+  // Contournements du filtre par nom d'hôte corrigés par SEC-05 (lot 6 de l'audit) : le point final est retiré avant
+  // les tests. Le DNS joker (`127.0.0.1.nip.io`) ne se voit pas dans l'URL : il est refusé à la résolution
+  // (tests/unit/public-fetch.test.ts, `safeLookup`).
+  it.each([
     ["point final après localhost", "http://localhost./a.pdf"],
+    ["plusieurs points finaux", "http://localhost../a.pdf"],
     ["point final après .internal", "http://metadata.google.internal./computeMetadata/v1/"],
+    ["point final après .local", "http://printer.local./a.pdf"],
+    ["port de l'API d'exécution Lambda", "http://example.org:9001/2018-06-01/runtime/invocation/next"],
+    ["IPv4 littérale avec point final", "http://127.0.0.1./a.pdf"],
   ])("SEC-05 — refuse : %s", (_label, url) => {
     expect(isPublicPdfUrl(url)).toBe(false);
   });
