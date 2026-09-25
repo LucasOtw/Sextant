@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
+import { markSpans } from "@/lib/pdf-marks";
 import { cn } from "cn";
 
 type PdfLib = typeof import("pdfjs-dist");
@@ -103,38 +104,6 @@ export function ReaderLayout({ url, originalUrl }: LayoutProps) {
       </div>
     </div>
   );
-}
-
-function normalize(s: string) {
-  return s.replace(/\s+/g, " ").trim().toLowerCase();
-}
-
-/** Marque les fragments de la couche texte couverts par un passage retenu (toutes les occurrences sur la page). */
-function markSpans(container: HTMLElement, texts: string[]) {
-  const spans = [...container.querySelectorAll<HTMLSpanElement>("span")].filter((s) => (s.textContent ?? "").trim() && !s.classList.contains("markedContent"));
-  spans.forEach((s) => s.classList.remove("hl"));
-  if (texts.length === 0) return;
-  let full = "";
-  const bounds: [number, number][] = [];
-  for (const s of spans) {
-    const t = normalize(s.textContent ?? "");
-    if (full) full += " ";
-    bounds.push([full.length, full.length + t.length]);
-    full += t;
-  }
-  for (const raw of texts) {
-    const t = normalize(raw);
-    if (!t) continue;
-    let idx = full.indexOf(t);
-    while (idx >= 0) {
-      const end = idx + t.length;
-      spans.forEach((s, i) => {
-        const [a, b] = bounds[i];
-        if (a < end && b > idx) s.classList.add("hl");
-      });
-      idx = full.indexOf(t, end);
-    }
-  }
 }
 
 function formatBytes(n: number): string {
