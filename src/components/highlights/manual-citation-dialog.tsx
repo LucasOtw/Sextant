@@ -48,6 +48,7 @@ function Form({ onClose }: { onClose: () => void }) {
 
   return (
     <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
+      {/* eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'une fenêtre que l'utilisateur vient d'ouvrir : le focus y est attendu. */}
       <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit(); }} maxLength={MAX_HIGHLIGHT_TEXT} rows={5} placeholder="Le passage, tel qu'il apparaît dans l'article…" aria-label="Passage" className="text-base md:text-base" />
       <div className="flex gap-3">
         <Input value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="Page" aria-label="Page" className="h-10 w-28 text-base md:text-base" />

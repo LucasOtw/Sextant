@@ -23,6 +23,7 @@ export default function HomePage() {
           Des articles évalués par les pairs, des thèses et des ouvrages universitaires. Cherchez par
           mots-clés, filtrez, et laissez chaque lecture vous mener à la suivante.
         </p>
+        {/* eslint-disable-next-line jsx-a11y/no-autofocus -- A11Y-27 (lot 8 de l'audit) : autofocus à retirer de l'accueil. */}
         <SearchBox size="hero" className="max-w-2xl" autoFocus />
         <p className="text-sm text-muted-foreground">
           Essayez :{" "}

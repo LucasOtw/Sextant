@@ -50,6 +50,7 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
   if (!enabled) {
     return (
       <>
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- le clic vient du vrai bouton (trigger), activable au clavier ; l'enveloppe ne fait que l'intercepter. */}
         <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSignIn(true); }} className="contents">{trigger}</span>
         {signIn && <SignInDialog open={signIn} onOpenChange={setSignIn} intro="Connectez-vous pour organiser vos articles en listes." />}
       </>
@@ -58,6 +59,7 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
 
   // Pendant le chargement du menu (navigation côté client), le même bouton, inerte, tient la place
   // (le clic ne doit pas atteindre la carte qui l'entoure).
+  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- enveloppe du vrai bouton, qui reçoit le clavier.
   const pending = <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="contents">{trigger}</span>;
   return (
     <Suspense fallback={pending}>

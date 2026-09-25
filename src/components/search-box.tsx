@@ -118,6 +118,8 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
   }
 
   return (
+    // Délégation d'événements (perte de focus, Échap) pour tout le combobox : les éléments interactifs sont à l'intérieur.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       ref={wrapRef}
       className={cn("relative w-full", className)}
@@ -155,6 +157,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             type="search"
             name="q"
             value={query}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- décidé par l'appelant (seul appelant : l'accueil, cf. A11Y-27).
             autoFocus={autoFocus}
             onChange={(e) => {
               setQuery(e.target.value);

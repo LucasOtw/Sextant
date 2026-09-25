@@ -257,6 +257,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
         ))}
       </div>
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'un formulaire que l'utilisateur vient d'ouvrir : le focus y est attendu.
         autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
