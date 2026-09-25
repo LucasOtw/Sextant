@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { DocumentSnapshot } from "firebase-admin/firestore";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookmarkIcon, DownloadIcon, FolderIcon, HistoryIcon, ShieldCheckIcon, HighlighterIcon, NotebookPenIcon } from "lucide-react";
@@ -16,9 +17,9 @@ import { countNotes } from "@/lib/notes";
 
 export const metadata: Metadata = { title: "Mon compte" };
 
-async function memberSince(uid: string): Promise<string | null> {
+async function memberSince(uid: string, userDoc: Promise<DocumentSnapshot>): Promise<string | null> {
   try {
-    const snap = await (await adminDb()).doc(`users/${uid}`).get();
+    const snap = await userDoc;
     const ts = snap.get("createdAt") as { toDate?: () => Date } | undefined;
     // Repli sur Firebase Auth : un profil sans date (écriture de connexion ratée) garde sa vraie date d'inscription.
     const d = ts?.toDate?.() ?? (await authCreationDate(uid));
@@ -48,9 +49,11 @@ export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/");
 
+  // `users/{uid}` lu une seule fois : il porte à la fois la date d'inscription et le compteur de favoris.
+  const userDoc = adminDb().then((db) => db.doc(`users/${user.uid}`).get());
   const [since, favoritesCount, collectionsCount, highlightsCount, notesCount] = await Promise.all([
-    memberSince(user.uid),
-    countOrNull("compte.countFavorites", countFavorites(user.uid)),
+    memberSince(user.uid, userDoc),
+    countOrNull("compte.countFavorites", userDoc.then((snap) => countFavorites(user.uid, snap))),
     countOrNull("compte.countCollections", countCollections(user.uid)),
     countOrNull("compte.countHighlights", countHighlights(user.uid)),
     countOrNull("compte.countNotes", countNotes(user.uid)),

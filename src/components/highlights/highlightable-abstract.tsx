@@ -67,6 +67,8 @@ export function HighlightableAbstract({ text, className }: Props) {
       const read = readSelection(el);
       // Au toucher, la sélection peut se réduire un instant avant le tap sur le bouton : on n'efface qu'après un court délai.
       if (!read) {
+        // Un seul minuteur à la fois : un minuteur orphelin (défilement juste avant) effacerait une sélection valide.
+        clearTimeout(clearTimer);
         clearTimer = setTimeout(() => setSelection(null), 300);
         return;
       }

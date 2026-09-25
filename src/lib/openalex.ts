@@ -138,6 +138,9 @@ const LIST_SELECT = [
   "abstract_inverted_index",
 ].join(",");
 
+/** « Pour vous » : les cartes compactes n'affichent pas le résumé, inutile de le transporter (PERF-25). */
+const RECO_SELECT = LIST_SELECT.replace(",abstract_inverted_index", "");
+
 const DETAIL_SELECT = [
   LIST_SELECT,
   "referenced_works_count",
@@ -358,7 +361,7 @@ export async function getQualityWorksByIds(ids: string[]): Promise<Work[]> {
     {
       filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, "has_abstract:true", `ids.openalex:${short.join("|")}`].join(","),
       "per-page": short.length,
-      select: LIST_SELECT,
+      select: RECO_SELECT,
     },
     3600,
   );
@@ -377,7 +380,7 @@ export async function getRecentByTopic(topicId: string, sinceYear: number, n = 6
       filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, `publication_year:>${sinceYear - 1}`, "has_abstract:true"].join(","),
       sort: "cited_by_count:desc",
       "per-page": n,
-      select: LIST_SELECT,
+      select: RECO_SELECT,
     },
     3600,
   );

@@ -11,6 +11,7 @@ export function HeaderNav() {
     <nav aria-label="Navigation principale">
       <Link
         href="/search"
+        prefetch={false}
         aria-current={active ? "page" : undefined}
         className={cn(
           "rounded-full px-3.5 py-1.5 text-[15px] transition-colors duration-200",

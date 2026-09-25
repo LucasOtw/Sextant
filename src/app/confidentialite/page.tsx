@@ -82,7 +82,7 @@ export default function PrivacyPage() {
       <h2>Services tiers et sous-traitants</h2>
       <ul>
         <li>
-          <strong>Vercel</strong> (États-Unis) héberge le site et exécute son serveur. Comme tout hébergeur, il conserve pour une durée limitée des
+          <strong>Vercel</strong> (États-Unis) héberge le site et exécute son serveur à Paris. Comme tout hébergeur, il conserve pour une durée limitée des
           journaux techniques (adresse IP, pages demandées, navigateur) à des fins de sécurité ; Sextant ne les exploite pas. Le serveur garde aussi,
           quelques minutes et en mémoire seulement, un compteur par adresse IP ou par compte pour limiter les abus.
         </li>

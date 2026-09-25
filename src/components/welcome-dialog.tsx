@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+// Import direct voulu, pas de dynamic() : la fenêtre doit s'afficher dès le premier rendu (cf. commit 0a474b8).
 import WelcomeDialogContent from "@/components/welcome-dialog-content";
 
 const KEY = "sextant:welcomed";

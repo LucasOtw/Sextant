@@ -2,6 +2,7 @@ import "server-only";
 import type { App } from "firebase-admin/app";
 import type { Auth } from "firebase-admin/auth";
 import type { Firestore } from "firebase-admin/firestore";
+import { logError } from "@/lib/log";
 
 /**
  * Firebase côté serveur (SDK Admin). Identifiants dans FIREBASE_SERVICE_ACCOUNT : le JSON de la clé
@@ -80,7 +81,25 @@ export async function adminAuth(): Promise<Auth> {
   return getAuth(await adminApp());
 }
 
+let db: Firestore | undefined;
+
+/**
+ * Firestore en REST plutôt qu'en gRPC (PERF-24) : démarrage à froid plus léger (~40 à 120 ms par instance), et le
+ * serveur n'écoute aucun flux (ni onSnapshot ni listen, seuls usages qui exigent gRPC). Transactions, batch et
+ * recursiveDelete fonctionnent en REST. `initializeFirestore` renvoie l'instance existante si les réglages sont les
+ * mêmes ; ne jamais appeler `settings()` ici (« You can only call settings() once » dès la 2e requête).
+ */
 export async function adminDb(): Promise<Firestore> {
-  const { getFirestore } = await import("firebase-admin/firestore");
-  return getFirestore(await adminApp());
+  if (db) return db;
+  const { getFirestore, initializeFirestore } = await import("firebase-admin/firestore");
+  const firebaseApp = await adminApp();
+  try {
+    db = initializeFirestore(firebaseApp, { preferRest: true });
+  } catch (e) {
+    // Instance déjà créée avec d'autres réglages dans ce processus (rechargement à chaud en dev) : on la reprend.
+    // Journalisé : un repli inattendu en gRPC (en production) doit rester visible.
+    logError("firebase.adminDb", e);
+    db = getFirestore(firebaseApp);
+  }
+  return db;
 }

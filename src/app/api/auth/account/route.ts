@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { getCurrentUser, SESSION_COOKIE } from "@/lib/auth";
+import { forgetRevocationCheck, getCurrentUserStrict, SESSION_COOKIE } from "@/lib/auth";
 import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
 import { detachAuthor } from "@/lib/feedback";
@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUser();
+  const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
 
   try {
@@ -28,6 +28,7 @@ export async function DELETE(req: Request) {
     await detachAuthor(user.uid);
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
+    forgetRevocationCheck(user.uid);
   } catch (e) {
     logError("auth.account.DELETE", e);
     return NextResponse.json({ error: "La suppression a échoué, réessayez." }, { status: 500 });

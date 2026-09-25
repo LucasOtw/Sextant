@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from "pdfjs-dist";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist";
 import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { cn } from "cn";
 
@@ -15,6 +16,8 @@ type PdfLib = typeof import("pdfjs-dist");
 
 const GOTO_EVENT = "sextant:goto-page";
 const NO_HIGHLIGHTS: Highlight[] = [];
+/** Proportion A4, en attendant de connaître celle de la première page du document. */
+const A4_ASPECT = 1.414;
 
 function goToPage(page: number) {
   window.dispatchEvent(new CustomEvent(GOTO_EVENT, { detail: page }));
@@ -139,6 +142,46 @@ function formatBytes(n: number): string {
   return `${Math.max(1, Math.round(n / 1024))} Ko`;
 }
 
+/** Télécharge le PDF en entier, en signalant la progression (`total` = 0 si la taille n'est pas annoncée). */
+async function downloadPdf(url: string, signal: AbortSignal, onProgress: (loaded: number, total: number) => void): Promise<Uint8Array> {
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  // Réponse compressée : Content-Length compte les octets compressés, pas ceux lus → taille totale inconnue.
+  const encoded = (res.headers.get("content-encoding") ?? "identity") !== "identity";
+  const total = encoded ? 0 : Number(res.headers.get("content-length")) || 0;
+  if (!res.body) {
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    onProgress(bytes.length, total);
+    return bytes;
+  }
+  const reader = res.body.getReader();
+  // Taille annoncée : écriture directe dans un tampon préalloué (pic mémoire = taille du PDF, pas le double).
+  // Sinon, ou si la réponse dépasse l'annonce, accumulation des morceaux puis copie finale.
+  let buffer: Uint8Array | null = total > 0 ? new Uint8Array(total) : null;
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (buffer && loaded + value.length > buffer.length) {
+      chunks.push(buffer.subarray(0, loaded));
+      buffer = null;
+    }
+    if (buffer) buffer.set(value, loaded);
+    else chunks.push(value);
+    loaded += value.length;
+    onProgress(loaded, total);
+  }
+  if (buffer) return loaded === buffer.length ? buffer : buffer.subarray(0, loaded);
+  const bytes = new Uint8Array(loaded);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
+}
+
 function pageOf(node: Node | null | undefined): string | undefined {
   return (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-page]")?.dataset.page;
 }
@@ -156,6 +199,7 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [width, setWidth] = useState(0);
+  const [defaultAspect, setDefaultAspect] = useState(A4_ASPECT);
   const containerRef = useRef<HTMLDivElement>(null);
   const [selection, setSelection] = useState<(NonNullable<ReturnType<typeof readSelection>> & { page: number }) | null>(null);
   const [busy, setBusy] = useState(false);
@@ -163,29 +207,50 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   useEffect(() => {
     let cancelled = false;
     let task: PDFDocumentLoadingTask | null = null;
+    let worker: PDFWorker | null = null;
+    const download = new AbortController();
     (async () => {
       try {
+        // Le PDF part tout de suite, en parallèle du module PDF.js et du worker (au lieu d'attendre que le worker
+        // le demande). /api/pdf n'annonce pas de requêtes partielles : PDF.js attendait de toute façon le fichier entier.
+        const data = downloadPdf(url, download.signal, (loaded, total) => {
+          if (!cancelled) setProgress({ loaded, total });
+        });
+        data.catch(() => undefined); // l'échec est traité plus bas, au moment d'attendre les données
         const pdfjs = await import("pdfjs-dist");
         if (cancelled) return;
-        pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        const base = pdfjsAssetsBase(pdfjs.version);
+        pdfjs.GlobalWorkerOptions.workerSrc = `${base}/pdf.worker.min.mjs`;
+        worker = new pdfjs.PDFWorker(); // le worker se charge pendant que le PDF finit d'arriver
+        const bytes = await data;
+        if (cancelled) return;
         // Ressources optionnelles de PDF.js servies depuis /public : décodeurs WebAssembly (JBIG2, JPX des scans anciens),
         // polices standard non embarquées, CMaps (CJK), profils ICC. Sans elles, les images sont ignorées et la page reste blanche.
         task = pdfjs.getDocument({
-          url,
-          wasmUrl: "/pdfjs/wasm/",
-          iccUrl: "/pdfjs/iccs/",
-          standardFontDataUrl: "/pdfjs/standard_fonts/",
-          cMapUrl: "/pdfjs/cmaps/",
+          data: bytes,
+          worker,
+          wasmUrl: `${base}/wasm/`,
+          iccUrl: `${base}/iccs/`,
+          standardFontDataUrl: `${base}/standard_fonts/`,
+          cMapUrl: `${base}/cmaps/`,
           cMapPacked: true,
         });
-        task.onProgress = (p: { loaded: number; total?: number }) => {
-          if (!cancelled) setProgress({ loaded: p.loaded, total: p.total ?? 0 });
-        };
         const d = await task.promise;
+        // Hauteur provisoire des pages non rendues : proportion de la première page (comme le visualiseur PDF.js),
+        // pas un A4 fixe. Sinon, sur un PDF au format Letter ou en paysage, les pages changent de hauteur en se rendant
+        // et « aller à la page N » atterrit à côté. `getPage` est mis en cache par PDF.js : rien n'est lu deux fois.
+        let aspect = A4_ASPECT;
+        try {
+          const v = (await d.getPage(1)).getViewport({ scale: 1 });
+          if (v.width > 0 && v.height > 0) aspect = v.height / v.width;
+        } catch {
+          /* première page illisible : on garde l'A4, chaque page corrige sa hauteur en se rendant */
+        }
         if (cancelled) {
           void task.destroy();
           return;
         }
+        setDefaultAspect(aspect);
         setLib(pdfjs);
         setDoc(d);
       } catch (e) {
@@ -196,7 +261,9 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
     })();
     return () => {
       cancelled = true;
+      download.abort();
       void task?.destroy();
+      worker?.destroy(); // fourni par nous : PDF.js ne le détruit pas avec le document
     };
   }, [url]);
 
@@ -226,6 +293,8 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
       const page = Number(a);
       const ok = read && page > 0 && a === pageOf(sel?.focusNode);
       if (!ok) {
+        // Un seul minuteur à la fois : un minuteur orphelin (défilement juste avant) effacerait une sélection valide.
+        clearTimeout(clearTimer);
         clearTimer = setTimeout(() => setSelection(null), 300);
         return;
       }
@@ -244,13 +313,18 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
   useEffect(() => {
     const onGoto = (e: Event) => {
       const page = (e as CustomEvent<number>).detail;
-      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Saut instantané : un défilement doux ferait rendre les pages traversées, dont la hauteur peut changer en route
+      // (documents mêlant plusieurs formats), et la cible, calculée au départ, ne serait plus au bon endroit.
+      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "auto", block: "start" });
     };
     window.addEventListener(GOTO_EVENT, onGoto);
     return () => window.removeEventListener(GOTO_EVENT, onGoto);
   }, []);
 
-  /** Passages par page, avec une référence stable par page : la mise en surbrillance ne se rejoue qu'aux vrais changements. */
+  /**
+   * Passages par page. Les références ne changent qu'avec les surlignages (jamais au défilement ni à la sélection) ;
+   * les pages sans passage reçoivent toutes la même constante.
+   */
   const byPage = useMemo(() => {
     const m = new Map<number, Highlight[]>();
     for (const h of highlights) {
@@ -328,7 +402,15 @@ export function PdfReader({ url, originalUrl }: ReaderProps) {
         <>
           <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner.</p>
           {Array.from({ length: doc.numPages }, (_, i) => (
-            <PdfPage key={i + 1} doc={doc} lib={lib} pageNumber={i + 1} width={width} highlights={byPage.get(i + 1) ?? NO_HIGHLIGHTS} />
+            <PdfPage
+              key={i + 1}
+              doc={doc}
+              lib={lib}
+              pageNumber={i + 1}
+              width={width}
+              defaultAspect={defaultAspect}
+              highlights={byPage.get(i + 1) ?? NO_HIGHLIGHTS}
+            />
           ))}
         </>
       )}
@@ -342,14 +424,20 @@ interface PageProps {
   lib: PdfLib;
   pageNumber: number;
   width: number;
+  /** Proportion (hauteur / largeur) supposée tant que la page n'a pas été rendue. */
+  defaultAspect: number;
   highlights: Highlight[];
 }
 
-function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
+/**
+ * Mémoïsée : une sélection dans le lecteur re-rend `PdfReader` à chaque défilement (position du bouton « Surligner ») ;
+ * les pages, dont les props ne changent pas, ne suivent pas.
+ */
+const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspect, highlights }: PageProps) {
   const ref = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
-  const [aspect, setAspect] = useState(1.414);
+  const [aspect, setAspect] = useState(defaultAspect);
   const [visible, setVisible] = useState(false);
   const [rendered, setRendered] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -442,4 +530,4 @@ function PdfPage({ doc, lib, pageNumber, width, highlights }: PageProps) {
       )}
     </div>
   );
-}
+});

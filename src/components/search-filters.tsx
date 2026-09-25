@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useTransition } from "react";
+import { useCallback, useRef, useTransition } from "react";
 import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,18 @@ export function SearchFilters({ className, defaults }: Props) {
     [params, pathname, router],
   );
 
+  // Champs Années : on ne navigue que si la valeur a changé. Traverser le champ au clavier ne doit ni relancer la
+  // recherche ni ramener en page 1 (ni, sur une page thématique, figer l'année par défaut dans l'URL).
+  // Le ref couvre « Entrée puis sortie du champ » : pendant la transition, `params` n'est pas encore à jour.
+  const lastYear = useRef<{ from: string | null; to: string | null }>({ from: null, to: null });
+  const commitYear = (key: "from" | "to", raw: string) => {
+    const v = raw.trim();
+    const current = params.get(key) ?? defaults?.[key] ?? "";
+    if (v === current || (pending && v === lastYear.current[key])) return;
+    lastYear.current[key] = v;
+    update({ [key]: v });
+  };
+
   const hasFilters = ["type", "oa", "from", "to", "sort", "lang", "src"].some((k) => params.has(k));
 
   return (
@@ -127,8 +139,8 @@ export function SearchFilters({ className, defaults }: Props) {
             min={1800}
             max={2100}
             defaultValue={params.get("from") ?? defaults?.from ?? ""}
-            onBlur={(e) => update({ from: e.target.value })}
-            onKeyDown={(e) => e.key === "Enter" && update({ from: e.currentTarget.value })}
+            onBlur={(e) => commitYear("from", e.currentTarget.value)}
+            onKeyDown={(e) => e.key === "Enter" && commitYear("from", e.currentTarget.value)}
           />
           <span className="text-muted-foreground">–</span>
           <Input
@@ -139,14 +151,22 @@ export function SearchFilters({ className, defaults }: Props) {
             min={1800}
             max={2100}
             defaultValue={params.get("to") ?? defaults?.to ?? ""}
-            onBlur={(e) => update({ to: e.target.value })}
-            onKeyDown={(e) => e.key === "Enter" && update({ to: e.currentTarget.value })}
+            onBlur={(e) => commitYear("to", e.currentTarget.value)}
+            onKeyDown={(e) => e.key === "Enter" && commitYear("to", e.currentTarget.value)}
           />
         </div>
       </Field>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" className="self-start" onClick={() => update({ type: null, oa: null, from: null, to: null, sort: null, lang: null, src: null })}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => {
+            lastYear.current = { from: null, to: null };
+            update({ type: null, oa: null, from: null, to: null, sort: null, lang: null, src: null });
+          }}
+        >
           <XIcon /> Réinitialiser
         </Button>
       )}

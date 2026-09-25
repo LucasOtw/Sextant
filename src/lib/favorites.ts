@@ -1,5 +1,5 @@
 import "server-only";
-import type { DocumentReference, Transaction } from "firebase-admin/firestore";
+import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
 import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
@@ -57,11 +57,13 @@ export async function getFavoritesByIds(uid: string, ids: string[]): Promise<Fav
   return pages.flat().flatMap((d) => (d.exists ? [toFavorite(d.data() ?? {}, d.id)] : []));
 }
 
-/** Identifiants des favoris (une lecture), reconstruits et persistés une fois si le champ manque. */
+/** Identifiants des favoris (une lecture), reconstruits et persistés une fois si le champ manque d'un profil existant. */
 export async function listFavoriteIds(uid: string): Promise<string[]> {
   const db = await adminDb();
   const userRef = db.doc(`users/${uid}`);
   const user = await userRef.get();
+  // Profil absent (compte supprimé, cookie encore valide ailleurs) : ne rien recréer sous users/{uid}.
+  if (!user.exists) return [];
   const ids = user.get("favoriteIds");
   if (Array.isArray(ids)) return ids.filter((x): x is string => typeof x === "string");
   const snap = await userRef.collection("favorites").select().get();
@@ -70,9 +72,9 @@ export async function listFavoriteIds(uid: string): Promise<string[]> {
   return rebuilt;
 }
 
-export async function countFavorites(uid: string): Promise<number> {
-  const db = await adminDb();
-  const user = await db.doc(`users/${uid}`).get();
+/** Nombre de favoris ; `user` évite de relire `users/{uid}` quand l'appelant l'a déjà chargé (page compte). */
+export async function countFavorites(uid: string, user?: DocumentSnapshot): Promise<number> {
+  user ??= await (await adminDb()).doc(`users/${uid}`).get();
   const n = user.get("favoritesCount");
   if (typeof n === "number") return Math.max(0, n);
   return (await listFavoriteIds(uid)).length;

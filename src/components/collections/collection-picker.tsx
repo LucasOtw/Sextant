@@ -1,23 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { FolderCheckIcon, FolderIcon, PlusIcon } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { FolderCheckIcon, FolderIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
-import { CollectionDialog } from "@/components/collections/collection-dialog";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { cn } from "cn";
+
+// Menu des listes : rendu côté serveur et préchargé pour un connecté, jamais téléchargé par un anonyme (PERF-03).
+const CollectionMenu = dynamic(() => import("@/components/collections/collection-menu"));
 
 interface Props {
   snapshot: FavoriteSnapshot;
@@ -29,7 +22,6 @@ interface Props {
 /** « Ajouter à une liste » : cases à cocher par liste, plus la création d'une nouvelle liste. */
 export function CollectionPicker({ snapshot, variant = "icon", className }: Props) {
   const favorites = useFavorites();
-  const [creating, setCreating] = useState(false);
   const [signIn, setSignIn] = useState(false);
   const { enabled, loadCollections } = favorites;
 
@@ -64,44 +56,12 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
     );
   }
 
-  const placeholder = !favorites.collectionsLoaded
-    ? favorites.error ? "Listes indisponibles pour le moment." : "Chargement…"
-    : favorites.collections.length === 0 ? "Aucune liste pour l'instant." : null;
-
+  // Pendant le chargement du menu (navigation côté client), le même bouton, inerte, tient la place
+  // (le clic ne doit pas atteindre la carte qui l'entoure).
+  const pending = <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="contents">{trigger}</span>;
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger render={trigger} onClick={(e) => e.stopPropagation()} />
-        <DropdownMenuContent align="end" className="w-64" onClick={(e) => e.stopPropagation()}>
-          <DropdownMenuGroup>
-            <DropdownMenuLabel>Mes listes</DropdownMenuLabel>
-            {placeholder && <DropdownMenuItem disabled className="text-muted-foreground">{placeholder}</DropdownMenuItem>}
-            {favorites.collections.map((c) => {
-              const checked = c.articleIds.includes(snapshot.id);
-              return (
-                <DropdownMenuCheckboxItem key={c.id} checked={checked} onCheckedChange={(next) => void favorites.setInCollection(c.id, snapshot, Boolean(next))}>
-                  <span className="truncate">{c.name}</span>
-                  <span className="ml-auto pl-2 text-xs text-muted-foreground">{c.articleIds.length}</span>
-                </DropdownMenuCheckboxItem>
-              );
-            })}
-          </DropdownMenuGroup>
-          <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => setCreating(true)}>
-              <PlusIcon /> Nouvelle liste…
-            </DropdownMenuItem>
-          </DropdownMenuGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <CollectionDialog
-        open={creating}
-        onOpenChange={setCreating}
-        title="Nouvelle liste"
-        description="L'article sera enregistré dans cette liste."
-        submitLabel="Créer et ajouter"
-        onSubmit={async (name, description) => Boolean(await favorites.createCollection(name, { description, snapshot }))}
-      />
-    </>
+    <Suspense fallback={pending}>
+      <CollectionMenu snapshot={snapshot} trigger={trigger} />
+    </Suspense>
   );
 }

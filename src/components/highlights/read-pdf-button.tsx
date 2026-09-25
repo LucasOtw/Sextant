@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ExternalLinkIcon, FileTextIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
+import { preloadPdfReader } from "@/components/highlights/pdfjs-assets";
 
 interface Props {
   workId: string;
@@ -40,7 +41,14 @@ export function ReadPdfButton({ workId, originalUrl, className }: Props) {
     );
   }
   return (
-    <Link href={`/article/${workId}/lire`} className={buttonVariants({ size: "lg", className })}>
+    // Survol, focus ou toucher : PDF.js et son worker se chargent pendant la navigation, pas après.
+    <Link
+      href={`/article/${workId}/lire`}
+      className={buttonVariants({ size: "lg", className })}
+      onPointerEnter={preloadPdfReader}
+      onFocus={preloadPdfReader}
+      onTouchStart={preloadPdfReader}
+    >
       <FileTextIcon /> Lire le PDF
     </Link>
   );

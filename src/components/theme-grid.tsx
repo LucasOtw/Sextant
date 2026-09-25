@@ -5,12 +5,15 @@ import { cn } from "cn";
 
 export function ThemeGrid({ limit, className }: { limit?: number; className?: string }) {
   const themes = limit ? THEMES.slice(0, limit) : THEMES;
+  // Pas de préchargement : /theme/[slug] est dynamique et sans loading.tsx, il ne rapporterait que l'en-tête
+  // de la page, au prix d'une invocation serverless par vignette visible (PERF-18).
   return (
     <ul className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4", className)}>
       {themes.map((t) => (
         <li key={t.slug}>
           <Link
             href={`/theme/${t.slug}`}
+            prefetch={false}
             className="group flex h-full flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25"
           >
             <span className={cn("size-3 rounded-full", t.tone)} aria-hidden />
