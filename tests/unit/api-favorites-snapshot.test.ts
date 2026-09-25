@@ -65,6 +65,13 @@ describe("verifiedSnapshot", () => {
     openalex.getWork.mockResolvedValue(makeWork({ title: "Titre‮ piégé", display_name: "x" }));
     expect((await verifiedSnapshot(forged))?.title).toBe("Titre piégé");
   });
+
+  it("titre OpenAlex vide ou illisible : « Sans titre », jamais le titre du client", async () => {
+    openalex.getWork.mockResolvedValue(makeWork({ title: "", display_name: "" }));
+    await expect(verifiedSnapshot(forged)).resolves.toMatchObject({ id: forged.id, title: "Sans titre", venue: "PeerJ" });
+    openalex.getWork.mockResolvedValue(makeWork({ title: "\u0000\u202e", display_name: null }));
+    await expect(verifiedSnapshot(forged)).resolves.toMatchObject({ title: "Sans titre" });
+  });
 });
 
 describe("routes d'ajout : l'instantané stocké vient d'OpenAlex", () => {

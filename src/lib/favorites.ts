@@ -5,6 +5,7 @@ import { scanPages } from "@/lib/firebase/scan";
 import { MAX_FAVORITES, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { logError, recover } from "@/lib/log";
 import { getWork } from "@/lib/openalex";
+import { cleanText } from "@/lib/text";
 
 /**
  * Favoris d'un utilisateur : `users/{uid}/favorites/{workId}`, écrits uniquement côté serveur.
@@ -50,7 +51,10 @@ export async function verifiedSnapshot(input: FavoriteSnapshot): Promise<Favorit
     return input;
   }
   if (!work) return null;
-  return sanitizeSnapshot({ ...snapshotFromWork(work), id: input.id }) ?? input;
+  // Jamais de repli sur l'instantané du client quand OpenAlex a répondu : un titre vide (ou fait seulement de
+  // caractères de contrôle) devient « Sans titre », sans quoi sanitizeSnapshot refuserait et le faux titre passerait.
+  const snap = snapshotFromWork(work);
+  return sanitizeSnapshot({ ...snap, id: input.id, title: cleanText(snap.title, 500) || "Sans titre" });
 }
 
 /** Les favoris, du plus récent au plus ancien ; `max` borne les lectures (une par favori renvoyé). */

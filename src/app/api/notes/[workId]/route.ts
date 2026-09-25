@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { cleanText } from "@/lib/highlights-shared";
 import { getNote, NotesLimitError, setNote } from "@/lib/notes";
@@ -52,8 +53,11 @@ export async function PUT(req: Request, ctx: Ctx) {
   }
   if (typeof body.text !== "string") return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   if (Array.from(body.text).length > MAX_ARTICLE_NOTE) return NextResponse.json({ error: `Note trop longue (${MAX_ARTICLE_NOTE} caractères au plus).` }, { status: 400 });
-  const article = sanitizeSnapshot(body.article);
-  if (!article || article.id !== g.workId) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
+  const input = sanitizeSnapshot(body.article);
+  if (!input || input.id !== g.workId) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
+  // Métadonnées rechargées depuis OpenAlex, comme pour les favoris (SEC-06) : elles ressortent dans l'export et get_my_notes.
+  const article = await verifiedSnapshot(input);
+  if (!article) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   try {
     return NextResponse.json({ note: await setNote(g.user.uid, article, cleanText(body.text, MAX_ARTICLE_NOTE, true)) }, { headers: PRIVATE });
   } catch (e) {

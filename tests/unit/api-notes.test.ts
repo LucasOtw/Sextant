@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeSnapshot } from "../fixtures";
+import { makeSnapshot, makeWork } from "../fixtures";
 
 /**
  * Gardes de la route d'écriture d'une note, sans base : session et stockage sont simulés.
@@ -8,8 +8,11 @@ import { makeSnapshot } from "../fixtures";
 const user = { uid: "u1", email: null, name: null, picture: null };
 const auth = vi.hoisted(() => ({ getCurrentUser: vi.fn(), getCurrentUserStrict: vi.fn() }));
 const notes = vi.hoisted(() => ({ getNote: vi.fn(), setNote: vi.fn(), NotesLimitError: class NotesLimitError extends Error {} }));
+const openalex = vi.hoisted(() => ({ getWork: vi.fn() }));
 vi.mock("@/lib/auth", () => auth);
 vi.mock("@/lib/notes", () => notes);
+// L'instantané d'article est rechargé depuis OpenAlex (SEC-06) : simulé, jamais le vrai service.
+vi.mock("@/lib/openalex", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/openalex")>()), getWork: openalex.getWork }));
 
 const { PUT } = await import("@/app/api/notes/[workId]/route");
 
@@ -29,13 +32,26 @@ describe("PUT /api/notes/[workId]", () => {
     // Un utilisateur différent par test : la limite de débit (en mémoire) ne déborde pas d'un test à l'autre.
     auth.getCurrentUserStrict.mockResolvedValue({ ...user, uid: `u${++n}` });
     notes.setNote.mockImplementation(async (_uid: string, article: unknown, text: string) => ({ workId: "W4200000001", text, article, updatedAt: null }));
+    openalex.getWork.mockResolvedValue(makeWork());
   });
 
   it("enregistre une note nettoyée pour l'utilisateur connecté", async () => {
     const res = await put("W4200000001", { text: "  Idée\u0000 clé \n\n\n\nsuite ", article: makeSnapshot() });
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, no-store");
-    expect(notes.setNote).toHaveBeenCalledWith(`u${n}`, makeSnapshot(), "Idée clé \n\nsuite");
+    expect(notes.setNote).toHaveBeenCalledWith(`u${n}`, expect.objectContaining({ id: "W4200000001", title: "Open access and citation advantage" }), "Idée clé \n\nsuite");
+  });
+
+  it("stocke l'instantané d'OpenAlex, pas le titre envoyé par le client (SEC-06)", async () => {
+    const res = await put("W4200000001", { text: "x", article: makeSnapshot({ title: "Titre inventé", venue: "Revue imaginaire" }) });
+    expect(res.status).toBe(200);
+    expect(notes.setNote.mock.calls[0][1]).toMatchObject({ title: "Open access and citation advantage", venue: "PeerJ" });
+  });
+
+  it("404 pour un article inconnu d'OpenAlex, rien n'est stocké", async () => {
+    openalex.getWork.mockResolvedValue(null);
+    expect((await put("W4200000001", { text: "x", article: makeSnapshot() })).status).toBe(404);
+    expect(notes.setNote).not.toHaveBeenCalled();
   });
 
   it("refuse une requête d'un autre site avant même de lire la session", async () => {
