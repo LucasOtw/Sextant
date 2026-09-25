@@ -166,22 +166,26 @@ tests/            tests unitaires (Vitest), fixtures et garde-fous
 ### Tests et CI
 
 ```bash
-npm run lint        # ESLint, 0 avertissement toléré (règles jsx-a11y recommandées en erreur)
-npm run typecheck   # types des routes générés (next typegen) puis tsc
-npm test            # tests unitaires Vitest (tests/unit/)
+npm run lint           # ESLint, 0 avertissement toléré (règles jsx-a11y recommandées en erreur)
+npm run typecheck      # types des routes générés (next typegen) puis tsc
+npm test               # tests unitaires Vitest (tests/unit/)
+npm run test:emulator  # transactions Firestore et suppression du compte, sur les émulateurs (tests/emulator/, Java 21)
+npm run test:a11y      # Playwright + axe sur un site démarré (BASE_URL, par défaut http://localhost:3000)
 npm run build
 ```
 
 - Node 24 (`engines`, `.nvmrc`).
-- Les tests unitaires ne touchent **jamais** la base (la seule base Firestore est celle de la production) : `@/lib/firebase/admin` y est remplacé par un module qui lève une erreur, `fetch` est interdit, les variables de secrets sont effacées (`vitest.config.mts`, `tests/setup.ts`). Session et stockage se simulent avec `vi.mock` (exemple : `tests/unit/api-notes.test.ts`).
-- Les tests marqués `it.fails` décrivent un défaut connu de l'audit (SEC-05, QUAL-32) : le correctif retire `.fails`.
-- GitHub Actions (`.github/workflows/ci.yml`) rejoue lint, typage, tests et build à chaque push et pull request vers `dev` et `main`, sans aucun secret. Dependabot (`.github/dependabot.yml`) propose chaque lundi des mises à jour groupées vers `dev`.
-- À venir : transactions Firestore sur l'émulateur (Java requis, base `demo-…` uniquement) et banc d'accessibilité Playwright + axe.
+- Les tests unitaires ne touchent **jamais** la base (la seule base Firestore est celle de la production) : `@/lib/firebase/admin` y est remplacé par un module qui lève une erreur, `firebase-admin/app` aussi, `fetch` est interdit, les variables de secrets sont effacées et les identifiants par défaut de gcloud rendus introuvables (`vitest.config.mts`, `tests/setup.ts`). Session et stockage se simulent avec `vi.mock` (exemple : `tests/unit/api-notes.test.ts`).
+- Les tests marqués `it.fails` décrivent un défaut connu de l'audit (SEC-05, QUAL-32) : le correctif retire `.fails`. Le DNS joker (`127.0.0.1.nip.io`) ne se voit pas dans l'URL : il se teste avec le relais PDF (`node:dns` simulé), dans le correctif SEC-05.
+- `npm run test:emulator` démarre les émulateurs Firestore et Auth sous le projet `demo-sextant` (`firebase emulators:exec`), jamais celui de `.firebaserc`. Garde-fous : `adminApp()` n'accepte qu'un projet `demo-…` quand `FIRESTORE_EMULATOR_HOST` est défini, et `tests/emulator/setup.ts` refuse de démarrer si `FIREBASE_SERVICE_ACCOUNT` est présent ou si les émulateurs ne sont pas désignés. Cas couverts : limite de 1 000 favoris, index `favoriteIds`, retrait en cascade des listes, `CollectionOrderError`, partage et révocation, votes, `createdAt` posé par le serveur, suppression du compte. Les firebase-tools du projet exigent Java 21 (`JAVA_HOME` vers un JDK 21).
+- `npm run test:a11y` visite les pages publiques en clair et en sombre : échec sur les violations axe serious ou critical, sur `page-has-heading-one`, `landmark-one-main` et `region`, et sur tout débordement horizontal à 320 px. Toute requête autre que GET/HEAD est bloquée (les pages lisent la base de production). En local, avec le serveur de dev lancé : `PW_CHANNEL=chrome npm run test:a11y` (Chrome installé) ou `npx playwright install chromium` au préalable.
+- GitHub Actions : `.github/workflows/ci.yml` rejoue lint, typage, tests unitaires et build (job `ci`), puis les tests sur émulateur (job `emulator`, Java 21), à chaque push et pull request vers `dev` et `main`, sans aucun secret. `.github/workflows/a11y.yml` lance le banc d'accessibilité sur chaque aperçu Vercel réussi (`deployment_status`) ; si les aperçus sont protégés, il lit le secret `VERCEL_AUTOMATION_BYPASS_SECRET`. Dependabot (`.github/dependabot.yml`) propose chaque lundi des mises à jour groupées vers `dev` ; les montées majeures de Next, firebase-admin, TypeScript et ESLint se font à la main sur une branche dédiée.
 
 ### Branches
 
 - `main` : version en ligne, ne reçoit que des merges depuis `dev`.
 - `dev` : intégration ; les fonctionnalités arrivent par `feat/<nom>` et pull request vers `dev`.
+- `dev` et `main` protégées : PR obligatoire, statuts `ci`, `emulator` et `Vercel` requis (réglage du dépôt, GitHub → Settings → Rules → Rulesets).
 
 ### Firestore
 
