@@ -79,4 +79,36 @@ describe("favoris (transactions sur émulateur)", () => {
     expect(lists.find((l) => l.id === b.id)?.articleIds).toEqual([]);
     expect((await listFavorites(uid)).map((f) => f.id)).toEqual(["W2"]);
   });
+
+  it("ranger un favori inchangé dans des listes n'écrit ni users/{uid} ni le document favori (NEW-9)", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const a = await createCollection(uid, "Lecture");
+    const b = await createCollection(uid, "Thèse");
+    await addFavorite(uid, snap(1));
+    const before = await Promise.all([db.doc(`users/${uid}`).get(), db.doc(`users/${uid}/favorites/W1`).get()]);
+
+    await Promise.all([addToCollection(uid, a.id, snap(1)), addToCollection(uid, b.id, snap(1))]);
+    const after = await Promise.all([db.doc(`users/${uid}`).get(), db.doc(`users/${uid}/favorites/W1`).get()]);
+    expect(after[0].updateTime?.isEqual(before[0].updateTime!)).toBe(true);
+    expect(after[1].updateTime?.isEqual(before[1].updateTime!)).toBe(true);
+    const lists = await listCollections(uid);
+    expect(lists.map((l) => l.articleIds)).toEqual([["W1"], ["W1"]]);
+
+    // Instantané changé chez OpenAlex : le document favori est rafraîchi, l'index reste tel quel.
+    await addToCollection(uid, a.id, snap(1, { title: "Titre corrigé" }));
+    const fav = await db.doc(`users/${uid}/favorites/W1`).get();
+    expect(fav.get("title")).toBe("Titre corrigé");
+    expect((await db.doc(`users/${uid}`).get()).updateTime?.isEqual(before[0].updateTime!)).toBe(true);
+  });
+
+  it("répare l'index quand le document favori existe sans figurer dans favoriteIds (NEW-9)", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    await db.doc(`users/${uid}`).set({ favoriteIds: [], favoritesCount: 0 });
+    await db.doc(`users/${uid}/favorites/W3`).set({ ...snap(3), addedAt: Timestamp.now() });
+
+    await addFavorite(uid, snap(3));
+    expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W3"], favoritesCount: 1 });
+  });
 });

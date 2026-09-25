@@ -200,6 +200,10 @@ Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont list
 
 Toutes les lectures et écritures passent par le serveur (SDK Admin, clé de service). `firestore.rules` ferme tout accès direct depuis un navigateur : c'est aussi le réglage par défaut du mode « production » de la console, à conserver. Pour redéployer ces règles après modification : `firebase deploy --only firestore:rules` (CLI Firebase connectée au projet).
 
+`firestore.indexes.json` retire l'indexation automatique des champs jamais interrogés (index `favoriteIds`, textes des citations et des notes, instantanés d'article, description des retours, condensés IA). Avant de le déployer, `firebase firestore:indexes` montre les index en place : si un index créé depuis la console n'y figure pas, l'ajouter au fichier, sinon le déploiement proposerait de le supprimer. Puis `firebase deploy --only firestore:indexes`.
+
+Les condensés IA sont gardés dans la collection `aiSummaries` (un document par modèle, version de la consigne et article, sans donnée personnelle) : incrémenter `PROMPT_VERSION` dans `src/app/api/summary/route.ts` à chaque changement de la consigne.
+
 ### Variables d'environnement
 
 Voir [`.env.example`](.env.example). Sans clé IA, le bouton de condensé est simplement masqué.

@@ -2,7 +2,7 @@ import "server-only";
 import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
-import { MAX_FAVORITES, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { logError, recover } from "@/lib/log";
 import { getWork } from "@/lib/openalex";
 import { cleanText } from "@/lib/text";
@@ -114,6 +114,8 @@ export class FavoritesLimitError extends Error {}
 /**
  * Écritures d'un ajout (ou rafraîchissement) de favori, au sein d'une transaction : lectures d'abord, écritures ensuite.
  * Renvoie la date d'ajout (celle d'origine si l'article était déjà enregistré).
+ * N'écrit que ce qui change (NEW-9) : ranger dans une liste un favori déjà enregistré, à l'instantané inchangé, ne
+ * touche ni `users/{uid}` ni le document favori. Deux listes cochées ensemble ne se disputent alors plus ces documents.
  */
 export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference, s: FavoriteSnapshot): Promise<Date> {
   const { FieldValue } = await import("firebase-admin/firestore");
@@ -124,14 +126,22 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
   const ids: string[] = Array.isArray(known)
     ? known.filter((x): x is string => typeof x === "string")
     : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
-  if (!existing.exists && !ids.includes(s.id)) {
-    if (ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
+  // Absent de l'index : ajouté, y compris si son document existe déjà (index désaccordé, réparé au passage). Le
+  // plafond ne vaut que pour un nouvel article : un document existant compte déjà dans les favoris.
+  const isNewId = !ids.includes(s.id);
+  if (isNewId) {
+    if (!existing.exists && ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
     ids.push(s.id);
   }
   const previous = existing.exists ? (existing.get("addedAt") as { toDate?: () => Date } | undefined) : undefined;
-  tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
-  // L'instantané est rafraîchi à chaque ajout ; la date d'ajout d'origine est conservée.
-  tx.set(favRef, { ...s, addedAt: previous ?? FieldValue.serverTimestamp() }, { merge: true });
+  // Index écrit s'il change, ou s'il vient d'être reconstruit depuis la sous-collection (anciens profils).
+  if (isNewId || !Array.isArray(known) || user.get("favoritesCount") !== ids.length) {
+    tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
+  }
+  // L'instantané est rafraîchi s'il a changé (titre corrigé chez OpenAlex…) ; la date d'ajout d'origine est conservée.
+  if (!existing.exists || !previous || !sameSnapshot(existing.data(), s)) {
+    tx.set(favRef, { ...s, addedAt: previous ?? FieldValue.serverTimestamp() }, { merge: true });
+  }
   return previous?.toDate?.() ?? new Date();
 }
 

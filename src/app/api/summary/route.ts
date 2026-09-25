@@ -6,6 +6,7 @@ import { logError } from "@/lib/log";
 import { getWork, type Work } from "@/lib/openalex";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { readStoredSummary, storeSummary } from "@/lib/summaries";
 
 export const runtime = "nodejs";
 /**
@@ -14,9 +15,20 @@ export const runtime = "nodejs";
  */
 export const maxDuration = 40;
 
-/** Cache mémoire par instance : un résumé par article et par modèle, borné (les plus anciens sortent d'abord). */
+/**
+ * Cache mémoire par instance, premier niveau devant Firestore (lib/summaries) : un résumé par article, par modèle et
+ * par version de la consigne, borné (les plus anciens sortent d'abord).
+ */
 const cache = new Map<string, string>();
 const CACHE_MAX = 500;
+
+/** Version de la consigne SYSTEM : à incrémenter à chaque modification, pour ne plus servir les condensés de l'ancienne. */
+const PROMPT_VERSION = 1;
+
+function remember(key: string, text: string) {
+  if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
+  cache.set(key, text);
+}
 
 const SYSTEM = `Tu aides des étudiants et chercheurs francophones à évaluer rapidement un article scientifique.
 À partir des métadonnées et du résumé original fournis, rédige en français une synthèse fidèle en 4 points courts, un par ligne, sans titre, sans puces, sans numéro :
@@ -51,12 +63,24 @@ export async function POST(req: Request) {
   }
 
   const model = modelFor(provider);
-  const cacheKey = `${model}:${id}`;
+  const cacheKey = `${model}:v${PROMPT_VERSION}:${id}`;
   const cached = cache.get(cacheKey);
   if (cached) return NextResponse.json({ summary: cached, model, cached: true });
 
-  // Le cache ne coûte rien ; la limite ne compte que les synthèses à générer (limite par instance, comme /api/pdf).
-  if (!rateLimit(`summary:${clientIp(req)}`, 10, 60_000)) {
+  // Condensé déjà enregistré par une autre instance ou un déploiement précédent (PERF-15). Une lecture par demande :
+  // bornée par sa propre limite, large, pour ne pas ouvrir la base à des lectures sans fin.
+  const ip = clientIp(req);
+  if (!rateLimit(`summary-read:${ip}`, 60, 60_000)) {
+    return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
+  }
+  const stored = await readStoredSummary(model, PROMPT_VERSION, id);
+  if (stored) {
+    remember(cacheKey, stored);
+    return NextResponse.json({ summary: stored, model, cached: true });
+  }
+
+  // Les caches ne coûtent rien au modèle ; la limite ne compte que les synthèses à générer (limite par instance, comme /api/pdf).
+  if (!rateLimit(`summary:${ip}`, 10, 60_000)) {
     return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
   }
 
@@ -86,8 +110,11 @@ export async function POST(req: Request) {
   try {
     const raw = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
     const text = stripMarkdown(raw);
-    if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
-    cache.set(cacheKey, text);
+    // Seuls les succès sont gardés, jamais les erreurs : une panne passagère ne se fige pas.
+    if (text) {
+      remember(cacheKey, text);
+      storeSummary(model, PROMPT_VERSION, id, text);
+    }
     return NextResponse.json({ summary: text, model });
   } catch (e) {
     if (e instanceof AiError) return NextResponse.json({ error: e.message }, { status: e.status });

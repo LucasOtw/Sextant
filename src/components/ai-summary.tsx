@@ -16,6 +16,11 @@ interface Props {
 
 const UNAVAILABLE = "Synthèse indisponible pour le moment, réessayez.";
 
+/** Condensé déjà obtenu dans cet onglet : un retour arrière ne le redemande pas au serveur (PERF-15). */
+function storageKey(model: string, workId: string) {
+  return `sextant:summary:${model}:${workId}`;
+}
+
 type State = { status: "idle" } | { status: "loading" } | { status: "done"; text: string } | { status: "error"; message: string };
 
 /** Condensé du résumé original en quatre points (traduit si besoin), généré à la demande. */
@@ -23,6 +28,15 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
   const [state, setState] = useState<State>({ status: "idle" });
 
   async function run() {
+    try {
+      const kept = sessionStorage.getItem(storageKey(model, workId));
+      if (kept) {
+        setState({ status: "done", text: kept });
+        return;
+      }
+    } catch {
+      /* stockage indisponible : on demande au serveur */
+    }
     setState({ status: "loading" });
     try {
       const res = await fetch("/api/summary", {
@@ -34,6 +48,11 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       const data = (await res.json().catch(() => ({}))) as { summary?: string; error?: string };
       if (res.ok && data.summary) {
         setState({ status: "done", text: data.summary });
+        try {
+          sessionStorage.setItem(storageKey(model, workId), data.summary);
+        } catch {
+          /* stockage plein ou indisponible : sans effet */
+        }
         return;
       }
       setState({ status: "error", message: data.error ?? UNAVAILABLE });
