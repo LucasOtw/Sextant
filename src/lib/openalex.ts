@@ -57,6 +57,8 @@ export interface Work {
   language: string | null;
   cited_by_count: number;
   referenced_works_count?: number;
+  /** Date d'entrée dans OpenAlex ; demandée seulement par les listes « récentes » (garde de datation). */
+  created_date?: string;
   is_retracted?: boolean;
   authorships: Authorship[];
   primary_location: Location | null;
@@ -163,6 +165,31 @@ export const VERIFIED_TYPES = "article|review|book|book-chapter|dissertation";
 
 /** Revues et collections indexées (liste « core » d'OpenAlex, proche de Scopus / Web of Science). */
 const CORE_SOURCE = "primary_location.source.is_core:true";
+
+/**
+ * Listes « récentes » (sélection du moment, « Pour vous ») : OpenAlex re-date parfois des textes anciens
+ * à leur mise en ligne numérique (un article de 1969 daté 2025, un préprint de 2023 daté 2026). Ces fiches
+ * n'ont presque jamais de bibliographie extraite : on l'exige côté API, puis `isPlausiblyRecent` écarte le reste.
+ */
+const HAS_REFERENCES = "referenced_works_count:>0";
+const RECENT_SELECT_EXTRA = ",created_date,referenced_works_count";
+
+/** Identifiants attribués avant 2022 (héritage Microsoft Academic, `W1…`-`W3…`) : texte forcément antérieur. */
+const FIRST_NEW_WORK_ID = 4_000_000_000;
+
+/**
+ * Vrai si l'article a une année et si rien n'indique qu'il est plus ancien que sa date de publication :
+ * fiche créée plus d'un an avant cette date, ou identifiant hérité d'avant 2022 pour une date récente.
+ */
+export function isPlausiblyRecent(w: Pick<Work, "id" | "publication_year" | "created_date">, now = new Date()): boolean {
+  const year = w.publication_year;
+  if (!year) return false;
+  const created = w.created_date ? Number(w.created_date.slice(0, 4)) : NaN;
+  if (Number.isFinite(created) && created < year - 1) return false;
+  const num = Number(shortId(w.id).slice(1));
+  if (Number.isFinite(num) && num > 0 && num < FIRST_NEW_WORK_ID && year >= now.getFullYear() - 3) return false;
+  return true;
+}
 
 export class OpenAlexError extends Error {
   constructor(message: string, public status: number) {
@@ -377,14 +404,14 @@ export async function getRecentByTopic(topicId: string, sinceYear: number, n = 6
   const page = await get<Page<Work>>(
     "/works",
     {
-      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, `publication_year:>${sinceYear - 1}`, "has_abstract:true"].join(","),
+      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, `publication_year:>${sinceYear - 1}`, "has_abstract:true", HAS_REFERENCES].join(","),
       sort: "cited_by_count:desc",
-      "per-page": n,
-      select: RECO_SELECT,
+      "per-page": Math.min(n * 2, 50),
+      select: RECO_SELECT + RECENT_SELECT_EXTRA,
     },
     3600,
   );
-  return page.results;
+  return page.results.filter((w) => isPlausiblyRecent(w)).slice(0, n);
 }
 
 /** Sous-thèmes (topics) d'un field, triés par volume. */
@@ -424,14 +451,15 @@ export async function getFeaturedWorks(n = 8, fieldId?: string): Promise<Work[]>
     "open_access.is_oa:true",
     "has_abstract:true",
     CORE_SOURCE,
+    HAS_REFERENCES,
   ];
   if (fieldId) filters.push(`primary_topic.field.id:fields/${fieldId}`);
   const page = await get<Page<Work>>(
     "/works",
-    { filter: filters.join(","), sort: "cited_by_count:desc", "per-page": n, select: LIST_SELECT },
+    { filter: filters.join(","), sort: "cited_by_count:desc", "per-page": Math.min(n * 2, 50), select: LIST_SELECT + RECENT_SELECT_EXTRA },
     3600,
   );
-  return page.results;
+  return page.results.filter((w) => isPlausiblyRecent(w)).slice(0, n);
 }
 
 export interface AuthorProfile {
