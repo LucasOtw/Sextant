@@ -103,4 +103,10 @@ describe("rejectLargeBody", () => {
     expect(rejectLargeBody(withLength(16_384))).toBeNull();
     expect(rejectLargeBody(withLength())).toBeNull();
   });
+
+  it("refuse une longueur annoncée illisible ou négative", () => {
+    const withHeader = (v: string) => new Request("https://sextant.test/api/x", { method: "POST", headers: { "content-length": v } });
+    expect(rejectLargeBody(withHeader("abc"))?.status).toBe(413);
+    expect(rejectLargeBody(withHeader("-1"))?.status).toBe(413);
+  });
 });

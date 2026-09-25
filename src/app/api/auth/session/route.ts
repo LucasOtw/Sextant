@@ -3,7 +3,7 @@ import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { getCurrentUser, isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
 import { WRONG_ACCOUNT } from "@/lib/reauth-shared";
 import { isExpectedAuthError, logError } from "@/lib/log";
-import { rejectCrossSite } from "@/lib/security";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -21,7 +21,8 @@ const cookieOptions = {
  * fenêtre Google basculerait la session, et l'opération rejouée (suppression du compte !) viserait cet autre compte.
  */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req);
+  // Un jeton Firebase pèse 1 à 2 Ko : 8 Ko laissent de la marge sans lire un corps démesuré (SEC-17).
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 8_192);
   if (refused) return refused;
   if (!isAuthEnabled()) return NextResponse.json({ error: "Comptes désactivés." }, { status: 503 });
   let idToken: string | undefined;
@@ -38,6 +39,11 @@ export async function POST(req: Request) {
   try {
     const auth = await adminAuth();
     const decoded = await auth.verifyIdToken(idToken, true);
+    // Seule la connexion Google ouvre une session (SEC-14) : si un autre fournisseur (anonyme, e-mail) était activé
+    // dans le projet Firebase, chaque nouvel uid contournerait les limites par compte (un vote, 5 sujets par heure).
+    if (decoded.firebase?.sign_in_provider !== "google.com") {
+      return NextResponse.json({ error: "Connexion Google requise." }, { status: 403 });
+    }
     // Le jeton doit être récent : on refuse une connexion vieille de plus de 5 minutes.
     if (Date.now() / 1000 - decoded.auth_time > 5 * 60) {
       return NextResponse.json({ error: "Connexion trop ancienne, recommencez." }, { status: 401 });

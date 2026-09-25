@@ -140,7 +140,7 @@ describe("POST /api/auth/session avec reauth (confirmation d'identité)", () => 
 
   it("refuse un autre compte Google que celui de la session (403 wrong_account), sans nouveau cookie", async () => {
     auth.getCurrentUser.mockResolvedValue({ uid: "titulaire", authTime: now() - 3600 });
-    admin.verifyIdToken.mockResolvedValue({ uid: "autre-compte", auth_time: now() });
+    admin.verifyIdToken.mockResolvedValue({ uid: "autre-compte", auth_time: now(), firebase: { sign_in_provider: "google.com" } });
     const res = await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton", reauth: true }));
     expect(res.status).toBe(403);
     expect(await res.json()).toMatchObject({ code: "wrong_account" });
@@ -150,23 +150,46 @@ describe("POST /api/auth/session avec reauth (confirmation d'identité)", () => 
 
   it("refuse sans session en cours", async () => {
     auth.getCurrentUser.mockResolvedValue(null);
-    admin.verifyIdToken.mockResolvedValue({ uid: "titulaire", auth_time: now() });
+    admin.verifyIdToken.mockResolvedValue({ uid: "titulaire", auth_time: now(), firebase: { sign_in_provider: "google.com" } });
     expect((await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton", reauth: true }))).status).toBe(401);
     expect(admin.createSessionCookie).not.toHaveBeenCalled();
   });
 
   it("même compte : réémet le cookie (connexion récente)", async () => {
     auth.getCurrentUser.mockResolvedValue({ uid: "titulaire", authTime: now() - 3600 });
-    admin.verifyIdToken.mockResolvedValue({ uid: "titulaire", auth_time: now() });
+    admin.verifyIdToken.mockResolvedValue({ uid: "titulaire", auth_time: now(), firebase: { sign_in_provider: "google.com" } });
     const res = await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton", reauth: true }));
     expect(res.status).toBe(200);
     expect(res.headers.get("set-cookie")).toMatch(/sextant_session=cookie-neuf/);
   });
 
   it("connexion ordinaire (sans reauth) : aucun contrôle de compte, comme avant", async () => {
-    admin.verifyIdToken.mockResolvedValue({ uid: "nouveau", auth_time: now() });
+    admin.verifyIdToken.mockResolvedValue({ uid: "nouveau", auth_time: now(), firebase: { sign_in_provider: "google.com" } });
     const res = await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton" }));
     expect(res.status).toBe(200);
     expect(auth.getCurrentUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/auth/session : fournisseur et taille du corps (SEC-14, SEC-17)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    admin.createSessionCookie.mockResolvedValue("cookie-neuf");
+    admin.getUser.mockResolvedValue({ metadata: {} });
+  });
+
+  it.each(["anonymous", "password", "phone", undefined])("refuse une connexion hors Google (%s) : 403, aucun cookie", async (provider) => {
+    admin.verifyIdToken.mockResolvedValue({ uid: "autre", auth_time: now(), firebase: provider ? { sign_in_provider: provider } : undefined });
+    const res = await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton" }));
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "Connexion Google requise." });
+    expect(admin.createSessionCookie).not.toHaveBeenCalled();
+    expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("refuse un corps annoncé au-delà de 8 Ko avant de vérifier le jeton", async () => {
+    const res = await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton" }, { "content-length": "9000" }));
+    expect(res.status).toBe(413);
+    expect(admin.verifyIdToken).not.toHaveBeenCalled();
   });
 });
