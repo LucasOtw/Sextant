@@ -9,9 +9,10 @@ import { exists, newUid, snap } from "./helpers";
 
 // Session simulée : la route de suppression lit l'utilisateur via le cookie (Firebase Auth), hors du périmètre ici.
 const session = vi.hoisted(() => ({ uid: "" }));
-vi.mock("@/lib/auth", () => ({
-  SESSION_COOKIE: "sextant_session",
-  getCurrentUserStrict: async () => (session.uid ? { uid: session.uid, email: null, name: null, picture: null } : null),
+// Connexion Google « récente » (authTime = maintenant) : la suppression exige une connexion de moins de 10 minutes (SEC-09).
+vi.mock("@/lib/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth")>()),
+  getCurrentUserStrict: async () => (session.uid ? { uid: session.uid, email: null, name: null, picture: null, authTime: Math.floor(Date.now() / 1000) } : null),
   forgetRevocationCheck: () => {},
 }));
 

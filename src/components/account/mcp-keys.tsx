@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
+import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
@@ -60,6 +61,7 @@ export function McpKeys() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
+  const [reauth, setReauth] = useState(false);
   const [origin, setOrigin] = useState("https://sextant-psi.vercel.app");
 
   useEffect(() => {
@@ -75,6 +77,11 @@ export function McpKeys() {
     setBusy(true);
     try {
       const res = await fetch("/api/account/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: name.trim() }) });
+      // Connexion Google trop ancienne (SEC-09) : confirmation d'identité, puis la création est rejouée.
+      if (await needsReauth(res)) {
+        setReauth(true);
+        return;
+      }
       const data = (await res.json().catch(() => ({}))) as { key?: string; info?: ApiKeyInfo; error?: string };
       if (!res.ok || !data.key || !data.info) throw new Error(data.error ?? "La clé n'a pas pu être créée.");
       setCreated({ key: data.key, info: data.info });
@@ -153,6 +160,13 @@ export function McpKeys() {
           <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans « Autres méthodes ».</p>
         </div>
       </details>
+
+      <ReauthDialog
+        open={reauth}
+        onOpenChange={setReauth}
+        description="Par sécurité, créer une clé demande une connexion Google récente : une clé donne accès à votre bibliothèque tant qu'elle n'est pas révoquée."
+        onConfirmed={() => void create()}
+      />
 
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
         <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">

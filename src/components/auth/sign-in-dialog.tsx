@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { signInWithPopup } from "firebase/auth";
 import { toast } from "sonner";
 import { GoogleButton } from "@/components/auth/google-button";
+import { GooglePopupCancelled, withGooglePopup } from "@/components/auth/google-popup";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { firebaseAuth, googleProvider, isFirebaseConfigured } from "@/lib/firebase/client";
+import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
 
 interface Props {
   open: boolean;
@@ -52,26 +52,11 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
     setError(null);
     onBeforeSignIn?.();
     try {
-      const auth = firebaseAuth();
-      let credential;
-      try {
-        credential = await signInWithPopup(auth, googleProvider());
-      } catch (e) {
-        const code = (e as { code?: string }).code;
-        // Pas de repli par redirection : avec l'authDomain Firebase (autre domaine que le site), Safari 16.1+,
-        // Firefox 109+ et Chrome sans cookies tiers ramènent l'utilisateur déconnecté, sans message. On explique plutôt.
-        if (code === "auth/popup-blocked") {
-          setError("Votre navigateur a bloqué la fenêtre de connexion Google. Autorisez les fenêtres surgissantes pour ce site, puis réessayez.");
-          return;
-        }
-        if (code === "auth/operation-not-supported-in-this-environment") {
-          setError("Ouvrez Sextant dans votre navigateur (Safari, Chrome…) pour vous connecter.");
-          return;
-        }
-        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
-        throw e;
-      }
-      await establishSession(await credential.user.getIdToken());
+      // L'état Firebase du navigateur est vidé juste après l'échange, réussi ou non (SEC-12) : seul le cookie compte.
+      const credential = await withGooglePopup(async (idToken, cred) => {
+        await establishSession(idToken);
+        return cred;
+      });
       onSuccess?.();
       onOpenChange(false);
       toast.success(`Bienvenue${credential.user.displayName ? `, ${credential.user.displayName.split(" ")[0]}` : ""} !`, {
@@ -79,6 +64,7 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
       });
       router.refresh();
     } catch (e) {
+      if (e instanceof GooglePopupCancelled) return;
       setError(e instanceof Error ? e.message : "Connexion impossible.");
     } finally {
       setBusy(false);

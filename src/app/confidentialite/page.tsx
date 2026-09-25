@@ -5,7 +5,7 @@ import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Confidentialité" };
 
-const UPDATED = "24 septembre 2026";
+const UPDATED = "25 septembre 2026";
 
 export default function PrivacyPage() {
   const contact = SITE.contactEmail ? <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a> : <strong>[adresse de contact à compléter]</strong>;
@@ -58,8 +58,9 @@ export default function PrivacyPage() {
         <li><strong>Finalité et base légale</strong> : fournir le service que vous demandez en créant un compte (exécution du contrat, RGPD art. 6.1.b).</li>
         <li><strong>Durée</strong> : tant que le compte existe. Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.</li>
         <li>
-          <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours ;
-          le module de connexion de Google garde aussi l'état de connexion dans le stockage du navigateur jusqu'à la déconnexion.
+          <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours.
+          Le module de connexion de Google n'est chargé qu'au moment de la connexion, et l'état qu'il laisse dans le stockage du navigateur est
+          effacé dès la session ouverte.
         </li>
       </ul>
 
