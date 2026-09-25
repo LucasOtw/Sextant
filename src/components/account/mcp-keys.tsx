@@ -199,11 +199,19 @@ export function McpKeys() {
               <details className="group text-sm">
                 <summary className="text-muted-foreground hover:text-foreground">Autres méthodes (Claude Code, fichier de configuration de Claude Desktop, clé seule)</summary>
                 <div className="mt-3 flex min-w-0 flex-col gap-4">
-                  <CopyBlock label="Claude Code, dans le terminal" value={`claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer ${created.key}"`} />
+                  {/* La clé est lue par une saisie masquée : elle n'entre pas dans l'historique du shell (bash et zsh). Guillemets
+                      doubles indispensables, sinon `$SEXTANT_KEY` partirait tel quel dans l'en-tête (SEC-22). */}
+                  <CopyBlock
+                    label="Claude Code, dans le terminal"
+                    value={`printf 'Clé Sextant : '; read -rs SEXTANT_KEY; echo; claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer $SEXTANT_KEY"; unset SEXTANT_KEY`}
+                  />
+                  <p className="-mt-2 text-muted-foreground">
+                    Quand le terminal demande la clé, collez celle du bloc « Clé seule » : elle ne s'affiche pas et ne reste pas dans l'historique. Claude Code la garde ensuite dans sa configuration (~/.claude.json) : en cas de doute, révoquez-la.
+                  </p>
                   <CopyBlock
                     label="Claude Desktop, fichier claude_desktop_config.json"
                     value={JSON.stringify(
-                      { mcpServers: { sextant: { command: "npx", args: ["-y", "mcp-remote", endpoint, "--header", "Authorization:${SEXTANT_AUTH}"], env: { SEXTANT_AUTH: `Bearer ${created.key}` } } } },
+                      { mcpServers: { sextant: { command: "npx", args: ["-y", "mcp-remote@latest", endpoint, "--header", "Authorization:${SEXTANT_AUTH}"], env: { SEXTANT_AUTH: `Bearer ${created.key}` } } } },
                       null,
                       2,
                     )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
+import { connectAuthEmulator, getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
 
 /**
  * Firebase côté navigateur. La config est publique (clé d'API restreinte par domaine).
@@ -24,6 +24,13 @@ function authDomain(): string {
 
 let app: FirebaseApp | undefined;
 
+/**
+ * Émulateur Auth (développement local, `npm run dev:emu`) : la connexion Google passe par la fausse fenêtre de
+ * l'émulateur, aucun compte réel n'est touché. Variable absente en production.
+ */
+const AUTH_EMULATOR_URL = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL?.trim();
+let emulatorConnected = false;
+
 export function firebaseAuth(): Auth {
   if (!isFirebaseConfigured) throw new Error("Firebase n'est pas configuré (NEXT_PUBLIC_FIREBASE_*).");
   if (!app) {
@@ -34,7 +41,12 @@ export function firebaseAuth(): Auth {
         authDomain: authDomain(),
       });
   }
-  return getAuth(app);
+  const auth = getAuth(app);
+  if (AUTH_EMULATOR_URL && !emulatorConnected) {
+    connectAuthEmulator(auth, AUTH_EMULATOR_URL, { disableWarnings: true });
+    emulatorConnected = true;
+  }
+  return auth;
 }
 
 export function googleProvider(): GoogleAuthProvider {

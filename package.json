@@ -7,6 +7,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:emu": "firebase emulators:exec --only auth,firestore --project demo-sextant 'NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_URL=http://127.0.0.1:9099 NEXT_PUBLIC_FIREBASE_PROJECT_ID=demo-sextant NEXT_PUBLIC_FIREBASE_API_KEY=demo-key NEXT_PUBLIC_FIREBASE_APP_ID=demo-app next dev'",
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings=0 .",
