@@ -1,13 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse } from "next/server";
 import { activeProvider, AiError, completeOpenAiCompatible, modelFor } from "@/lib/ai";
+import { WORK_ID } from "@/lib/favorites-shared";
 import { abstractFromInvertedIndex, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { getWork } from "@/lib/openalex";
+import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
 
-/** Cache mémoire par instance : un résumé par article et par modèle. */
+/** Cache mémoire par instance : un résumé par article et par modèle, borné (les plus anciens sortent d'abord). */
 const cache = new Map<string, string>();
+const CACHE_MAX = 500;
 
 const SYSTEM = `Tu aides des étudiants et chercheurs francophones à évaluer rapidement un article scientifique.
 À partir des métadonnées et du résumé original fournis, rédige en français une synthèse fidèle en 4 points courts, un par ligne, sans titre, sans puces, sans numéro :
@@ -23,13 +27,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Résumé IA désactivé sur ce déploiement." }, { status: 503 });
   }
 
-  let id: string | undefined;
+  // Appel payant ou sous quota : pas de requête venue d'un autre site, pas de corps « text/plain » sans préflight.
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 1_024);
+  if (refused) return refused;
+  if (!req.headers.get("content-type")?.startsWith("application/json")) {
+    return NextResponse.json({ error: "Requête invalide." }, { status: 415 });
+  }
+
+  let bodyId: unknown;
   try {
-    ({ id } = (await req.json()) as { id?: string });
+    bodyId = ((await req.json()) as { id?: unknown }).id;
   } catch {
     /* corps invalide */
   }
-  if (!id || !/^W\d+$/i.test(id)) {
+  const id = typeof bodyId === "string" ? bodyId.toUpperCase() : "";
+  if (!WORK_ID.test(id)) {
     return NextResponse.json({ error: "Identifiant d'article invalide." }, { status: 400 });
   }
 
@@ -37,6 +49,11 @@ export async function POST(req: Request) {
   const cacheKey = `${model}:${id}`;
   const cached = cache.get(cacheKey);
   if (cached) return NextResponse.json({ summary: cached, model, cached: true });
+
+  // Le cache ne coûte rien ; la limite ne compte que les synthèses à générer (limite par instance, comme /api/pdf).
+  if (!rateLimit(`summary:${clientIp(req)}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
+  }
 
   const work = await getWork(id).catch(() => null);
   if (!work) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
@@ -57,6 +74,7 @@ export async function POST(req: Request) {
   try {
     const raw = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
     const text = stripMarkdown(raw);
+    if (cache.size >= CACHE_MAX) cache.delete(cache.keys().next().value!);
     cache.set(cacheKey, text);
     return NextResponse.json({ summary: text, model });
   } catch (e) {

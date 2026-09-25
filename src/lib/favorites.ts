@@ -1,6 +1,7 @@
 import "server-only";
 import type { DocumentReference, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
+import { scanPages } from "@/lib/firebase/scan";
 import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 
 /**
@@ -30,10 +31,29 @@ function toFavorite(data: Record<string, unknown>, id: string): Favorite {
   };
 }
 
-export async function listFavorites(uid: string): Promise<Favorite[]> {
+/** Les favoris, du plus récent au plus ancien ; `max` borne les lectures (une par favori renvoyé). */
+export async function listFavorites(uid: string, max = MAX_FAVORITES): Promise<Favorite[]> {
   const db = await adminDb();
-  const snap = await db.collection(`users/${uid}/favorites`).orderBy("addedAt", "desc").limit(MAX_FAVORITES).get();
+  const snap = await db.collection(`users/${uid}/favorites`).orderBy("addedAt", "desc").limit(Math.min(max, MAX_FAVORITES)).get();
   return snap.docs.map((d) => toFavorite(d.data(), d.id));
+}
+
+/** Les favoris qui correspondent à `match`, lus par pages jusqu'à en trouver `limit` ou à en avoir parcouru `max`. */
+export async function findFavorites(uid: string, match: (f: Favorite) => boolean, limit: number, max: number): Promise<Favorite[]> {
+  const db = await adminDb();
+  const query = db.collection(`users/${uid}/favorites`).orderBy("addedAt", "desc");
+  return scanPages(query, (d) => toFavorite(d.data(), d.id), match, limit, Math.min(max, MAX_FAVORITES));
+}
+
+/** Les favoris demandés, dans l'ordre donné (les absents sont ignorés) : `getAll` par paquets de 100, en parallèle. */
+export async function getFavoritesByIds(uid: string, ids: string[]): Promise<Favorite[]> {
+  if (ids.length === 0) return [];
+  const db = await adminDb();
+  const col = db.collection(`users/${uid}/favorites`);
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
+  const pages = await Promise.all(chunks.map((chunk) => db.getAll(...chunk.map((id) => col.doc(id)))));
+  return pages.flat().flatMap((d) => (d.exists ? [toFavorite(d.data() ?? {}, d.id)] : []));
 }
 
 /** Identifiants des favoris (une lecture), reconstruits et persistés une fois si le champ manque. */

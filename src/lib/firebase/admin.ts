@@ -20,7 +20,13 @@ async function adminApp(): Promise<App> {
   if (app) return app;
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!raw) throw new Error("FIREBASE_SERVICE_ACCOUNT manquant.");
-  const sa = JSON.parse(raw) as { project_id: string; client_email: string; private_key: string };
+  let sa: { project_id: string; client_email: string; private_key: string };
+  try {
+    sa = JSON.parse(raw) as typeof sa;
+  } catch {
+    // Jamais l'erreur d'origine : le message de JSON.parse cite un extrait de la valeur (le compte de service).
+    throw new Error("FIREBASE_SERVICE_ACCOUNT invalide : JSON illisible (vérifier le collage sur une ligne).");
+  }
   const { cert, getApps, initializeApp } = await import("firebase-admin/app");
   app =
     getApps()[0] ??

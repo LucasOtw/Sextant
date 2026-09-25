@@ -1,5 +1,6 @@
 import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
+import { scanPages } from "@/lib/firebase/scan";
 import { MAX_HIGHLIGHTS, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 
@@ -37,15 +38,24 @@ function toHighlight(data: Record<string, unknown>, id: string): Highlight {
 export class HighlightsLimitError extends Error {}
 export class HighlightNotFoundError extends Error {}
 
-/** Tous les surlignages (les plus récents d'abord), ou ceux d'un article (sans index composite : triés ici). */
-export async function listHighlights(uid: string, workId?: string): Promise<Highlight[]> {
+/**
+ * Les surlignages (les plus récents d'abord), ou ceux d'un article (sans index composite : triés ici).
+ * `max` borne les lectures (une par surlignage renvoyé).
+ */
+export async function listHighlights(uid: string, workId?: string, max = MAX_HIGHLIGHTS): Promise<Highlight[]> {
   const db = await adminDb();
   const col = db.collection(`users/${uid}/highlights`);
-  const snap = workId
-    ? await col.where("workId", "==", workId).limit(MAX_HIGHLIGHTS).get()
-    : await col.orderBy("createdAt", "desc").limit(MAX_HIGHLIGHTS).get();
+  const n = Math.min(max, MAX_HIGHLIGHTS);
+  const snap = workId ? await col.where("workId", "==", workId).limit(n).get() : await col.orderBy("createdAt", "desc").limit(n).get();
   const items = snap.docs.map((d) => toHighlight(d.data(), d.id));
   return workId ? items.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? "")) : items;
+}
+
+/** Les surlignages (les plus récents d'abord) qui correspondent à `match`, lus par pages jusqu'à en trouver `limit` ou à en avoir parcouru `max`. */
+export async function findHighlights(uid: string, match: (h: Highlight) => boolean, limit: number, max: number): Promise<Highlight[]> {
+  const db = await adminDb();
+  const query = db.collection(`users/${uid}/highlights`).orderBy("createdAt", "desc");
+  return scanPages(query, (d) => toHighlight(d.data(), d.id), match, limit, Math.min(max, MAX_HIGHLIGHTS));
 }
 
 export async function countHighlights(uid: string): Promise<number> {

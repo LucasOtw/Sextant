@@ -20,9 +20,17 @@ const cache = new Map<string, Promise<AuthorProfile | null>>();
 function load(id: string, instId: string | null): Promise<AuthorProfile | null> {
   let p = cache.get(id);
   if (!p) {
+    // Seul un « introuvable » (404) est mémorisé : un refus de débit (429) ou une panne se retente au prochain survol.
     p = fetch(`/api/author?id=${id}${instId ? `&inst=${instId}` : ""}`)
-      .then((r) => (r.ok ? (r.json() as Promise<AuthorProfile>) : null))
-      .catch(() => null);
+      .then((r) => {
+        if (r.ok) return r.json() as Promise<AuthorProfile>;
+        if (r.status !== 404) cache.delete(id);
+        return null;
+      })
+      .catch(() => {
+        cache.delete(id);
+        return null;
+      });
     cache.set(id, p);
   }
   return p;

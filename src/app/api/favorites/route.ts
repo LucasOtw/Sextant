@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, removeFavorite } from "@/lib/favorites";
+import { addFavorite, FavoritesLimitError, listFavoriteIds, removeFavorite } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -19,7 +19,6 @@ const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez
 /**
  * Par défaut : les identifiants seulement (une lecture Firestore), ce qu'il faut pour les cœurs.
  * `?collections=1` : ajoute les listes (une lecture par liste), demandé par les écrans qui les affichent.
- * `?full=1` : la liste complète avec métadonnées (jusqu'à 1000 lectures), réservée aux usages qui en ont besoin.
  */
 export async function GET(req: Request) {
   const user = await getCurrentUser();
@@ -27,7 +26,6 @@ export async function GET(req: Request) {
   if (tooMany(user.uid)) return TOO_MANY();
   const params = new URL(req.url).searchParams;
   try {
-    if (params.get("full") === "1") return NextResponse.json({ favorites: await listFavorites(user.uid) }, { headers: PRIVATE });
     const withCollections = params.get("collections") === "1";
     // Les listes n'empêchent pas les cœurs : leur échec renvoie `null`, le client garde ce qu'il sait.
     const [ids, collections] = await Promise.all([listFavoriteIds(user.uid), withCollections ? listCollections(user.uid).catch(() => null) : undefined]);
