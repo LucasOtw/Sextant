@@ -32,7 +32,9 @@ export function ReadPdfButton({ workId, originalUrl, className }: Props) {
   if (target === "original") {
     return (
       <a href={originalUrl} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className })} title="Le lecteur intégré ne peut pas récupérer ce PDF : il s'ouvre chez son hébergeur.">
-        <FileTextIcon /> Lire le PDF <ExternalLinkIcon data-icon="inline-end" />
+        <FileTextIcon /> Lire le PDF <ExternalLinkIcon data-icon="inline-end" aria-hidden />
+        {/* Le title n'apparaît qu'au survol : l'ouverture dans un nouvel onglet est aussi dite aux lecteurs d'écran. */}
+        <span className="sr-only">(s&apos;ouvre chez l&apos;hébergeur, dans un nouvel onglet)</span>
       </a>
     );
   }

@@ -256,7 +256,7 @@ export function FavoritesList({ initial, initialCollections = [], loadError = fa
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
-              <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="truncate">{collection.name}</span>
+              <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="min-w-0 line-clamp-2 wrap-break-word">{collection.name}</span>
             </h2>
             {collection.description && <p className="mt-1 text-[15px] text-muted-foreground">{collection.description}</p>}
             {collection.shareToken && (

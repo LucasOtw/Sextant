@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Link from "next/link";
 import { EyeOffIcon, SparklesIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,11 @@ import { readRecent } from "@/lib/recent";
 import { hideRecommendation, readHidden, reasonText, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
 
 type State = { status: "idle" | "loading" | "ready" | "hidden"; items: Recommendation[]; fromFavorites: boolean };
+
+/** Raccourcit un titre d'article d'origine trop long pour la ligne de raison (le titre entier reste dans le nom accessible). */
+function shortTitle(title: string): string {
+  return title.length > 70 ? `${title.slice(0, 67).trimEnd()}…` : title;
+}
 
 /**
  * « Pour vous » : vos favoris (si vous êtes connecté) et vos consultations sur cet appareil, envoyés à la volée pour calculer
@@ -67,7 +72,7 @@ export function ForYou() {
   if (state.status === "idle" || state.status === "hidden") return null;
 
   return (
-    <section id="pour-vous" className="scroll-mt-20 py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
+    <section id="pour-vous" className="py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5">
         <h2 className="title-display flex items-center gap-2 text-3xl sm:text-4xl">
           <SparklesIcon className="size-7 text-accent-brand" aria-hidden /> Pour vous
@@ -79,26 +84,37 @@ export function ForYou() {
         </p>
       </div>
       {state.status === "loading" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {state.items.map((item, i) => {
-            const why = reasonText(item.reason);
-            const first = item.reason.seeds[0];
+            const { kind, topic, seeds } = item.reason;
             return (
-              <li key={item.work.id} className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+              <li key={item.work.id} className="flex min-w-0 flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
                 <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
-                  <p className="min-w-0 truncate" title={why}>
-                    {first ? (
+                  {/* Raison complète (sujet et tous les articles d'origine), jamais tronquée par la hauteur : chaque lien reste visible
+                      et focalisable. Seuls les titres très longs sont raccourcis, le titre entier restant dans le nom accessible du lien. */}
+                  <p className="min-w-0 wrap-break-word">
+                    {seeds.length > 0 ? (
                       <>
-                        {item.reason.kind === "related" ? "Proche de " : "Même sujet que "}
-                        <Link href={`/article/${first.id}`} className="underline underline-offset-2 hover:text-foreground">« {first.title} »</Link>
-                        {item.reason.seeds.length > 1 && " et d'un autre de vos articles"}
+                        {kind === "related" ? "Proche de " : topic ? `Récent et cité sur « ${topic} », comme ` : "Même sujet que "}
+                        {seeds.map((seed, j) => (
+                          <Fragment key={seed.id}>
+                            {j > 0 && (j === seeds.length - 1 ? " et " : ", ")}
+                            <Link
+                              href={`/article/${seed.id}`}
+                              aria-label={`« ${seed.title} »`}
+                              className="underline underline-offset-2 hover:text-foreground"
+                            >
+                              « {shortTitle(seed.title)} »
+                            </Link>
+                          </Fragment>
+                        ))}
                       </>
                     ) : (
-                      why
+                      reasonText(item.reason)
                     )}
                   </p>
                   <button type="button" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>

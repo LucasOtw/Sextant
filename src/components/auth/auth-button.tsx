@@ -49,8 +49,10 @@ export function AuthButton({ user }: Props) {
   if (!user) {
     return (
       <>
-        <Button variant="outline" size="sm" className="rounded-full" onClick={() => setOpen(true)}>
-          <UserRoundIcon /> Se connecter
+        <Button variant="outline" size="sm" className="rounded-full max-sm:size-8 max-sm:px-0" onClick={() => setOpen(true)}>
+          {/* Icône seule sous sm (bouton carré) ; le libellé reste le nom accessible. */}
+          <UserRoundIcon aria-hidden />
+          <span className="sr-only sm:not-sr-only">Se connecter</span>
         </Button>
         <SignInDialog open={open} onOpenChange={setOpen} />
       </>

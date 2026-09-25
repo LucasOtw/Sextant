@@ -63,7 +63,7 @@ interface Props {
 /** Filtres + liste + pagination. La liste est chargée en streaming. */
 export function Results({ base, sp, params, filterDefaults }: Props) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       <aside className="lg:sticky lg:top-20 lg:self-start">
         <SearchFilters defaults={filterDefaults} />
       </aside>

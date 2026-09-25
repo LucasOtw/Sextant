@@ -272,7 +272,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
         rows={4}
         placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil (facultatif)" : "À quoi ça vous servirait (facultatif)"}
         aria-label="Description"
-        className="text-[15px] md:text-[15px]"
+        className="text-base md:text-[15px]"
       />
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>

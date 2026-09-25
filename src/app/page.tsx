@@ -35,12 +35,12 @@ export default function HomePage() {
         </p>
       </section>
 
-      <section id="themes" className="scroll-mt-20 py-8">
+      <section id="themes" className="py-8">
         <SectionHeading title="Explorer par thématique" subtitle="Vous ne savez pas encore quoi chercher ? Partez de votre discipline." />
         <ThemeGrid />
       </section>
 
-      <section id="selection" className="scroll-mt-20 py-8">
+      <section id="selection" className="py-8">
         <SectionHeading
           title="Sélection du moment"
           subtitle="Récents, en accès ouvert, publiés dans des revues indexées : ce que la communauté lit et cite en ce moment."
@@ -65,7 +65,7 @@ async function Featured() {
     return <p className="text-sm text-muted-foreground">La sélection est momentanément indisponible.</p>;
   }
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {works.map((w, i) => (
         <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
           <WorkCard work={w} variant="compact" />
@@ -77,7 +77,7 @@ async function Featured() {
 
 function FeaturedSkeleton() {
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44 rounded-xl" />)}
     </div>
   );
