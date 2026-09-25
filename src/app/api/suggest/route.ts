@@ -32,7 +32,8 @@ export async function GET(req: Request) {
   withCredentials(url);
 
   try {
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    // 3 s au plus (une suggestion plus lente ne sert plus à rien), et arrêt dès que le navigateur abandonne la frappe (PERF-07).
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.any([req.signal, AbortSignal.timeout(3000)]) });
     if (!res.ok) {
       logError("suggest.GET", new Error(`OpenAlex ${res.status}`), { status: res.status });
       return NextResponse.json({ results: [] });
@@ -45,7 +46,8 @@ export async function GET(req: Request) {
       .map((r) => ({ id: shortId(r.id), title: r.display_name, hint: r.hint, citations: r.cited_by_count ?? 0 }));
     return NextResponse.json({ results }, { headers: { "cache-control": "public, max-age=300, s-maxage=300" } });
   } catch (e) {
-    logError("suggest.GET", e);
+    // Abandon par le navigateur ou délai dépassé : rien d'anormal à journaliser.
+    if (!(e instanceof DOMException && (e.name === "AbortError" || e.name === "TimeoutError"))) logError("suggest.GET", e);
     return NextResponse.json({ results: [] });
   }
 }

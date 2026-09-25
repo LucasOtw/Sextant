@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserStrict } from "@/lib/auth";
-import { FeedbackNotFoundError, toggleVote } from "@/lib/feedback";
+import { FeedbackNotFoundError, invalidateFeedbackList, toggleVote } from "@/lib/feedback";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { logError } from "@/lib/log";
@@ -17,7 +17,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   if (!/^[A-Za-z0-9]{1,40}$/.test(id)) return NextResponse.json({ error: "Sujet invalide." }, { status: 400 });
   try {
-    return NextResponse.json(await toggleVote(user.uid, id), { headers: { "cache-control": "private, no-store" } });
+    const result = await toggleVote(user.uid, id);
+    // Sinon un rechargement dans la minute afficherait l'état « voté » (lu à jour) à côté d'un compteur ancien.
+    invalidateFeedbackList();
+    return NextResponse.json(result, { headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     if (e instanceof FeedbackNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     logError("feedback.id.vote.POST", e);

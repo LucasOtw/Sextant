@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserStrict } from "@/lib/auth";
-import { createFeedback } from "@/lib/feedback";
+import { createFeedback, invalidateFeedbackList } from "@/lib/feedback";
 import { sanitizeFeedback } from "@/lib/feedback-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -24,7 +24,9 @@ export async function POST(req: Request) {
   const input = sanitizeFeedback(body);
   if (!input) return NextResponse.json({ error: "Choisissez Bug ou Idée et donnez un titre d'au moins 5 caractères." }, { status: 400 });
   try {
-    return NextResponse.json({ item: await createFeedback(user.uid, input) }, { status: 201, headers: { "cache-control": "private, no-store" } });
+    const item = await createFeedback(user.uid, input);
+    invalidateFeedbackList();
+    return NextResponse.json({ item }, { status: 201, headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     logError("feedback.POST", e);
     return NextResponse.json({ error: "La publication a échoué." }, { status: 502 });

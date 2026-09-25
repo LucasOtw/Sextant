@@ -1,4 +1,5 @@
 import "server-only";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
 import { logError } from "@/lib/log";
 import type { FeedbackItem, FeedbackKind, FeedbackStatus } from "@/lib/feedback-shared";
@@ -29,6 +30,20 @@ export async function listFeedback(limit = 300): Promise<FeedbackItem[]> {
   const db = await adminDb();
   const snap = await db.collection("feedback").orderBy("createdAt", "desc").limit(limit).get();
   return snap.docs.map((d) => toItem(d.id, d.data()));
+}
+
+const FEEDBACK_TAG = "feedback";
+
+/**
+ * Liste publique de /retours mise en cache 60 s, partagée entre les instances (cache de données de Next) : les visites,
+ * robots compris, ne relisent plus jusqu'à 300 documents chacune (PERF-08). Chaque écriture qui change la liste ou
+ * un compteur appelle `invalidateFeedbackList` : l'auteur d'un vote ou d'un sujet revoit la page à jour.
+ */
+export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list"], { tags: [FEEDBACK_TAG], revalidate: 60 });
+
+/** À appeler après une écriture sur `feedback` (sujet publié, vote, compte supprimé) : la prochaine visite relit la base. */
+export function invalidateFeedbackList(): void {
+  revalidateTag(FEEDBACK_TAG, { expire: 0 });
 }
 
 /** Identifiants des sujets pour lesquels l'utilisateur a voté. */

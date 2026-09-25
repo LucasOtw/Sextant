@@ -4,7 +4,7 @@ import { forgetRevocationCheck, getCurrentUserStrict, isRecentLogin, reauthRequi
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
-import { detachAuthor, withdrawVotes } from "@/lib/feedback";
+import { detachAuthor, invalidateFeedbackList, withdrawVotes } from "@/lib/feedback";
 import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -34,6 +34,7 @@ export async function DELETE(req: Request) {
     await detachAuthor(user.uid);
     // Avant l'effacement de users/{uid}, qui contient la liste des votes : sinon ils resteraient comptés (SEC-14).
     await withdrawVotes(user.uid);
+    invalidateFeedbackList();
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
     forgetRevocationCheck(user.uid);
