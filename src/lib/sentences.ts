@@ -4,6 +4,8 @@
  * est celui de `readSelection` : le résumé et le lecteur PDF retrouvent et marquent ces passages comme les autres.
  */
 
+import { joinFragments } from "@/lib/pdf-marks";
+
 export interface Sentence {
   text: string;
   /** Position dans le texte d'origine : [start, end[. */
@@ -85,12 +87,15 @@ export function pendingIndexes(checked: Iterable<number>, sentences: readonly Se
 }
 
 /**
- * Texte d'une page PDF tel que le voit le marquage (`markSpans`) : fragments non vides, espaces normalisés, joints par
- * une espace. Une phrase prise dans ce texte est donc toujours retrouvée dans la couche texte de la page.
+ * Texte d'une page PDF tel que le voit le marquage (`markSpans`) : mêmes fragments, joints par `joinFragments`. Une fin
+ * de ligne (`hasEOL`, rendue en `<br>` dans la couche texte) sépare les mots ; deux fragments collés (mot coupé par un
+ * changement de police) restent collés. Une phrase prise dans ce texte est donc toujours retrouvée dans la couche texte.
  */
 export function pdfPageText(items: readonly unknown[]): string {
-  return items
-    .map((it) => (it && typeof it === "object" && "str" in it && typeof it.str === "string" ? squash(it.str).trim() : ""))
-    .filter(Boolean)
-    .join(" ");
+  const fragments: string[] = [];
+  for (const it of items) {
+    if (!it || typeof it !== "object" || !("str" in it) || typeof it.str !== "string") continue;
+    fragments.push("hasEOL" in it && it.hasEOL === true ? `${it.str}\n` : it.str);
+  }
+  return joinFragments(fragments).text;
 }

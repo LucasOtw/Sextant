@@ -4,10 +4,14 @@ import { markSpans } from "@/lib/pdf-marks";
 import { clearRecent, pushRecent, readRecent, RECENT_KEY, restoreRecent } from "@/lib/recent";
 import { clearHidden, hideRecommendation, HIDDEN_KEY, readHidden, RECO_LIMITS, unhideRecommendation } from "@/lib/recommendations-shared";
 
-/** Couche texte PDF.js simplifiée : un <span> par fragment de ligne. */
+/** Couche texte PDF.js simplifiée : un <span> par fragment ; « \n » seul = fin de ligne (<br>, comme `hasEOL`). */
 function textLayer(fragments: string[]): HTMLElement {
   const div = document.createElement("div");
   for (const f of fragments) {
+    if (f === "\n") {
+      div.appendChild(document.createElement("br"));
+      continue;
+    }
     const span = document.createElement("span");
     span.textContent = f;
     div.appendChild(span);
@@ -18,9 +22,17 @@ const marked = (el: HTMLElement) => [...el.querySelectorAll("span.hl")].map((s) 
 
 describe("markSpans (surlignage dans le lecteur PDF)", () => {
   it("marque les fragments couverts par un passage, même à cheval sur plusieurs lignes", () => {
-    const el = textLayer(["Le climat change", "plus vite que prévu,", "selon le rapport."]);
+    const el = textLayer(["Le climat change", "\n", "plus vite que prévu,", "\n", "selon le rapport."]);
     markSpans(el, ["change plus  VITE"]);
     expect(marked(el)).toEqual(["Le climat change", "plus vite que prévu,"]);
+  });
+
+  it("un mot coupé en deux fragments sur la même ligne est retrouvé, sans inventer de frontière ailleurs", () => {
+    const el = textLayer(["Un exam", "ple", " ", "de texte"]);
+    markSpans(el, ["example de"]);
+    expect(marked(el)).toEqual(["Un exam", "ple", "de texte"]);
+    markSpans(el, ["exam ple"]);
+    expect(marked(el)).toEqual([]);
   });
 
   it("marque toutes les occurrences", () => {

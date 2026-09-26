@@ -80,6 +80,8 @@ describe("choix de phrases à surligner (A11Y-18)", () => {
 
   it("texte d'une page PDF : fragments non vides joints par une espace", () => {
     expect(pdfPageText([{ str: "Le  climat" }, { str: " " }, { str: "change." }, { type: "beginMarkedContent" }, null])).toBe("Le climat change.");
+    // Fin de ligne (`hasEOL`) = frontière de mot ; deux fragments collés (mot coupé par PDF.js) restent collés.
+    expect(pdfPageText([{ str: "fin", hasEOL: true }, { str: "de ligne" }, { str: "", hasEOL: true }, { str: "Un exam" }, { str: "ple." }])).toBe("fin de ligne Un example.");
   });
 });
 
