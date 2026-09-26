@@ -264,7 +264,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[15px] text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
           </DialogDescription>
           <div className="mt-2 flex justify-end gap-2">
@@ -310,7 +310,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
               <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="min-w-0 line-clamp-2 wrap-break-word">{collection.name}</span>
             </h2>
-            {collection.description && <p className="mt-1 text-[15px] text-muted-foreground">{collection.description}</p>}
+            {collection.description && <p className="mt-1 text-[0.9375rem] text-muted-foreground">{collection.description}</p>}
             {collection.shareToken && (
               <button type="button" onClick={() => setSharing(true)} className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-accent-brand underline underline-offset-3">
                 <Link2Icon className="size-3.5" aria-hidden /> Partagée par lien
@@ -353,7 +353,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         </div>
       </div>
 
-      <p ref={countRef} tabIndex={-1} className="text-[15px] text-muted-foreground outline-none" aria-live="polite">
+      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
         {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour « {q} »</>}
         {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
       </p>
@@ -445,7 +445,7 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
           <CollectionPicker snapshot={f} />
           <FavoriteButton snapshot={f} initialActive />
         </div>
-        <p className="text-[15px] text-muted-foreground">
+        <p className="text-[0.9375rem] text-muted-foreground">
           {f.authors}{f.venue && <> · <span className="italic">{f.venue}</span></>}{f.year && <> · {f.year}</>}
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">

@@ -77,12 +77,12 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
       </div>
 
       {!enabled ? (
-        <p className="mt-2 text-[15px] text-muted-foreground">
+        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
           {where ? `Sélectionnez un passage ${where} pour le surligner, ou notez une citation à la main.` : "Notez vos citations à la main : le résumé et le texte intégral ne sont pas disponibles ici."} Elles sont gardées avec leur source, sur tous vos appareils.{" "}
           <button type="button" onClick={requestSignIn} className="text-accent-brand underline underline-offset-3">Se connecter</button>
         </p>
       ) : highlights.length === 0 ? (
-        <div className="mt-3 flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-[15px] text-muted-foreground">
+        <div className="mt-3 flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] text-muted-foreground">
           <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. {howTo}</p>
           {addButton}
         </div>

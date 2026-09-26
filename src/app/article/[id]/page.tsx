@@ -140,7 +140,7 @@ export default async function ArticlePage({ params }: Props) {
           </Badge>
           {work.is_retracted && <Badge variant="destructive">Rétracté</Badge>}
           {theme && (
-            <Link href={`/theme/${theme.slug}`} className="ml-1 text-muted-foreground hover:text-foreground">
+            <Link href={`/theme/${theme.slug}`} className="ml-1 text-muted-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">
               {theme.name}
             </Link>
           )}
@@ -151,7 +151,7 @@ export default async function ArticlePage({ params }: Props) {
 
         <Authors work={work} />
 
-        <p className="mt-3 text-[15px] text-muted-foreground">
+        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
           {venue && <span className="italic text-foreground">{venue}</span>}
           {venue && (work.publication_date || work.publication_year) && " · "}
           {formatDate(work.publication_date) ?? work.publication_year}
@@ -163,7 +163,7 @@ export default async function ArticlePage({ params }: Props) {
           {work.language && <> · {work.language.toUpperCase()}</>}
         </p>
 
-        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem]">
           <Stat icon={<QuoteIcon />} label="Citations">
             <Link href={`/search?cites=${shortId(work.id)}`} className="underline underline-offset-2 hover:text-accent-brand">
               {formatCount(work.cited_by_count)}
@@ -205,7 +205,7 @@ export default async function ArticlePage({ params }: Props) {
           {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
-          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[15px] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
+          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
             <div className="flex items-start gap-2.5">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="text-muted-foreground">
@@ -231,7 +231,7 @@ export default async function ArticlePage({ params }: Props) {
             )}
           </h2>
           {abstract ? (
-            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 text-[17px] leading-relaxed" />
+            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 text-[1.0625rem] leading-relaxed" />
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -287,7 +287,7 @@ function Authors({ work }: { work: Work }) {
   const rest = list.length - shown.length;
   if (list.length === 0) return null;
   return (
-    <p className="mt-4 text-[15px] leading-relaxed">
+    <p className="mt-4 text-[0.9375rem] leading-relaxed">
       {shown.map((a, i) => {
         const inst = a.institutions[0]?.display_name;
         return (

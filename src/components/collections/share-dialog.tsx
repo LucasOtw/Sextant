@@ -42,7 +42,7 @@ export function ShareDialog({ open, onOpenChange, collection }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogTitle className="title-display flex items-center gap-2 text-2xl"><Link2Icon className="size-5 text-accent-brand" aria-hidden /> Partager « {collection.name} »</DialogTitle>
-        <DialogDescription className="text-[15px] text-muted-foreground">
+        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
           Toute personne qui a le lien voit le nom de la liste, sa description et ses articles, sans compte. Vos notes, vos citations et votre
           profil ne sont jamais montrés. Vous pouvez désactiver le lien à tout moment.
         </DialogDescription>

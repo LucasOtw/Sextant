@@ -63,7 +63,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
         </div>
       )}
 
-      <p className="text-[15px] text-muted-foreground">
+      <p className="text-[0.9375rem] text-muted-foreground">
         {formatAuthors(work, compact ? 2 : 3)}
         {venue && <> · <span className="italic">{venue}</span></>}
         {work.publication_year && <> · {work.publication_year}</>}
@@ -73,7 +73,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
       </p>
 
       {!compact && abstract && (
-        <p lang={contentLang(work.language)} className="text-[15px] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
+        <p lang={contentLang(work.language)} className="text-[0.9375rem] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
       )}
 
       <div className="mt-auto flex items-center gap-1 pt-1 text-sm text-muted-foreground">

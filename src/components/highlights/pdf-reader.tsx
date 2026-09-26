@@ -495,7 +495,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
     })();
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-dashed p-5 text-[15px]">
+        <div className="rounded-xl border border-dashed p-5 text-[0.9375rem]">
           <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
           <p className="mt-1 text-muted-foreground">
             {embedUrl
@@ -552,7 +552,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
             </Button>
           </div>
           {interrupted && (
-            <div role="alert" className="rounded-xl border border-dashed p-4 text-[15px]">
+            <div role="alert" className="rounded-xl border border-dashed p-4 text-[0.9375rem]">
               <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
               <p className="mt-1 text-muted-foreground">
                 Rechargez la page pour réessayer, ou{" "}

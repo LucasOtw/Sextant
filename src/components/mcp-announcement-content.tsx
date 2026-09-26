@@ -43,7 +43,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
               <SparklesIcon className="size-3" aria-hidden /> Nouveau
             </span>
             <DialogTitle className="title-display text-2xl leading-tight">Sextant, dans votre assistant IA</DialogTitle>
-            <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
+            <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
               Branchez Sextant à Claude, ChatGPT ou tout assistant compatible MCP. Il peut alors chercher des articles vérifiés et lire
               vos favoris, listes, citations et notes, sans rien pouvoir modifier.
             </DialogDescription>
@@ -55,7 +55,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
               {EXAMPLES.map((e, i) => (
                 <li
                   key={e}
-                  className="w-fit max-w-full rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-[14px] leading-snug text-secondary-foreground animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards duration-300 motion-reduce:animate-none"
+                  className="w-fit max-w-full rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-sm leading-snug text-secondary-foreground animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards duration-300 motion-reduce:animate-none"
                   style={{ animationDelay: `${150 + i * 90}ms` }}
                 >
                   « {e} »

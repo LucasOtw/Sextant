@@ -16,12 +16,12 @@ export default function WelcomeDialogContent({ onClose }: { onClose: () => void 
         <WelcomeIllustration />
         <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
           <DialogTitle className="title-display text-2xl">Un compagnon, pas un raccourci</DialogTitle>
-          <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
             Sextant vous aide à découvrir plus d'articles évalués par les pairs, de thèses et d'ouvrages, et à passer
             de l'un à l'autre. Il ne remplace pas vos propres recherches sur Google Scholar, les bases spécialisées
             de votre discipline ou le catalogue de votre bibliothèque : il s'y ajoute.
           </DialogDescription>
-          <ul className="grid gap-1.5 text-[15px]">
+          <ul className="grid gap-1.5 text-[0.9375rem]">
             <li className="flex gap-2"><span className="text-accent-brand" aria-hidden>●</span> Croisez toujours plusieurs sources.</li>
             <li className="flex gap-2"><span className="text-accent-brand" aria-hidden>●</span> Lisez l'article, pas seulement sa synthèse.</li>
             <li className="flex gap-2"><span className="text-accent-brand" aria-hidden>●</span> Les métadonnées viennent d'OpenAlex et peuvent comporter des erreurs.</li>

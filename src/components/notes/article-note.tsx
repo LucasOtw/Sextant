@@ -150,7 +150,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         <h2 id="ma-note-titre" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           <NotebookPenIcon className="size-4" aria-hidden /> Ma note
         </h2>
-        <p className="mt-2 text-[15px] text-muted-foreground">
+        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
           Ce que vous retenez de cet article, pour vous : une idée, une réserve, où il se place dans votre travail.{" "}
           <button type="button" onClick={() => setSignIn(true)} className="text-accent-brand underline underline-offset-3">Se connecter</button>
         </p>
@@ -180,7 +180,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         rows={text ? Math.min(12, Math.max(3, text.split("\n").length + 1)) : 3}
         placeholder="Ce que vous retenez de cet article, pour vous : une idée, une réserve, où il se place dans votre travail…"
         aria-label="Ma note sur cet article"
-        className="mt-3 bg-card text-base leading-relaxed md:text-[15px]"
+        className="mt-3 bg-card text-base leading-relaxed md:text-[0.9375rem]"
       />
       {signIn && <SignInDialog open={signIn} onOpenChange={setSignIn} intro="Connectez-vous pour garder vos notes sur les articles, sur tous vos appareils." />}
     </section>

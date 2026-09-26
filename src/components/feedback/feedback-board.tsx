@@ -185,10 +185,10 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
           {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
           {item.createdAt && <span className="text-xs text-muted-foreground">{DATE.format(new Date(item.createdAt))}</span>}
         </div>
-        <h2 className="mt-1.5 text-[17px] font-semibold leading-snug">{item.title}</h2>
+        <h2 className="mt-1.5 text-[1.0625rem] font-semibold leading-snug">{item.title}</h2>
         {item.description && (
           <>
-            <p id={descriptionId} className={cn("mt-1 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
+            <p id={descriptionId} className={cn("mt-1 whitespace-pre-line text-[0.9375rem] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
             {long && (
               <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded} aria-controls={descriptionId}>
                 {expanded ? "Réduire" : "Lire la suite"}
@@ -206,7 +206,7 @@ function Composer({ open, onOpenChange, onCreated }: { open: boolean; onOpenChan
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogTitle className="title-display text-2xl">Nouveau sujet</DialogTitle>
-        <DialogDescription className="text-[15px] text-muted-foreground">
+        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
           Un sujet par bug ou par idée. Vérifiez d'abord qu'il n'existe pas déjà : un vote suffit alors.
         </DialogDescription>
         {open && <ComposerForm onClose={() => onOpenChange(false)} onCreated={onCreated} />}
@@ -301,7 +301,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             maxLength={MAX_FEEDBACK_DESCRIPTION}
             rows={4}
             placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil" : "À quoi ça vous servirait"}
-            className="text-base md:text-[15px]"
+            className="text-base md:text-[0.9375rem]"
           />
         )}
       </Field>

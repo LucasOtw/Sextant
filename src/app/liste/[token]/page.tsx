@@ -64,7 +64,7 @@ export default async function SharedListPage({ params }: Props) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <h1 className="title-display text-3xl">Liste indisponible</h1>
-        <p className="mt-3 text-[15px] text-muted-foreground">
+        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
           Les listes partagées ne sont pas disponibles sur cette instance. En local, lancez <code>npm run dev:emu</code> ou
           définissez <code>ALLOW_PROD_DB=1</code>.
         </p>
@@ -85,7 +85,7 @@ export default async function SharedListPage({ params }: Props) {
         <h1 className="title-display mt-2 text-4xl sm:text-5xl">{list.name}</h1>
         {list.description && <p className="mt-3 text-lg text-muted-foreground">{list.description}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[15px] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
+          <p className="text-[0.9375rem] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
           <SharedListActions name={list.name} articles={list.articles} retracted={[...retracted]} />
         </div>
 
@@ -109,7 +109,7 @@ export default async function SharedListPage({ params }: Props) {
                   <div className="absolute right-3 top-3 z-10">
                     <FavoriteButton snapshot={a} />
                   </div>
-                  <p className="text-[15px] text-muted-foreground">
+                  <p className="text-[0.9375rem] text-muted-foreground">
                     {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
                   </p>
                   <p className="flex items-center gap-1 pt-1 text-sm text-muted-foreground">

@@ -46,25 +46,34 @@ export default async function ThemePage({ params, searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <header className="mb-6 flex flex-col gap-3">
-        <div className="flex items-center gap-2 text-[15px] text-muted-foreground">
-          <Link href="/#themes" className="hover:text-foreground">Thématiques</Link>
-          <span>/</span>
-          <span className={cn("size-2 rounded-full", theme.tone)} aria-hidden />
-          <span className="text-foreground">{theme.name}</span>
-        </div>
+        {/* Fil d'Ariane : repère de navigation, lien souligné, séparateur non lu, page courante signalée (A11Y-37). */}
+        <nav aria-label="Fil d'Ariane">
+          <ol className="flex items-center gap-2 text-[0.9375rem] text-muted-foreground">
+            <li>
+              <Link href="/#themes" className="underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">Thématiques</Link>
+            </li>
+            <li aria-hidden>/</li>
+            <li className="flex items-center gap-2">
+              <span className={cn("size-2 rounded-full", theme.tone)} aria-hidden />
+              <span aria-current="page" className="text-foreground">{theme.name}</span>
+            </li>
+          </ol>
+        </nav>
         <h1 className="title-display text-4xl sm:text-5xl">{theme.name}</h1>
         <p className="max-w-2xl text-lg text-muted-foreground">{theme.description}</p>
         <SearchBox size="hero" defaultValue={search.q} className="max-w-3xl" />
         <SkipToResults />
         {topics.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
+          // Le sujet actif est exposé (aria-current) avec l'effet du lien, qui retire le filtre : la couleur seule ne le dit pas (A11Y-37).
+          <div role="group" aria-label="Filtrer par sujet" className="flex flex-wrap gap-1.5 pt-1">
             {topics.map((t) => {
               const id = t.id.replace(/^.*\//, "");
               const active = search.topic === id;
               return (
-                <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`}>
+                <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined}>
                   <Badge variant={active ? "default" : "secondary"} className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">
                     {t.display_name}
+                    {active && <span className="sr-only"> (filtre actif, activer pour le retirer)</span>}
                   </Badge>
                 </Link>
               );

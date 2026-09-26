@@ -59,7 +59,7 @@ export function RecentlyViewed() {
         )}
       </div>
       {items.length === 0 ? (
-        <p className="text-[15px] text-muted-foreground">Historique effacé. Les prochains articles consultés apparaîtront ici.</p>
+        <p className="text-[0.9375rem] text-muted-foreground">Historique effacé. Les prochains articles consultés apparaîtront ici.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.slice(0, 6).map((w, i) => (
@@ -77,7 +77,7 @@ export function RecentlyViewed() {
                   {w.year && <span>{w.year}</span>}
                 </span>
                 <span className="title-display line-clamp-2 text-lg leading-snug">{w.title}</span>
-                <span className="line-clamp-1 text-[15px] text-muted-foreground">
+                <span className="line-clamp-1 text-[0.9375rem] text-muted-foreground">
                   {w.authors}
                   {w.venue && <> · <span className="italic">{w.venue}</span></>}
                 </span>

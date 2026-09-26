@@ -28,7 +28,7 @@ export function CollectionDialog({ open, onOpenChange, initialName = "", initial
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogTitle className="title-display text-2xl">{title}</DialogTitle>
-        {description && <DialogDescription className="text-[15px] text-muted-foreground">{description}</DialogDescription>}
+        {description && <DialogDescription className="text-[0.9375rem] text-muted-foreground">{description}</DialogDescription>}
         {/* Le contenu est démonté à la fermeture : le formulaire repart du nom initial à chaque ouverture. */}
         <NameForm initialName={initialName} initialDescription={initialDescription} submitLabel={submitLabel} onSubmit={onSubmit} onClose={() => onOpenChange(false)} />
       </DialogContent>

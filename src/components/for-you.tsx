@@ -115,7 +115,7 @@ export function ForYou() {
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
       ) : state.items.length === 0 ? (
-        <p className="text-[15px] text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
+        <p className="text-[0.9375rem] text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
       ) : (
         <ul ref={listRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {state.items.map((item, i) => {

@@ -143,7 +143,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
               </Link>
               {profile?.orcid && (
                 <ExternalLink href={profile.orcid} className="inline-flex items-center gap-1.5 hover:text-accent-brand">
-                  <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-[#A6CE39] text-[8px] font-bold text-white" aria-hidden>iD</span>
+                  <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-[#A6CE39] text-[0.5rem] font-bold text-white" aria-hidden>iD</span>
                   Profil ORCID
                 </ExternalLink>
               )}
@@ -161,8 +161,8 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <span className="rounded-lg bg-muted px-2 py-1.5">
-      <span className="block text-[15px] font-semibold">{value}</span>
-      <span className="block text-[11px] text-muted-foreground">{label}</span>
+      <span className="block text-[0.9375rem] font-semibold">{value}</span>
+      <span className="block text-xs text-muted-foreground">{label}</span>
     </span>
   );
 }

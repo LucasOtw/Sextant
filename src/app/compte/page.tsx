@@ -100,7 +100,7 @@ export default async function AccountPage() {
           <div className="mt-3 flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
             <div className="flex items-start gap-3">
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
-              <p className="text-[15px] leading-relaxed text-muted-foreground">
+              <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
                 Votre compte contient votre nom, votre e-mail et votre photo Google, et ce que vous enregistrez dans Sextant : favoris,
                 listes, citations et notes. Rien d'autre, aucun suivi. Détails dans la{" "}
                 <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
@@ -117,7 +117,7 @@ export default async function AccountPage() {
 
         <section className="mt-10" aria-labelledby="session">
           <h2 id="session" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Session et compte</h2>
-          <p className="mb-4 mt-2 text-[15px] text-muted-foreground">
+          <p className="mb-4 mt-2 text-[0.9375rem] text-muted-foreground">
             La déconnexion ferme la session sur cet appareil. « Se déconnecter de tous les appareils » ferme aussi les autres sessions
             et révoque vos clés d'assistant IA. La suppression efface immédiatement votre compte et toutes ses données.
           </p>

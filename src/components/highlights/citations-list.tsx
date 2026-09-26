@@ -155,7 +155,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
         <Button variant="outline" className="h-10" onClick={copyAll} disabled={shown.length === 0}><CopyIcon /> Tout copier</Button>
       </div>
 
-      <p ref={countRef} tabIndex={-1} className="text-[15px] text-muted-foreground outline-none" aria-live="polite">
+      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
         {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour « {q} »</>}
       </p>
 
@@ -168,7 +168,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
               <h2 className="title-display text-xl leading-snug">
                 <Link href={`/article/${group[0].workId}`} className="hover:text-accent-brand">{a.title}</Link>
               </h2>
-              <p className="mt-1 text-[15px] text-muted-foreground">
+              <p className="mt-1 text-[0.9375rem] text-muted-foreground">
                 {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
               </p>
               <ul className="mt-3 flex flex-col gap-2">

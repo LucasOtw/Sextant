@@ -38,7 +38,7 @@ function ConnectorUrl({ url }: { url: string }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-accent-brand/8 p-4 ring-1 ring-accent-brand/25">
       <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
-      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[13px] leading-relaxed ring-1 ring-foreground/10">{url}</p>
+      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[0.8125rem] leading-relaxed ring-1 ring-foreground/10">{url}</p>
       <Button size="lg" className="w-full" onClick={() => void copy(url, { message: "Adresse copiée.", failure: COPY_FAILURE })}>
         {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Adresse copiée" : "Copier l'adresse"}
       </Button>
@@ -125,7 +125,7 @@ export function McpKeys() {
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-      <p className="text-[15px] leading-relaxed text-muted-foreground">
+      <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
         Donnez à Claude, ChatGPT ou un autre assistant compatible MCP l'accès, en lecture seule, à votre bibliothèque Sextant (favoris,
         listes, citations, notes) et à la recherche d'articles. Chaque assistant reçoit sa propre clé, révocable à tout moment.
       </p>
@@ -207,7 +207,7 @@ export function McpKeys() {
           }}
         >
           <DialogTitle className="title-display text-2xl">Révoquer « {revoking?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[15px] text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
             L'assistant qui utilise cette clé perdra immédiatement l'accès à votre bibliothèque. Il faudra créer une nouvelle clé et
             reconfigurer le connecteur.
           </DialogDescription>
@@ -223,14 +223,14 @@ export function McpKeys() {
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
         <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
           <DialogTitle className="title-display text-2xl">Votre clé est prête</DialogTitle>
-          <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
             Copiez l'adresse ci-dessous maintenant : elle contient votre clé et ne sera plus jamais affichée.
           </DialogDescription>
           {created && (
             <div className="mt-1 flex min-w-0 flex-col gap-5">
               <ConnectorUrl url={`${endpoint}?key=${created.key}`} />
 
-              <ol className="flex flex-col gap-2.5 text-[15px]">
+              <ol className="flex flex-col gap-2.5 text-[0.9375rem]">
                 {[
                   <>Dans Claude, ouvrez <strong>Réglages</strong>, puis <strong>Connecteurs</strong>.</>,
                   <>Cliquez sur <strong>Ajouter un connecteur personnalisé</strong>.</>,
