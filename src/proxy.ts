@@ -36,14 +36,14 @@ export function isRenderedOnRequest(pathname: string): boolean {
  * vérifient la session elle-même, l'indice ne donne aucun droit.
  */
 /**
- * Nonce désactivé par défaut (CSP_NONCE=1 pour le réactiver). Avec Turbopack, dans le mode de déploiement de Vercel,
- * Next ne propage pas le nonce à ses scripts, quel que soit le nom de l'en-tête de requête (vercel/next.js#96063,
- * fermé sans correctif) ; `next start` en local, lui, le fait. Chaque page rendue à la demande envoyait alors une
- * vingtaine de rapports de violation. Sans nonce, ces pages reçoivent la même politique que les pages en cache
- * ('unsafe-inline' pour les scripts), toujours en Report-Only : les autres directives restent surveillées.
+ * Nonce actif par défaut (CSP_NONCE=0 pour le couper). Il est passé à Next sous l'en-tête de REQUÊTE
+ * `content-security-policy` : sous le nom `content-security-policy-report-only`, Vercel ne le transmet pas au rendu et
+ * les scripts de Next partaient sans nonce (une vingtaine de rapports de violation par page). Si une montée de Next
+ * casse de nouveau sa propagation (vercel/next.js#96063), CSP_NONCE=0 rend à toutes les pages la politique des pages
+ * en cache ('unsafe-inline' pour les scripts), toujours en Report-Only.
  */
 function nonceEnabled(): boolean {
-  return process.env.CSP_NONCE === "1";
+  return process.env.CSP_NONCE !== "0";
 }
 
 export function proxy(request: NextRequest) {
