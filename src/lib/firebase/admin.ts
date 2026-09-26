@@ -53,11 +53,31 @@ function readServiceAccount(): { ok: true; sa: ServiceAccount } | { ok: false; r
  * (et laisse une ligne dans les journaux) au lieu de faire échouer chaque connexion après le passage par Google.
  */
 export function isAdminConfigured(): boolean {
-  return emulatorProjectId() !== null || readServiceAccount().ok;
+  if (emulatorProjectId() !== null) return true;
+  return !devProdBlocked() && readServiceAccount().ok;
+}
+
+let devWarned = false;
+
+/**
+ * Garde-fou de développement (NEW-4) : `npm run dev` n'utilise pas la clé de production sans accord explicite. Sans
+ * émulateur (`npm run dev:emu`) ni `ALLOW_PROD_DB=1`, les comptes sont désactivés en local au lieu de lire et d'écrire
+ * la base réelle ; le reste du site fonctionne. Sans effet hors développement (build, production, aperçus, tests).
+ */
+function devProdBlocked(): boolean {
+  if (process.env.NODE_ENV !== "development" || process.env.ALLOW_PROD_DB === "1") return false;
+  if (!devWarned && process.env.FIREBASE_SERVICE_ACCOUNT) {
+    devWarned = true;
+    console.warn(
+      "[firebase-admin] Développement : comptes désactivés pour ne pas toucher la base de production. " +
+        "Lancer `npm run dev:emu` (émulateurs), ou ajouter ALLOW_PROD_DB=1 à .env.local pour travailler sur la production.",
+    );
+  }
+  return true;
 }
 
 /**
- * Projet de l'émulateur local (tests `npm run test:emulator`), ou null hors émulateur. Si FIRESTORE_EMULATOR_HOST est
+ * Projet de l'émulateur local (`npm run dev:emu`, tests `npm run test:emulator`), ou null hors émulateur. Si FIRESTORE_EMULATOR_HOST est
  * défini, aucun identifiant n'est chargé : le SDK parle à l'émulateur. Seul un projet `demo-…` est accepté (Firebase
  * garantit qu'un tel projet n'atteint jamais un service réel), jamais celui de .firebaserc (la production).
  */
@@ -78,6 +98,7 @@ async function adminApp(): Promise<App> {
     app = getApps()[0] ?? initializeApp({ projectId: emulated });
     return app;
   }
+  if (devProdBlocked()) throw new Error("Base de production refusée en développement (ALLOW_PROD_DB=1 ou npm run dev:emu).");
   const read = readServiceAccount();
   if (!read.ok) throw new Error(read.reason);
   const { sa } = read;

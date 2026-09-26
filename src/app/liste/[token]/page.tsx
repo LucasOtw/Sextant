@@ -9,6 +9,7 @@ import { SharedListActions } from "@/components/shared/shared-list-actions";
 import { TooManyRequests } from "@/components/too-many-requests";
 import { Badge } from "@/components/ui/badge";
 import { SHARE_TOKEN } from "@/lib/collections-shared";
+import { isAdminConfigured } from "@/lib/firebase/admin";
 import { formatCount, typeLabel } from "@/lib/format";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { retractedWithin } from "@/lib/retracted";
@@ -26,8 +27,10 @@ interface Props {
  * avant tout accès à Firestore : une liste pleine coûte un millier de lectures (limite par instance).
  * 120 vues/min : une classe derrière le NAT d'un campus partage la même IP ; la borne globale est au pare-feu Vercel.
  */
-const load = cache(async (token: string): Promise<SharedList | "limited" | null> => {
+const load = cache(async (token: string): Promise<SharedList | "limited" | "unavailable" | null> => {
   if (!SHARE_TOKEN.test(token)) return null;
+  // Base non configurée : en local, `npm run dev` sans émulateur ni ALLOW_PROD_DB=1 (garde-fou NEW-4).
+  if (!isAdminConfigured()) return "unavailable";
   if (!rateLimit(`share-view:${clientIp(await headers())}`, 120, 60_000)) return "limited";
   // Pas de catch : getSharedList renvoie déjà null pour un lien inconnu ou désactivé. Une panne Firestore remonte
   // jusqu'à la page d'erreur (journalisée par Next) au lieu de passer pour un lien « introuvable ».
@@ -37,6 +40,7 @@ const load = cache(async (token: string): Promise<SharedList | "limited" | null>
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const list = await load((await params).token);
   if (list === "limited") return { title: "Trop de requêtes", robots: { index: false, follow: false } };
+  if (list === "unavailable") return { title: "Liste indisponible", robots: { index: false, follow: false } };
   return {
     title: list ? `Liste partagée · ${list.name}` : "Liste introuvable",
     description: list?.description || undefined,
@@ -53,6 +57,17 @@ export default async function SharedListPage({ params }: Props) {
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <h1 className="sr-only">Liste partagée</h1>
         <TooManyRequests />
+      </div>
+    );
+  }
+  if (list === "unavailable") {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
+        <h1 className="title-display text-3xl">Liste indisponible</h1>
+        <p className="mt-3 text-[15px] text-muted-foreground">
+          Les listes partagées ne sont pas disponibles sur cette instance. En local, lancez <code>npm run dev:emu</code> ou
+          définissez <code>ALLOW_PROD_DB=1</code>.
+        </p>
       </div>
     );
   }

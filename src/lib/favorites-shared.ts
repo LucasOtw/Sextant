@@ -1,6 +1,7 @@
 import type { Work } from "@/lib/openalex";
 import { shortId } from "@/lib/openalex";
 import { authorNames, formatAuthors, RETRACTED_APA_SUFFIX, RETRACTED_BIBTEX_NOTE, venueName, workTitle } from "@/lib/format";
+import { cleanText } from "@/lib/text";
 
 /**
  * Instantané d'un article enregistré en favori : assez de métadonnées pour afficher la liste
@@ -48,26 +49,30 @@ export function snapshotFromWork(work: Work): FavoriteSnapshot {
 
 const clip = (s: unknown, max: number) => (typeof s === "string" ? s.slice(0, max) : "");
 
-/** Ne garde que les champs attendus, bornés : ce qui arrive du client n'est jamais stocké tel quel. */
+/**
+ * Ne garde que les champs attendus, bornés et nettoyés (caractères de contrôle et bidi retirés) : ce qui arrive du
+ * client n'est jamais stocké tel quel. Les routes d'ajout reconstruisent en plus l'instantané depuis OpenAlex
+ * (`verifiedSnapshot`) : seul l'identifiant du client compte.
+ */
 export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
   if (!input || typeof input !== "object") return null;
   const o = input as Record<string, unknown>;
   const id = clip(o.id, 32);
   if (!WORK_ID.test(id)) return null;
-  const title = clip(o.title, 500);
+  const title = cleanText(o.title, 500);
   if (!title) return null;
   return {
     id,
     title,
-    authors: clip(o.authors, 300),
-    authorNames: Array.isArray(o.authorNames) ? o.authorNames.filter((n): n is string => typeof n === "string").map((n) => n.slice(0, 120)).slice(0, 50) : [],
-    venue: o.venue ? clip(o.venue, 300) : null,
+    authors: cleanText(o.authors, 300),
+    authorNames: Array.isArray(o.authorNames) ? o.authorNames.map((n) => cleanText(n, 120)).filter(Boolean).slice(0, 50) : [],
+    venue: cleanText(o.venue, 300) || null,
     year: typeof o.year === "number" && Number.isFinite(o.year) ? Math.trunc(o.year) : null,
     doi: typeof o.doi === "string" && /^https?:\/\/doi\.org\//.test(o.doi) ? o.doi.slice(0, 300) : null,
-    type: clip(o.type, 40) || "article",
+    type: cleanText(o.type, 40) || "article",
     isOa: Boolean(o.isOa),
     citedByCount: typeof o.citedByCount === "number" && Number.isFinite(o.citedByCount) ? Math.max(0, Math.trunc(o.citedByCount)) : 0,
-    topic: o.topic ? clip(o.topic, 200) : null,
+    topic: cleanText(o.topic, 200) || null,
   };
 }
 

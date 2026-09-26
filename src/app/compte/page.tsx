@@ -118,7 +118,8 @@ export default async function AccountPage() {
         <section className="mt-10" aria-labelledby="session">
           <h2 id="session" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Session et compte</h2>
           <p className="mb-4 mt-2 text-[15px] text-muted-foreground">
-            La déconnexion ferme la session sur cet appareil. La suppression efface immédiatement votre compte et toutes ses données.
+            La déconnexion ferme la session sur cet appareil. « Se déconnecter de tous les appareils » ferme aussi les autres sessions
+            et révoque vos clés d'assistant IA. La suppression efface immédiatement votre compte et toutes ses données.
           </p>
           <AccountActions />
         </section>

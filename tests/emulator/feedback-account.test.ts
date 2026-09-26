@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { createFeedback, FeedbackNotFoundError, toggleVote, userFeedbackVotes } from "@/lib/feedback";
+import { createFeedback, FeedbackNotFoundError, toggleVote, userFeedbackVotes, withdrawVotes } from "@/lib/feedback";
 import { addToCollection, createCollection } from "@/lib/collections";
 import { createShare } from "@/lib/shares";
 import { createKey } from "@/lib/api-keys";
@@ -9,9 +9,10 @@ import { exists, newUid, snap } from "./helpers";
 
 // Session simulée : la route de suppression lit l'utilisateur via le cookie (Firebase Auth), hors du périmètre ici.
 const session = vi.hoisted(() => ({ uid: "" }));
-vi.mock("@/lib/auth", () => ({
-  SESSION_COOKIE: "sextant_session",
-  getCurrentUserStrict: async () => (session.uid ? { uid: session.uid, email: null, name: null, picture: null } : null),
+// Connexion Google « récente » (authTime = maintenant) : la suppression exige une connexion de moins de 10 minutes (SEC-09).
+vi.mock("@/lib/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth")>()),
+  getCurrentUserStrict: async () => (session.uid ? { uid: session.uid, email: null, name: null, picture: null, authTime: Math.floor(Date.now() / 1000) } : null),
   forgetRevocationCheck: () => {},
 }));
 
@@ -47,6 +48,33 @@ describe("retours et votes (transactions sur émulateur)", () => {
     const uid = newUid();
     await expect(toggleVote(uid, "inexistant")).rejects.toBeInstanceOf(FeedbackNotFoundError);
     expect(await exists(`users/${uid}/feedbackVotes/inexistant`)).toBe(false);
+  });
+});
+
+describe("withdrawVotes (suppression du compte, SEC-14)", () => {
+  it("décrémente chaque sujet voté, ignore un sujet supprimé entre-temps, laisse les autres votes", async () => {
+    const uid = newUid();
+    const other = newUid();
+    const db = await adminDb();
+    const a = await createFeedback(newUid(), { kind: "idea", title: "A", description: "" });
+    const b = await createFeedback(newUid(), { kind: "bug", title: "B", description: "" });
+    const gone = await createFeedback(newUid(), { kind: "idea", title: "Supprimé", description: "" });
+    await toggleVote(uid, a.id);
+    await toggleVote(other, a.id);
+    await toggleVote(uid, b.id);
+    await toggleVote(uid, gone.id);
+    await db.doc(`feedback/${gone.id}`).delete();
+
+    await withdrawVotes(uid);
+
+    expect((await db.doc(`feedback/${a.id}`).get()).get("votes")).toBe(2);
+    expect((await db.doc(`feedback/${b.id}`).get()).get("votes")).toBe(1);
+    // Un update sur un document absent ne le recrée pas.
+    expect(await exists(`feedback/${gone.id}`)).toBe(false);
+  });
+
+  it("sans vote : rien n'est écrit", async () => {
+    await expect(withdrawVotes(newUid())).resolves.toBeUndefined();
   });
 });
 
@@ -89,7 +117,8 @@ describe("suppression du compte (DELETE /api/auth/account, émulateurs Firestore
     const kept = await db.doc(`feedback/${item.id}`).get();
     expect(kept.exists).toBe(true);
     expect(kept.get("authorUid")).toBeNull();
-    expect(kept.get("votes")).toBe(2);
+    // Le vote d'office de l'auteur est retiré avec le compte (SEC-14) ; celui du voisin reste.
+    expect(kept.get("votes")).toBe(1);
     expect(await exists(`shares/${bystanderToken}`)).toBe(true);
     expect(await exists(`users/${bystander}/collections/${bystanderList.id}`)).toBe(true);
   });

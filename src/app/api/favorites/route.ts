@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
-import { addFavorite, FavoritesLimitError, listFavoriteIds, removeFavorite } from "@/lib/favorites";
+import { addFavorite, FavoritesLimitError, listFavoriteIds, removeFavorite, verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -50,8 +50,11 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
-  const snapshot = sanitizeSnapshot(body);
-  if (!snapshot) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
+  const input = sanitizeSnapshot(body);
+  if (!input) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
+  // Métadonnées rechargées depuis OpenAlex : celles du client ne servent qu'à valider l'identifiant (SEC-06).
+  const snapshot = await verifiedSnapshot(input);
+  if (!snapshot) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   try {
     return NextResponse.json({ favorite: await addFavorite(user.uid, snapshot) }, { status: 201, headers: PRIVATE });
   } catch (e) {

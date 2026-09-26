@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
+import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
@@ -60,6 +61,7 @@ export function McpKeys() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
+  const [reauth, setReauth] = useState(false);
   const [origin, setOrigin] = useState("https://sextant-psi.vercel.app");
 
   useEffect(() => {
@@ -75,6 +77,11 @@ export function McpKeys() {
     setBusy(true);
     try {
       const res = await fetch("/api/account/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: name.trim() }) });
+      // Connexion Google trop ancienne (SEC-09) : confirmation d'identité, puis la création est rejouée.
+      if (await needsReauth(res)) {
+        setReauth(true);
+        return;
+      }
       const data = (await res.json().catch(() => ({}))) as { key?: string; info?: ApiKeyInfo; error?: string };
       if (!res.ok || !data.key || !data.info) throw new Error(data.error ?? "La clé n'a pas pu être créée.");
       setCreated({ key: data.key, info: data.info });
@@ -154,6 +161,13 @@ export function McpKeys() {
         </div>
       </details>
 
+      <ReauthDialog
+        open={reauth}
+        onOpenChange={setReauth}
+        description="Par sécurité, créer une clé demande une connexion Google récente : une clé donne accès à votre bibliothèque tant qu'elle n'est pas révoquée."
+        onConfirmed={() => void create()}
+      />
+
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
         <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
           <DialogTitle className="title-display text-2xl">Votre clé est prête</DialogTitle>
@@ -185,11 +199,19 @@ export function McpKeys() {
               <details className="group text-sm">
                 <summary className="text-muted-foreground hover:text-foreground">Autres méthodes (Claude Code, fichier de configuration de Claude Desktop, clé seule)</summary>
                 <div className="mt-3 flex min-w-0 flex-col gap-4">
-                  <CopyBlock label="Claude Code, dans le terminal" value={`claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer ${created.key}"`} />
+                  {/* La clé est lue par une saisie masquée : elle n'entre pas dans l'historique du shell (bash et zsh). Guillemets
+                      doubles indispensables, sinon `$SEXTANT_KEY` partirait tel quel dans l'en-tête (SEC-22). */}
+                  <CopyBlock
+                    label="Claude Code, dans le terminal"
+                    value={`printf 'Clé Sextant : '; read -rs SEXTANT_KEY; echo; claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer $SEXTANT_KEY"; unset SEXTANT_KEY`}
+                  />
+                  <p className="-mt-2 text-muted-foreground">
+                    Quand le terminal demande la clé, collez celle du bloc « Clé seule » : elle ne s'affiche pas et ne reste pas dans l'historique. Claude Code la garde ensuite dans sa configuration (~/.claude.json) : en cas de doute, révoquez-la.
+                  </p>
                   <CopyBlock
                     label="Claude Desktop, fichier claude_desktop_config.json"
                     value={JSON.stringify(
-                      { mcpServers: { sextant: { command: "npx", args: ["-y", "mcp-remote", endpoint, "--header", "Authorization:${SEXTANT_AUTH}"], env: { SEXTANT_AUTH: `Bearer ${created.key}` } } } },
+                      { mcpServers: { sextant: { command: "npx", args: ["-y", "mcp-remote@latest", endpoint, "--header", "Authorization:${SEXTANT_AUTH}"], env: { SEXTANT_AUTH: `Bearer ${created.key}` } } } },
                       null,
                       2,
                     )}

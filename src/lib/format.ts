@@ -1,5 +1,6 @@
 import type { Work } from "./openalex";
 import { bibField } from "./favorites-shared";
+import { safeHttpUrl } from "./text";
 
 /** Reconstruit le texte d'un résumé depuis l'index inversé d'OpenAlex. */
 export function abstractFromInvertedIndex(
@@ -41,18 +42,30 @@ export function venueName(w: Work): string | null {
   return w.primary_location?.source?.display_name ?? w.best_oa_location?.source?.display_name ?? null;
 }
 
-/** URL vers le PDF ou la version en accès ouvert, si elle existe. */
+/** URL vers le PDF ou la version en accès ouvert, si elle existe (http(s) seulement, voir safeHttpUrl). */
 export function openAccessUrl(w: Work): { url: string; isPdf: boolean } | null {
-  const pdf = w.best_oa_location?.pdf_url ?? w.primary_location?.pdf_url;
+  const pdf = safeHttpUrl(w.best_oa_location?.pdf_url) ?? safeHttpUrl(w.primary_location?.pdf_url);
   if (pdf) return { url: pdf, isPdf: true };
-  const oa = w.open_access.oa_url ?? w.best_oa_location?.landing_page_url;
+  const oa = safeHttpUrl(w.open_access.oa_url) ?? safeHttpUrl(w.best_oa_location?.landing_page_url);
   if (w.open_access.is_oa && oa) return { url: oa, isPdf: false };
   return null;
 }
 
 /**
+ * Adresse que le lecteur peut embarquer quand le relais échoue (repli `<object>`) : un PDF en accès ouvert en https,
+ * passé par la garde du relais (isPublicPdfUrl). Jamais une adresse en http (contenu mixte, cadre vide), sur un hôte
+ * privé ou une IP littérale : sans elle, le lecteur ne propose que le lien vers l'original (SEC-16).
+ */
+export function embeddablePdfUrl(w: Work): string | null {
+  return openAccessPdfUrls(w).find((u) => u.startsWith("https:")) ?? null;
+}
+
+/**
  * Une adresse de PDF relayable : http(s) public, sans IP littérale, sans hôte local ni port exotique.
  * Les adresses viennent d'OpenAlex (moissonnées chez des milliers de dépôts) : on ne relaie jamais vers l'intérieur.
+ * Premier filtre, sur l'adresse seule : un nom public qui résout vers une adresse privée (DNS joker du type
+ * `127.0.0.1.nip.io`) ne se voit pas ici. Le relais contrôle aussi les adresses résolues et chaque redirection
+ * (src/lib/public-fetch.ts).
  */
 export function isPublicPdfUrl(raw: string): boolean {
   let u: URL;
@@ -63,7 +76,8 @@ export function isPublicPdfUrl(raw: string): boolean {
   }
   if (u.protocol !== "https:" && u.protocol !== "http:") return false;
   if (u.port && u.port !== "80" && u.port !== "443") return false;
-  const h = u.hostname.toLowerCase();
+  // Point final retiré : « localhost. » et « metadata.google.internal. » désignent les mêmes hôtes que sans le point.
+  const h = u.hostname.toLowerCase().replace(/\.+$/, "");
   if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal") || h.endsWith(".arpa")) return false;
   if (/^\d{1,3}(\.\d{1,3}){3}$/.test(h) || h.startsWith("[") || h.includes(":")) return false;
   return h.includes(".");
@@ -77,7 +91,7 @@ export function openAccessPdfUrls(w: Work): string[] {
 }
 
 export function publisherUrl(w: Work): string | null {
-  return w.doi ?? w.primary_location?.landing_page_url ?? null;
+  return safeHttpUrl(w.doi) ?? safeHttpUrl(w.primary_location?.landing_page_url);
 }
 
 const TYPE_LABELS: Record<string, string> = {

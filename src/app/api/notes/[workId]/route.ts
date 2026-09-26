@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { cleanText } from "@/lib/highlights-shared";
-import { getNote, setNote } from "@/lib/notes";
+import { getNote, NotesLimitError, setNote } from "@/lib/notes";
 import { MAX_ARTICLE_NOTE } from "@/lib/notes-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -18,7 +19,7 @@ async function guard(req: Request, ctx: Ctx, write: boolean) {
     const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 32_768);
     if (refused) return { refused };
   }
-  // Écriture : contrôle de révocation (PERF-05) ; lecture : cookie vérifié localement.
+  // Écriture : échec fermé si Firebase Auth ne répond pas ; lecture : servie quand même (lib/auth.ts).
   const user = await (write ? getCurrentUserStrict() : getCurrentUser());
   if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
   if (!rateLimit(`notes:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
@@ -52,11 +53,15 @@ export async function PUT(req: Request, ctx: Ctx) {
   }
   if (typeof body.text !== "string") return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   if (Array.from(body.text).length > MAX_ARTICLE_NOTE) return NextResponse.json({ error: `Note trop longue (${MAX_ARTICLE_NOTE} caractères au plus).` }, { status: 400 });
-  const article = sanitizeSnapshot(body.article);
-  if (!article || article.id !== g.workId) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
+  const input = sanitizeSnapshot(body.article);
+  if (!input || input.id !== g.workId) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
+  // Métadonnées rechargées depuis OpenAlex, comme pour les favoris (SEC-06) : elles ressortent dans l'export et get_my_notes.
+  const article = await verifiedSnapshot(input);
+  if (!article) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   try {
     return NextResponse.json({ note: await setNote(g.user.uid, article, cleanText(body.text, MAX_ARTICLE_NOTE, true)) }, { headers: PRIVATE });
   } catch (e) {
+    if (e instanceof NotesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
     logError("notes.workId.PUT", e);
     return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
   }

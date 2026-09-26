@@ -46,6 +46,7 @@ import { themeByFieldId } from "@/lib/themes";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
 import { logError, recover } from "@/lib/log";
+import { safeHttpUrl } from "@/lib/text";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -90,6 +91,7 @@ export default async function ArticlePage({ params }: Props) {
   // Le lecteur intégré ne s'ouvre que si une copie libre est relayable ; sinon le PDF s'ouvre chez son hébergeur.
   const readable = openAccessPdfUrls(work).length > 0;
   const publisher = publisherUrl(work);
+  const doiUrl = safeHttpUrl(work.doi);
   const venue = venueName(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
@@ -155,10 +157,11 @@ export default async function ArticlePage({ params }: Props) {
           {typeof work.referenced_works_count === "number" && (
             <Stat icon={<BookOpenIcon />} label="Références">{formatCount(work.referenced_works_count)}</Stat>
           )}
-          {work.doi && (
+          {doiUrl && (
             <Stat label="DOI">
-              <a href={work.doi} target="_blank" rel="noreferrer" className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
-                {work.doi.replace(/^https?:\/\/doi\.org\//, "")}
+              <a href={doiUrl} target="_blank" rel="noreferrer" className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
+                {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
+                {(work.doi ?? doiUrl).replace(/^https?:\/\/doi\.org\//i, "")}
               </a>
             </Stat>
           )}

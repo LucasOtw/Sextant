@@ -1,19 +1,25 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { forgetRevocationCheck, getCurrentUserStrict, SESSION_COOKIE } from "@/lib/auth";
+import { forgetRevocationCheck, getCurrentUserStrict, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
-import { detachAuthor } from "@/lib/feedback";
+import { detachAuthor, withdrawVotes } from "@/lib/feedback";
 import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
 
-/** Supprime le compte de l'utilisateur connecté : données Firestore puis compte Firebase Auth. */
+/**
+ * Supprime le compte de l'utilisateur connecté : données Firestore puis compte Firebase Auth. Exige une connexion
+ * Google de moins de 10 minutes (SEC-09) : un cookie de session copié ne suffit pas à détruire un compte.
+ */
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
   const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (!rateLimit(`account-del:${user.uid}`, 3, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (!isRecentLogin(user)) return reauthRequired();
 
   try {
     const db = await adminDb();
@@ -26,6 +32,8 @@ export async function DELETE(req: Request) {
     }
     await deleteAllKeys(user.uid);
     await detachAuthor(user.uid);
+    // Avant l'effacement de users/{uid}, qui contient la liste des votes : sinon ils resteraient comptés (SEC-14).
+    await withdrawVotes(user.uid);
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
     forgetRevocationCheck(user.uid);

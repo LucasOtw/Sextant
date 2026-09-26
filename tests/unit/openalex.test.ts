@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { isPlausiblyRecent, shortId, withCredentials } from "@/lib/openalex";
+import { getAuthorProfile, getTopic, getWork, isPlausiblyRecent, shortId, withCredentials } from "@/lib/openalex";
 
 describe("isPlausiblyRecent (garde de datation des listes récentes)", () => {
   const now = new Date("2026-09-25T12:00:00Z");
@@ -60,5 +60,38 @@ describe("withCredentials", () => {
       expect(url.searchParams.has("api_key")).toBe(false);
       expect(url.searchParams.has("mailto")).toBe(false);
     }
+  });
+});
+
+describe("identifiants dans le chemin OpenAlex (SEC-15)", () => {
+  function captureFetch(): string[] {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: URL) => {
+      urls.push(url.toString());
+      return new Response("{}", { status: 404 });
+    });
+    return urls;
+  }
+
+  it("un `?`, un `#` ou un `/` ne sortent pas du segment : ni paramètre ajouté, ni traversée", async () => {
+    const urls = captureFetch();
+    await getWork("W2741809807?per-page=1");
+    await getWork("W1/../W2741809807");
+    await getTopic("T1#x");
+    await getAuthorProfile("A1?filter=x");
+    const [work, traversal, topic, author] = urls.map((u) => new URL(u));
+    expect(work.pathname).toBe("/works/W2741809807%3Fper-page%3D1");
+    expect(work.searchParams.has("per-page")).toBe(false);
+    expect(traversal.pathname).toBe("/works/W1%2F..%2FW2741809807");
+    expect(topic.pathname).toBe("/topics/T1%23x");
+    expect(topic.hash).toBe("");
+    expect(author.pathname).toBe("/authors/A1%3Ffilter%3Dx");
+    expect(author.searchParams.has("filter")).toBe(false);
+  });
+
+  it("un identifiant ordinaire reste inchangé", async () => {
+    const urls = captureFetch();
+    await getWork("https://openalex.org/W2741809807");
+    expect(new URL(urls[0]).pathname).toBe("/works/W2741809807");
   });
 });

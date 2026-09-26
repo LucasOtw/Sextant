@@ -1,8 +1,12 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { adminDb } from "@/lib/firebase/admin";
+import { accountState, type AccountState } from "@/lib/account-state";
 import { logError } from "@/lib/log";
 import { API_KEY_FORMAT, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
+
+/** Réexporté pour les tests et les routes : l'état du compte est mémorisé dans lib/account-state.ts. */
+export { forgetAccountState } from "@/lib/account-state";
 
 /**
  * `apiKeys/{sha256(clé)}` = { uid, name, prefix, createdAt, lastUsedAt }. Seule l'empreinte est stockée :
@@ -52,7 +56,13 @@ export async function revokeKey(uid: string, id: string): Promise<boolean> {
   });
 }
 
-/** L'utilisateur derrière une clé, ou null. Note la dernière utilisation au plus une fois par heure. */
+/**
+ * L'utilisateur derrière une clé, ou null. Note la dernière utilisation au plus une fois par heure.
+ * Comme les sessions web (SEC-11), une clé est refusée si le compte Firebase est désactivé ou supprimé, ou si elle a
+ * été créée avant la dernière révocation des jetons (« Se déconnecter de tous les appareils », ou `revokeRefreshTokens`
+ * depuis la console) : une clé fabriquée avec un cookie volé ne survit pas à la révocation. Délai de prise en compte :
+ * 5 minutes au plus. Échec fermé : si Firebase Auth ne répond pas, la clé est refusée pour cette requête.
+ */
 export async function verifyKey(key: string): Promise<{ uid: string; keyId: string } | null> {
   if (!API_KEY_FORMAT.test(key)) return null;
   const db = await adminDb();
@@ -60,6 +70,17 @@ export async function verifyKey(key: string): Promise<{ uid: string; keyId: stri
   const snap = await db.doc(`apiKeys/${id}`).get();
   const uid = snap.get("uid");
   if (!snap.exists || typeof uid !== "string") return null;
+  let account: AccountState;
+  try {
+    account = await accountState(uid);
+  } catch (e) {
+    logError("mcp.accountState", e);
+    return null;
+  }
+  if (!account.active) return null;
+  // Une clé sans date de création (aucune ne devrait l'être) n'est pas refusée pour autant : compatibilité.
+  const createdAt = (snap.get("createdAt") as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
+  if (createdAt && account.validAfter && createdAt < account.validAfter) return null;
   const last = (snap.get("lastUsedAt") as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
   if (Date.now() - last > 60 * 60 * 1000) {
     const { FieldValue } = await import("firebase-admin/firestore");

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
+import { getCurrentUser, isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
+import { WRONG_ACCOUNT } from "@/lib/reauth-shared";
 import { isExpectedAuthError, logError } from "@/lib/log";
-import { rejectCrossSite } from "@/lib/security";
+import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -13,14 +14,23 @@ const cookieOptions = {
   path: "/",
 };
 
-/** Échange un jeton Firebase (obtenu côté client après Google) contre un cookie de session HttpOnly. */
+/**
+ * Échange un jeton Firebase (obtenu côté client après Google) contre un cookie de session HttpOnly.
+ * `reauth: true` (ré-authentification avant une opération sensible, SEC-09) : le compte Google choisi doit être
+ * celui de la session en cours, sinon refus (403 `wrong_account`). Sans ce contrôle, choisir un autre compte dans la
+ * fenêtre Google basculerait la session, et l'opération rejouée (suppression du compte !) viserait cet autre compte.
+ */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req);
+  // Un jeton Firebase pèse 1 à 2 Ko : 8 Ko laissent de la marge sans lire un corps démesuré (SEC-17).
+  const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 8_192);
   if (refused) return refused;
   if (!isAuthEnabled()) return NextResponse.json({ error: "Comptes désactivés." }, { status: 503 });
   let idToken: string | undefined;
+  let reauth = false;
   try {
-    ({ idToken } = (await req.json()) as { idToken?: string });
+    const body = (await req.json()) as { idToken?: unknown; reauth?: unknown };
+    idToken = typeof body.idToken === "string" ? body.idToken : undefined;
+    reauth = body.reauth === true;
   } catch {
     /* corps invalide */
   }
@@ -29,9 +39,21 @@ export async function POST(req: Request) {
   try {
     const auth = await adminAuth();
     const decoded = await auth.verifyIdToken(idToken, true);
+    // Seule la connexion Google ouvre une session (SEC-14) : si un autre fournisseur (anonyme, e-mail) était activé
+    // dans le projet Firebase, chaque nouvel uid contournerait les limites par compte (un vote, 5 sujets par heure).
+    if (decoded.firebase?.sign_in_provider !== "google.com") {
+      return NextResponse.json({ error: "Connexion Google requise." }, { status: 403 });
+    }
     // Le jeton doit être récent : on refuse une connexion vieille de plus de 5 minutes.
     if (Date.now() / 1000 - decoded.auth_time > 5 * 60) {
       return NextResponse.json({ error: "Connexion trop ancienne, recommencez." }, { status: 401 });
+    }
+    if (reauth) {
+      const current = await getCurrentUser();
+      if (!current) return NextResponse.json({ error: "Session expirée : reconnectez-vous." }, { status: 401 });
+      if (current.uid !== decoded.uid) {
+        return NextResponse.json({ error: "Ce compte Google n'est pas celui de votre session. Choisissez le même compte.", code: WRONG_ACCOUNT }, { status: 403 });
+      }
     }
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_MAX_AGE_MS });
     const db = await adminDb();
@@ -74,7 +96,10 @@ export async function POST(req: Request) {
   }
 }
 
-/** Déconnexion : efface le cookie de session. */
+/**
+ * Déconnexion de cet appareil : efface le cookie de session, sans révoquer les autres appareils. La révocation de
+ * toutes les sessions (et des clés MCP) est une action distincte : DELETE /api/auth/sessions (SEC-08).
+ */
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;

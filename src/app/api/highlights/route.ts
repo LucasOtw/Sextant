@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { verifiedSnapshot } from "@/lib/favorites";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { createHighlight, HighlightsLimitError, listHighlights } from "@/lib/highlights";
 import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, tooLong } from "@/lib/highlights-shared";
@@ -48,8 +49,11 @@ export async function POST(req: Request) {
   }
   const input = sanitizeHighlightInput(body);
   if (!input) return NextResponse.json({ error: "Passage ou article invalide." }, { status: 400 });
+  // Métadonnées de l'article rechargées depuis OpenAlex, comme pour les favoris (SEC-06) : seul l'identifiant du client compte.
+  const article = await verifiedSnapshot(input.article);
+  if (!article) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   try {
-    return NextResponse.json({ highlight: await createHighlight(user.uid, input) }, { status: 201, headers: PRIVATE });
+    return NextResponse.json({ highlight: await createHighlight(user.uid, { ...input, article }) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof HighlightsLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
     logError("highlights.POST", e);

@@ -33,6 +33,25 @@ describe("parseSearchParams", () => {
     expect(parseSearchParams({ from: "vingt" }).yearFrom).toBeUndefined();
   });
 
+  it("ignore un type ou une langue hors liste (la garantie « documents vérifiés » ne se contourne pas par l'URL)", () => {
+    expect(parseSearchParams({ type: "preprint" }).type).toBeUndefined();
+    expect(parseSearchParams({ type: "article,is_retracted:true" }).type).toBeUndefined();
+    expect(parseSearchParams({ type: "book|book-chapter" }).type).toBe("book|book-chapter");
+    expect(parseSearchParams({ lang: "xx" }).language).toBeUndefined();
+    expect(parseSearchParams({ lang: "en|fr" }).language).toBeUndefined();
+    expect(parseSearchParams({ lang: "it" }).language).toBe("it");
+  });
+
+  it("n'accepte que des identifiants OpenAlex de la bonne forme (T…, W…, A…), remis en majuscules", () => {
+    expect(parseSearchParams({ topic: "t10017", cites: "w2741809807", author: "a5023888391" })).toMatchObject({ topic: "T10017", cites: "W2741809807", author: "A5023888391" });
+    for (const bad of ["W2741809807?per-page=1", "W1/../W2", "W1#x", "W2,type:preprint", "", "T", "W12345678901234567"]) {
+      const p = parseSearchParams({ topic: bad, cites: bad, author: bad });
+      expect([p.topic, p.cites, p.author]).toEqual([undefined, undefined, undefined]);
+    }
+    // Un identifiant d'un autre type n'est pas accepté à la place d'un autre.
+    expect(parseSearchParams({ topic: "W1", cites: "A1", author: "T1" })).toMatchObject({ topic: undefined, cites: undefined, author: undefined });
+  });
+
   it("les valeurs imposées par la page (thème) l'emportent", () => {
     expect(parseSearchParams({ q: "x" }, { field: "17", perPage: 10 })).toMatchObject({ q: "x", field: "17", perPage: 10 });
   });

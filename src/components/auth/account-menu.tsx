@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { BookmarkIcon, LogOutIcon, UserRoundIcon, HighlighterIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { SessionUser } from "@/lib/auth";
 import { useLogout } from "@/components/auth/use-logout";
+import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 
 /**
  * Avatar et menu du compte (utilisateur connecté). Chargé à la demande par AuthButton : Base UI Menu et le
@@ -21,6 +23,8 @@ import { useLogout } from "@/components/auth/use-logout";
  */
 export default function AccountMenu({ user }: { user: SessionUser }) {
   const { logout } = useLogout();
+  // Session ouverte avant SEC-12 : l'état Firebase resté dans le navigateur est effacé (le cookie seul suffit).
+  useEffect(() => purgeStoredFirebaseAuth(), []);
   const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 
   return (

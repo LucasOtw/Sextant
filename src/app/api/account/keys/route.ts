@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserStrict, isRecentLogin, reauthRequired } from "@/lib/auth";
 import { ApiKeysLimitError, createKey, listKeys } from "@/lib/api-keys";
 import { MAX_API_KEY_NAME } from "@/lib/api-keys-shared";
 import { cleanText } from "@/lib/highlights-shared";
@@ -21,13 +21,17 @@ export async function GET() {
   }
 }
 
-/** Crée une clé. Corps : { name }. La réponse est le seul moment où la clé est lisible. */
+/**
+ * Crée une clé. Corps : { name }. La réponse est le seul moment où la clé est lisible. Exige une connexion Google de
+ * moins de 10 minutes (SEC-09) : une clé survit à la session, un cookie copié ne doit pas suffire à en fabriquer une.
+ */
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 4_096);
   if (refused) return refused;
   const user = await getCurrentUserStrict();
   if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
   if (!rateLimit(`keys:${user.uid}`, 10, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (!isRecentLogin(user)) return reauthRequired();
   let name = "";
   try {
     name = cleanText(((await req.json()) as { name?: unknown }).name, MAX_API_KEY_NAME);

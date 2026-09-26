@@ -20,9 +20,13 @@ export function rejectCrossSite(req: Request): NextResponse | null {
   return null;
 }
 
-/** Refuse un corps annoncé trop gros avant de le lire : nos écritures pèsent quelques Ko au plus. */
+/**
+ * Refuse un corps annoncé trop gros avant de le lire : nos écritures pèsent quelques Ko au plus. Une longueur illisible
+ * ou négative est refusée aussi. Un corps envoyé sans longueur (flux « chunked ») n'est pas lu ici : il reste plafonné
+ * par la plateforme (4,5 Mo sur Vercel), coût jugé négligeable (SEC-17).
+ */
 export function rejectLargeBody(req: Request, maxBytes = 16_384): NextResponse | null {
   const declared = Number(req.headers.get("content-length") ?? 0);
-  if (Number.isFinite(declared) && declared > maxBytes) return NextResponse.json({ error: "Requête trop volumineuse." }, { status: 413 });
+  if (!Number.isFinite(declared) || declared < 0 || declared > maxBytes) return NextResponse.json({ error: "Requête trop volumineuse." }, { status: 413 });
   return null;
 }

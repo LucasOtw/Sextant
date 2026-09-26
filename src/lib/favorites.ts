@@ -2,8 +2,10 @@ import "server-only";
 import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
-import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
-import { recover } from "@/lib/log";
+import { MAX_FAVORITES, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { logError, recover } from "@/lib/log";
+import { getWork } from "@/lib/openalex";
+import { cleanText } from "@/lib/text";
 
 /**
  * Favoris d'un utilisateur : `users/{uid}/favorites/{workId}`, écrits uniquement côté serveur.
@@ -30,6 +32,29 @@ function toFavorite(data: Record<string, unknown>, id: string): Favorite {
     topic: (data.topic as string | null) ?? null,
     addedAt: ts?.toDate?.().toISOString() ?? null,
   };
+}
+
+/**
+ * Instantané à stocker pour un article ajouté : reconstruit depuis OpenAlex (réponse en cache une heure), jamais
+ * repris du client. Seul l'identifiant envoyé compte : une liste partagée ne peut pas prêter un faux titre à un vrai
+ * article, qui se recopierait chez le visiteur (favoris, exports APA/BibTeX, outils MCP). L'identifiant demandé est
+ * gardé même si OpenAlex a fusionné l'article sous un autre : c'est lui que le client connaît (état des cœurs).
+ * `null` : article inconnu d'OpenAlex. OpenAlex en panne : l'instantané du client, déjà borné et nettoyé par
+ * `sanitizeSnapshot`, pour que l'ajout reste possible (panne journalisée).
+ */
+export async function verifiedSnapshot(input: FavoriteSnapshot): Promise<FavoriteSnapshot | null> {
+  let work;
+  try {
+    work = await getWork(input.id);
+  } catch (e) {
+    logError("favorites.verifiedSnapshot", e, { work: input.id });
+    return input;
+  }
+  if (!work) return null;
+  // Jamais de repli sur l'instantané du client quand OpenAlex a répondu : un titre vide (ou fait seulement de
+  // caractères de contrôle) devient « Sans titre », sans quoi sanitizeSnapshot refuserait et le faux titre passerait.
+  const snap = snapshotFromWork(work);
+  return sanitizeSnapshot({ ...snap, id: input.id, title: cleanText(snap.title, 500) || "Sans titre" });
 }
 
 /** Les favoris, du plus récent au plus ancien ; `max` borne les lectures (une par favori renvoyé). */

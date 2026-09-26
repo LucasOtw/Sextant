@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { headers } from "next/headers";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -30,10 +31,12 @@ const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("theme");var d=
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const user = isAuthEnabled() ? await getCurrentUser() : null;
+  // Nonce de la CSP (src/proxy.ts) : sans lui, le script de thème serait refusé par la politique.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="fr" className={`${sans.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col text-base">
         <FavoritesProvider userId={user?.uid ?? null}>

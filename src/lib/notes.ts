@@ -1,9 +1,12 @@
 import "server-only";
+import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
-import type { ArticleNote } from "@/lib/notes-shared";
+import { MAX_NOTES, type ArticleNote } from "@/lib/notes-shared";
 
 /** `users/{uid}/notes/{workId}` = { text, article, updatedAt }. Une note vide supprime le document. */
+
+export class NotesLimitError extends Error {}
 
 function toNote(data: Record<string, unknown>, workId: string): ArticleNote {
   const ts = data.updatedAt as { toDate?: () => Date } | undefined;
@@ -40,6 +43,23 @@ export async function listNotes(uid: string, limit = 500): Promise<ArticleNote[]
   return snap.docs.map((d) => toNote(d.data(), d.id));
 }
 
+/**
+ * Toutes les notes, lues par pages (export RGPD, art. 15 et 20) : aucune n'est omise, même au-delà du plafond
+ * (un compte peut l'avoir dépassé avant son ajout). `pageSize` n'est réglé que par les tests.
+ */
+export async function listAllNotes(uid: string, pageSize = 500): Promise<ArticleNote[]> {
+  const db = await adminDb();
+  const query = db.collection(`users/${uid}/notes`).orderBy("updatedAt", "desc").limit(pageSize);
+  const notes: ArticleNote[] = [];
+  let last: QueryDocumentSnapshot | undefined;
+  for (;;) {
+    const snap = await (last ? query.startAfter(last) : query).get();
+    notes.push(...snap.docs.map((d) => toNote(d.data(), d.id)));
+    if (snap.size < pageSize) return notes;
+    last = snap.docs[snap.docs.length - 1];
+  }
+}
+
 export async function countNotes(uid: string): Promise<number> {
   const db = await adminDb();
   return (await db.collection(`users/${uid}/notes`).count().get()).data().count;
@@ -54,6 +74,16 @@ export async function setNote(uid: string, article: FavoriteSnapshot, text: stri
     await ref.delete();
     return null;
   }
-  await ref.set({ text, article, workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  const col = db.collection(`users/${uid}/notes`);
+  // Plafond compté dans la transaction, et seulement pour une nouvelle note : modifier une note existante reste
+  // possible une fois le plafond atteint (SEC-19).
+  await db.runTransaction(async (tx) => {
+    const current = await tx.get(ref);
+    if (!current.exists) {
+      const n = (await tx.get(col.count())).data().count;
+      if (n >= MAX_NOTES) throw new NotesLimitError(`Limite de ${MAX_NOTES} notes atteinte : supprimez-en avant d'en écrire une nouvelle.`);
+    }
+    tx.set(ref, { text, article, workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  });
   return { workId: article.id, text, article, updatedAt: new Date().toISOString() };
 }

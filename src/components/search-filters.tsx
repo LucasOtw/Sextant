@@ -6,6 +6,7 @@ import { XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DOC_TYPES, LANGUAGES } from "@/lib/search-params";
 import { cn } from "cn";
 
 const SORTS = [
@@ -14,28 +15,15 @@ const SORTS = [
   { value: "recent", label: "Les plus récents" },
 ];
 
-const TYPES = [
-  { value: "all", label: "Tous les documents vérifiés" },
-  { value: "article", label: "Articles" },
-  { value: "review", label: "Revues de littérature" },
-  { value: "dissertation", label: "Thèses" },
-  { value: "book|book-chapter", label: "Livres et chapitres" },
-];
+// Listes partagées avec parseSearchParams, qui ignore toute valeur absente de ces listes.
+const TYPES = [{ value: "all", label: "Tous les documents vérifiés" }, ...DOC_TYPES];
 
 const SOURCES = [
   { value: "all", label: "Revues indexées uniquement" },
   { value: "any", label: "Toutes les sources vérifiées" },
 ];
 
-const LANGS = [
-  { value: "all", label: "Toutes les langues" },
-  { value: "fr", label: "Français" },
-  { value: "en", label: "Anglais" },
-  { value: "es", label: "Espagnol" },
-  { value: "de", label: "Allemand" },
-  { value: "pt", label: "Portugais" },
-  { value: "it", label: "Italien" },
-];
+const LANGS = [{ value: "all", label: "Toutes les langues" }, ...LANGUAGES];
 
 const OA = [
   { value: "all", label: "Tous les accès" },
