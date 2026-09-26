@@ -39,11 +39,15 @@ pas pour suivre l'interface (QUAL-38).
   politique de confidentialité.
 
 ## Routes API
-- Garde standard d'une écriture, dans cet ordre : `rejectCrossSite(req) ?? rejectLargeBody(req, n)` (`lib/security.ts`),
-  `requireStrictUser()` (`lib/auth.ts`), `rateLimit(...)` (`lib/rate-limit.ts`), validation du corps, puis l'appel au module.
+- Garde d'une route d'un compte : `const { user, refused } = await requireUser(req, { bucket, maxBody, read? })`
+  (`lib/api/guard.ts`, QUAL-05), puis validation du corps et appel au module. Elle enchaîne même site, taille du corps,
+  session stricte (écriture) ou tolérante (`read: true`) et limite du seau. Jamais de séquence recopiée à la main.
+- Route publique : `overLimit(seau, clientIp(req))` puis `tooMany()`. Toute limite se déclare dans `RATE_LIMITS`
+  (`lib/api/guard.ts`), table unique : pas de `rateLimit(...)` appelé directement depuis une route.
 - Réponses JSON : succès `{ ...données }`, erreur `{ error: "Phrase en français, avec vouvoiement." }` et statut HTTP juste
-  (400, 401, 403, 404, 413, 429, 502/503). Réponse personnelle : `cache-control: private, no-store`.
-- Erreurs serveur : `logError(portée, e)` (`lib/log.ts`), jamais de corps, jeton, clé, cookie ni e-mail dans les journaux.
+  (400, 401, 403, 404, 413, 429, 502/503). Réponse personnelle : en-têtes `PRIVATE` (`lib/api/guard.ts`).
+- Panne d'un service : `return serverError(portée, e, "Message pour l'utilisateur.")` (journalise puis 502) ; jamais
+  de corps, jeton, clé, cookie ni e-mail dans les journaux.
 
 ## Interface
 - Stockage du navigateur : `lib/client/storage.ts` (jamais de try/catch recopié) ; valeur connue seulement du
