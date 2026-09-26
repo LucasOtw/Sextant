@@ -1,7 +1,7 @@
 import "server-only";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { snapshotFromData, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { snapshotForStorage, snapshotFromData, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { isoFromTimestamp } from "@/lib/firebase/decode";
 import { MAX_NOTES, type ArticleNote } from "@/lib/notes-shared";
 
@@ -71,8 +71,8 @@ export async function setNote(uid: string, article: FavoriteSnapshot, text: stri
       if (n >= MAX_NOTES) throw new NotesLimitError(`Limite de ${MAX_NOTES} notes atteinte : supprimez-en avant d'en écrire une nouvelle.`);
     }
     const keepStored = current.exists && !verified && current.get("article") !== undefined;
-    if (keepStored) stored = current.get("article") as FavoriteSnapshot;
-    tx.set(ref, { text, ...(keepStored ? {} : { article }), workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    if (keepStored) stored = snapshotFromData(current.get("article"), article.id);
+    tx.set(ref, { text, ...(keepStored ? {} : { article: snapshotForStorage(article) }), workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
   return { workId: article.id, text, article: stored ?? article, updatedAt: new Date().toISOString() };
 }

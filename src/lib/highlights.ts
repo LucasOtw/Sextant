@@ -2,7 +2,7 @@ import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
 import { MAX_HIGHLIGHTS, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
-import { snapshotFromData } from "@/lib/favorites-shared";
+import { snapshotForStorage, snapshotFromData } from "@/lib/favorites-shared";
 import { isoFromTimestamp } from "@/lib/firebase/decode";
 
 /** `users/{uid}/highlights/{id}` : passage, page, note, source, contexte, article dénormalisé, date. Écrit côté serveur seulement. */
@@ -58,7 +58,7 @@ export async function createHighlight(uid: string, input: HighlightInput): Promi
   await db.runTransaction(async (tx) => {
     const n = (await tx.get(col.count())).data().count;
     if (n >= MAX_HIGHLIGHTS) throw new HighlightsLimitError(`Limite de ${MAX_HIGHLIGHTS} surlignages atteinte.`);
-    tx.set(ref, { ...input, workId: input.article.id, createdAt: FieldValue.serverTimestamp() });
+    tx.set(ref, { ...input, article: snapshotForStorage(input.article), workId: input.article.id, createdAt: FieldValue.serverTimestamp() });
   });
   return { ...input, id: ref.id, workId: input.article.id, createdAt: new Date().toISOString() };
 }

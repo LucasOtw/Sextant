@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fileSlug, sanitizeSnapshot, snapshotFromData, snapshotFromWork, WORK_ID } from "@/lib/favorites-shared";
+import { fileSlug, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork, WORK_ID } from "@/lib/favorites-shared";
 import { makeSnapshot, makeWork } from "../fixtures";
 
 describe("WORK_ID (identifiant d'article accepté par les routes)", () => {
@@ -93,5 +93,40 @@ describe("snapshotFromData (relecture Firestore, QUAL-11)", () => {
     });
     const odd = snapshotFromData({ id: "", title: 12, authorNames: ["A", 3, null, "B"], year: "2018", citedByCount: Infinity, type: "", venue: 5 }, "W8");
     expect(odd).toMatchObject({ id: "W8", title: "", authorNames: ["A", "B"], year: null, citedByCount: 0, type: "article", venue: null });
+  });
+});
+
+describe("volume, numéro et pages dans l'instantané (QUAL-02)", () => {
+  const biblio = { volume: "6", issue: null, firstPage: "e4375", lastPage: null };
+
+  it("snapshotFromWork les garde ; absents quand OpenAlex n'en donne aucun", () => {
+    expect(snapshotFromWork(makeWork()).biblio).toEqual(biblio);
+    expect(snapshotFromWork(makeWork({ biblio: undefined }))).not.toHaveProperty("biblio");
+    expect(snapshotFromWork(makeWork({ biblio: { volume: null, issue: null, first_page: null, last_page: null } }))).not.toHaveProperty("biblio");
+  });
+
+  it("sanitizeSnapshot : facultatif, chaînes bornées à 20 caractères, le reste ignoré", () => {
+    expect(sanitizeSnapshot(makeSnapshot())).not.toHaveProperty("biblio");
+    const out = sanitizeSnapshot({ ...makeSnapshot(), biblio: { volume: "v".repeat(50), issue: 3, firstPage: "1‮2", lastPage: "", extra: "x" } })!;
+    expect(out.biblio).toEqual({ volume: "v".repeat(20), issue: null, firstPage: "12", lastPage: null });
+    expect(sanitizeSnapshot({ ...makeSnapshot(), biblio: "vol. 6" })).not.toHaveProperty("biblio");
+  });
+
+  it("snapshotFromData relit le biblio stocké ; null ou absent → pas de biblio", () => {
+    expect(snapshotFromData({ ...makeSnapshot(), biblio }, "W1").biblio).toEqual(biblio);
+    expect(snapshotFromData({ ...makeSnapshot(), biblio: null }, "W1")).not.toHaveProperty("biblio");
+  });
+
+  it("snapshotForStorage écrit toujours biblio (null ou quatre clés) : une fusion Firestore n'en garde rien d'ancien", () => {
+    expect(snapshotForStorage(makeSnapshot()).biblio).toBeNull();
+    expect(snapshotForStorage(makeSnapshot({ biblio })).biblio).toEqual(biblio);
+  });
+
+  it("sameSnapshot : un volume ou des pages différents comptent ; null stocké = absent", () => {
+    const s = makeSnapshot({ biblio });
+    expect(sameSnapshot({ ...s }, s)).toBe(true);
+    expect(sameSnapshot({ ...s, biblio: { ...biblio, volume: "7" } }, s)).toBe(false);
+    expect(sameSnapshot({ ...makeSnapshot() }, s)).toBe(false);
+    expect(sameSnapshot({ ...makeSnapshot(), biblio: null }, makeSnapshot())).toBe(true);
   });
 });

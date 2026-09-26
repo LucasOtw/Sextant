@@ -2,7 +2,7 @@ import "server-only";
 import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
-import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotFromData, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { dateFromTimestamp, isoFromTimestamp, millisFromTimestamp } from "@/lib/firebase/decode";
 import { logError, recover } from "@/lib/log";
 import { getWork } from "@/lib/openalex";
@@ -174,7 +174,7 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
   // date d'ajout d'origine est conservée. Un instantané non vérifié ne remplace jamais un document existant.
   const storedUnverified = existing.exists && existing.get("unverified") === true;
   if (!existing.exists || (verified && (!previous || storedUnverified || !sameSnapshot(existing.data(), s)))) {
-    tx.set(favRef, { ...s, addedAt: previous ?? FieldValue.serverTimestamp(), unverified: verified ? FieldValue.delete() : true }, { merge: true });
+    tx.set(favRef, { ...snapshotForStorage(s), addedAt: previous ?? FieldValue.serverTimestamp(), unverified: verified ? FieldValue.delete() : true }, { merge: true });
   }
   return dateFromTimestamp(previous) ?? new Date();
 }
@@ -211,7 +211,7 @@ export async function removeFavorite(uid: string, id: string): Promise<void> {
     const next = ids.filter((x) => x !== id);
     const removed = existing.exists ? sanitizeSnapshot({ ...existing.data(), id }) : null;
     // L'instantané nettoyé porte toujours tous ses champs : la fusion remplace entièrement celui du retrait précédent.
-    tx.set(userRef, { favoriteIds: next, favoritesCount: next.length, ...(removed ? { lastRemovedFavorite: { snapshot: removed, at: FieldValue.serverTimestamp() } } : {}) }, { merge: true });
+    tx.set(userRef, { favoriteIds: next, favoritesCount: next.length, ...(removed ? { lastRemovedFavorite: { snapshot: snapshotForStorage(removed), at: FieldValue.serverTimestamp() } } : {}) }, { merge: true });
     if (existing.exists) tx.delete(favRef);
     lists.docs.forEach((d) => tx.update(d.ref, { articleIds: FieldValue.arrayRemove(id) }));
   });

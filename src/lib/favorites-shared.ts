@@ -1,6 +1,6 @@
 import type { Work } from "@/lib/openalex";
 import { shortId } from "@/lib/openalex";
-import type { CitationSource } from "@/lib/citation";
+import type { Biblio, CitationSource } from "@/lib/citation";
 import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { cleanText } from "@/lib/text";
 
@@ -21,6 +21,8 @@ export interface FavoriteSnapshot {
   isOa: boolean;
   citedByCount: number;
   topic: string | null;
+  /** Volume, numéro, pages (QUAL-02) : absent si OpenAlex n'en donne aucun, et des favoris enregistrés avant ce champ. */
+  biblio?: Biblio;
 }
 
 export interface Favorite extends FavoriteSnapshot {
@@ -40,8 +42,35 @@ const SNAPSHOT_FIELDS = ["id", "title", "authors", "venue", "year", "doi", "type
 export function sameSnapshot(stored: Record<string, unknown> | undefined, s: FavoriteSnapshot): boolean {
   if (!stored) return false;
   if (!SNAPSHOT_FIELDS.every((k) => stored[k] === s[k])) return false;
+  const biblio = biblioFrom(stored.biblio, storedString);
+  if (!BIBLIO_KEYS.every((k) => (biblio?.[k] ?? null) === (s.biblio?.[k] ?? null))) return false;
   const names = stored.authorNames;
   return Array.isArray(names) && names.length === s.authorNames.length && names.every((n, i) => n === s.authorNames[i]);
+}
+
+const BIBLIO_KEYS = ["volume", "issue", "firstPage", "lastPage"] as const;
+
+const storedString = (v: unknown) => (typeof v === "string" ? v : null);
+/** Chaîne courte nettoyée (caractères de contrôle et bidi retirés), ou null. */
+const shortText = (v: unknown) => cleanText(v, 20) || null;
+
+/** Volume, numéro et pages lus champ par champ ; `undefined` quand aucun n'est connu. */
+function biblioFrom(input: unknown, read: (v: unknown) => string | null): Biblio | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const o = input as Record<string, unknown>;
+  const b: Biblio = { volume: read(o.volume), issue: read(o.issue), firstPage: read(o.firstPage), lastPage: read(o.lastPage) };
+  return BIBLIO_KEYS.some((k) => b[k] !== null) ? b : undefined;
+}
+
+const optionalBiblio = (biblio: Biblio | undefined) => (biblio ? { biblio } : {});
+
+/**
+ * L'instantané tel qu'écrit dans Firestore : `biblio` toujours présent (null s'il n'y en a pas) et, s'il existe, avec
+ * ses quatre clés. Une écriture fusionnée (`merge: true`) remplace alors entièrement le `biblio` précédent au lieu de
+ * garder le volume ou les pages d'une version antérieure.
+ */
+export function snapshotForStorage(s: FavoriteSnapshot): Omit<FavoriteSnapshot, "biblio"> & { biblio: Biblio | null } {
+  return { ...s, biblio: s.biblio ?? null };
 }
 
 /** Même ensemble d'identifiants (ordre indifférent) : un rechargement sans changement ne re-rend rien (PERF-12). */
@@ -57,6 +86,8 @@ const MAX_SNAPSHOT_AUTHORS = 50;
 
 export function snapshotFromWork(work: Work): FavoriteSnapshot {
   const names = authorNames(work);
+  const b = work.biblio;
+  const biblio = biblioFrom(b && { volume: b.volume, issue: b.issue, firstPage: b.first_page, lastPage: b.last_page }, shortText);
   return {
     id: shortId(work.id),
     title: workTitle(work),
@@ -70,18 +101,17 @@ export function snapshotFromWork(work: Work): FavoriteSnapshot {
     isOa: work.open_access.is_oa,
     citedByCount: work.cited_by_count,
     topic: work.primary_topic?.display_name ?? null,
+    ...optionalBiblio(biblio),
   };
 }
 
 /**
- * Source de citation d'un article OpenAlex (fiche, outil MCP get_article) : l'instantané, avec tous les auteurs (pas
- * seulement les 50 gardés en favori) et le volume, le numéro et les pages. Passe par le même module de citation que
+ * Source de citation d'un article OpenAlex (fiche, outil MCP get_article) : l'instantané, volume et pages compris, avec
+ * tous les auteurs (pas seulement les 50 gardés en favori). Passe par le même module de citation que
  * les favoris : un article est cité de la même façon partout (QUAL-02).
  */
 export function citationFromWork(work: Work): CitationSource {
-  const b = work.biblio;
-  const biblio = { volume: b?.volume ?? null, issue: b?.issue ?? null, firstPage: b?.first_page ?? null, lastPage: b?.last_page ?? null };
-  return { ...snapshotFromWork(work), authorNames: authorNames(work), biblio };
+  return { ...snapshotFromWork(work), authorNames: authorNames(work) };
 }
 
 /**
@@ -106,6 +136,7 @@ export function snapshotFromData(input: unknown, fallbackId: string): FavoriteSn
     isOa: Boolean(o.isOa),
     citedByCount: num(o.citedByCount) ?? 0,
     topic: str(o.topic),
+    ...optionalBiblio(biblioFrom(o.biblio, storedString)),
   };
 }
 
@@ -135,6 +166,8 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
     isOa: Boolean(o.isOa),
     citedByCount: typeof o.citedByCount === "number" && Number.isFinite(o.citedByCount) ? Math.max(0, Math.trunc(o.citedByCount)) : 0,
     topic: cleanText(o.topic, 200) || null,
+    // Facultatif : les favoris stockés avant ce champ n'en ont pas et restent citables sans lui.
+    ...optionalBiblio(biblioFrom(o.biblio, shortText)),
   };
 }
 

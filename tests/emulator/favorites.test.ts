@@ -151,4 +151,29 @@ describe("favoris (transactions sur émulateur)", () => {
     await db.doc(`users/${uid}`).update({ "lastRemovedFavorite.at": Timestamp.fromMillis(Date.now() - RESTORE_WINDOW_MS - 1_000) });
     expect(await storedSnapshot(uid, "W2")).toBeNull();
   });
+
+  it("volume et pages (QUAL-02) : un rafraîchissement remplace tout le biblio, un retrait n'en laisse rien d'ancien", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const ref = db.doc(`users/${uid}/favorites/W1`);
+    await addFavorite(uid, snap(1, { biblio: { volume: "6", issue: "2", firstPage: "10", lastPage: "20" } }));
+    expect((await ref.get()).get("biblio")).toEqual({ volume: "6", issue: "2", firstPage: "10", lastPage: "20" });
+
+    // Notice corrigée chez OpenAlex : plus de numéro ni de dernière page. La fusion ne garde pas les anciennes valeurs.
+    await addFavorite(uid, snap(1, { biblio: { volume: "7", issue: null, firstPage: "e1", lastPage: null } }));
+    expect((await ref.get()).get("biblio")).toEqual({ volume: "7", issue: null, firstPage: "e1", lastPage: null });
+    expect((await listFavorites(uid))[0].biblio).toEqual({ volume: "7", issue: null, firstPage: "e1", lastPage: null });
+
+    // Plus de biblio du tout : null écrit, relu comme absent.
+    await addFavorite(uid, snap(1));
+    expect((await ref.get()).get("biblio")).toBeNull();
+    expect((await listFavorites(uid))[0]).not.toHaveProperty("biblio");
+
+    // Retrait d'un favori avec biblio, puis d'un favori sans : le second « Annuler » ne reprend pas le biblio du premier.
+    await addFavorite(uid, snap(2, { biblio: { volume: "9", issue: "1", firstPage: "1", lastPage: "5" } }));
+    await removeFavorite(uid, "W2");
+    expect((await storedSnapshot(uid, "W2"))?.biblio).toEqual({ volume: "9", issue: "1", firstPage: "1", lastPage: "5" });
+    await removeFavorite(uid, "W1");
+    expect(await storedSnapshot(uid, "W1")).not.toHaveProperty("biblio");
+  });
 });

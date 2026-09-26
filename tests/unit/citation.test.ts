@@ -108,6 +108,12 @@ describe("un même article est cité de la même façon partout (QUAL-02)", () =
     }
   });
 
+  it("fiche et favoris : références identiques, volume et pages compris", () => {
+    const work = makeWork({ biblio: { volume: "12", issue: "3", first_page: "45", last_page: "67" } });
+    expect(formatApa(snapshotFromWork(work))).toBe(formatApa(citationFromWork(work)));
+    expect(formatBibtex(snapshotFromWork(work))).toBe(formatBibtex(citationFromWork(work)));
+  });
+
   it("volume, numéro et pages quand la notice les donne, rien sinon", () => {
     const work = makeWork({ biblio: { volume: "12", issue: "3", first_page: "45", last_page: "67" } });
     expect(formatApa(citationFromWork(work))).toContain(" PeerJ, 12(3), 45–67. https://doi.org/");
