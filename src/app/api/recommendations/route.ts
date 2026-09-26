@@ -39,7 +39,9 @@ function slim(w: Work): Work {
  * Deux sources, en alternance :
  *  - les articles apparentés (related_works d'OpenAlex) qui reviennent chez plusieurs de vos articles ;
  *  - les articles récents et cités des sujets qui pèsent le plus dans vos lectures.
- * La réponse ne dépend que de la requête : elle se met en cache comme n'importe quelle page publique.
+ * La réponse ne dépend que de la requête, mais celle-ci porte l'historique de lecture et les favoris du visiteur : elle
+ * n'est gardée que dans son navigateur (`private`, 5 min), jamais dans le cache partagé du CDN (SEC-18). Une copie au
+ * bord ne servirait de toute façon à personne d'autre : chaque combinaison seen/fav/hide est propre à un visiteur.
  */
 export async function GET(req: Request) {
   if (!rateLimit(`reco:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
@@ -47,7 +49,7 @@ export async function GET(req: Request) {
   const seen = parseIds(params.get("seen"), 12);
   const fav = parseIds(params.get("fav"), 30);
   const hide = parseIds(params.get("hide"), 200);
-  const cache = { "cache-control": "public, max-age=300, s-maxage=3600" };
+  const cache = { "cache-control": "private, max-age=300" };
   if (seen.length === 0 && fav.length === 0) return NextResponse.json({ items: [] }, { headers: cache });
 
   // Classement pur (src/lib/recommendations-rank.ts) : ce handler ne fait que les appels à OpenAlex.
