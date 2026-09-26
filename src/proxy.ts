@@ -35,6 +35,17 @@ export function isRenderedOnRequest(pathname: string): boolean {
  * une session ouverte avant son introduction, effacé quand la session a disparu. Sans vérification ici : les routes
  * vérifient la session elle-même, l'indice ne donne aucun droit.
  */
+/**
+ * Nonce désactivé par défaut (CSP_NONCE=1 pour le réactiver). Avec Turbopack, dans le mode de déploiement de Vercel,
+ * Next ne propage pas le nonce à ses scripts, quel que soit le nom de l'en-tête de requête (vercel/next.js#96063,
+ * fermé sans correctif) ; `next start` en local, lui, le fait. Chaque page rendue à la demande envoyait alors une
+ * vingtaine de rapports de violation. Sans nonce, ces pages reçoivent la même politique que les pages en cache
+ * ('unsafe-inline' pour les scripts), toujours en Report-Only : les autres directives restent surveillées.
+ */
+function nonceEnabled(): boolean {
+  return process.env.CSP_NONCE === "1";
+}
+
 export function proxy(request: NextRequest) {
   // Page en cache, atteinte par la seconde entrée du `matcher` (session présente, indice absent) : l'indice seul est
   // posé, sans CSP ni nonce (la politique vient de next.config.ts), et la page reste servie depuis le cache.
@@ -44,7 +55,7 @@ export function proxy(request: NextRequest) {
     if (fix !== null) setSessionHint(response, fix);
     return response;
   }
-  const nonce = isRenderedOnRequest(request.nextUrl.pathname) ? makeNonce() : null;
+  const nonce = nonceEnabled() && isRenderedOnRequest(request.nextUrl.pathname) ? makeNonce() : null;
   const csp = buildCsp({
     nonce,
     scriptHashes: nonce ? [PRE_HYDRATION_SCRIPT_HASH] : [],
