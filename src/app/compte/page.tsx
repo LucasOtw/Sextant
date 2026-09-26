@@ -59,7 +59,7 @@ export default async function AccountPage() {
       <div className="max-w-3xl">
         <h1 className="title-display text-4xl sm:text-5xl">Mon compte</h1>
 
-        <section className="mt-8 flex items-center gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <section className="mt-8 flex items-center gap-4 rounded-xl bg-card p-5 border border-border">
           <Avatar className="size-16">
             {user.picture && <AvatarImage src={user.picture} alt="" referrerPolicy="no-referrer" />}
             <AvatarFallback className="text-lg">{initials}</AvatarFallback>
@@ -91,7 +91,7 @@ export default async function AccountPage() {
 
         <section className="mt-10" aria-labelledby="donnees">
           <h2 id="donnees" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Données et confidentialité</h2>
-          <div className="mt-3 flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+          <div className="mt-3 flex flex-col gap-4 rounded-xl bg-card p-5 border border-border">
             <div className="flex items-start gap-3">
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
               <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
@@ -133,7 +133,7 @@ function Tile({ icon, label, value, hint, href }: { icon: React.ReactNode; label
     </>
   );
   return (
-    <li className="rounded-xl bg-card ring-1 ring-foreground/10">
+    <li className="rounded-xl bg-card border border-border">
       {href ? (
         <Link href={href} className="flex h-full flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-muted/60">{body}</Link>
       ) : (

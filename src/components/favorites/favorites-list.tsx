@@ -420,7 +420,7 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
     >
       <article
         className={cn(
-          "relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5",
+          "relative flex flex-col gap-2 rounded-xl bg-card p-4 border border-border transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/25 sm:p-5",
           manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28",
         )}
       >
@@ -471,14 +471,14 @@ function Chip({ active, onClick, count, icon = false, shared = false, children }
       onClick={onClick}
       title={children}
       className={cn(
-        "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors",
-        active ? "bg-primary text-primary-foreground" : "bg-card text-foreground ring-1 ring-foreground/10 hover:ring-foreground/25",
+        "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm transition-colors",
+        active ? "bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-foreground/25",
       )}
     >
       {icon && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
       <span className="truncate">{children}</span>
       {shared && <Link2Icon className="size-3.5 shrink-0" aria-label="partagée par lien" />}
-      <span className={active ? "text-primary-foreground/75" : "text-muted-foreground"}>{count}</span>
+      <span className={active ? undefined : "text-muted-foreground"}>{count}</span>
     </button>
   );
 }

@@ -15,7 +15,7 @@ interface Props {
 
 /** Page personnelle sans session (favoris par défaut) : on explique et on propose la connexion sur place. */
 export function SignInPrompt({
-  icon = <BookmarkIcon className="mx-auto size-8 text-accent-brand" aria-hidden />,
+  icon = <BookmarkIcon className="mx-auto size-8 text-brand" aria-hidden />,
   title = "Vos favoris vous attendent.",
   text = "Connectez-vous pour retrouver les articles que vous avez enregistrés, sur tous vos appareils.",
   intro = "Connectez-vous pour retrouver vos favoris et vos listes sur tous vos appareils.",

@@ -79,7 +79,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
   const status = loading ? `${providerLabel} lit le résumé…` : state.status === "done" ? "Synthèse prête." : state.status === "error" ? state.message : "";
 
   return (
-    <div ref={boxRef} className="mt-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+    <div ref={boxRef} className="mt-5 rounded-xl bg-card p-4 border border-border sm:p-5">
       <p className="sr-only" aria-live="polite">{status}</p>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

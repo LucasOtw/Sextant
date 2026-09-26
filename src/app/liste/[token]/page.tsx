@@ -99,7 +99,7 @@ export default async function SharedListPage({ params }: Props) {
           <ul className="mt-6 flex flex-col gap-3">
             {list.articles.map((a) => (
               <li key={a.id}>
-                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
+                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 border border-border transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/25 sm:p-5 sm:pr-16">
                   <ArticleBadges type={a.type} isOa={a.isOa} retracted={retracted.has(a.id)} topic={a.topic} />
                   <ArticleTitle href={`/article/${a.id}`} as="h2" className="text-xl leading-snug">{a.title}</ArticleTitle>
                   {/* Le cœur suit le titre dans le DOM, en haut à droite à l'écran (A11Y-23). */}

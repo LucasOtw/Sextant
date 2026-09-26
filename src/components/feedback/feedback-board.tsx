@@ -112,11 +112,11 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
               aria-pressed={filter === value}
               onClick={() => setFilter(value)}
               className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm transition-colors",
-                filter === value ? "bg-primary text-primary-foreground" : "bg-card ring-1 ring-foreground/10 hover:ring-foreground/25",
+                "inline-flex h-9 items-center gap-1.5 rounded-full border border-transparent px-3.5 text-sm transition-colors",
+                filter === value ? "bg-primary text-primary-foreground" : "border-border bg-card hover:border-foreground/25",
               )}
             >
-              {label} <span className={filter === value ? "text-primary-foreground/75" : "text-muted-foreground"}>{counts[value]}</span>
+              {label} <span className={filter === value ? undefined : "text-muted-foreground"}>{counts[value]}</span>
             </button>
           ))}
         </div>
@@ -185,7 +185,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
   const status = STATUS_LABEL[item.status];
   return (
     // Ancre du sujet : l'adresse exacte d'un signalement (DSA art. 16) mène à lui.
-    <li id={`sujet-${item.id}`} className="flex scroll-mt-24 gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+    <li id={`sujet-${item.id}`} className="flex scroll-mt-24 gap-4 rounded-xl bg-card p-4 border border-border sm:p-5">
       <button
         type="button"
         onClick={onVote}
@@ -207,7 +207,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
           <Badge variant="secondary" className={cn("gap-1", item.kind === "bug" ? "text-destructive" : "text-accent-brand")}>
             {item.kind === "bug" ? <BugIcon aria-hidden /> : <LightbulbIcon aria-hidden />} {KIND_LABEL[item.kind]}
           </Badge>
-          {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
+          {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-tint text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
           {item.createdAt && <span className="text-xs text-muted-foreground">{DATE_SHORT.format(new Date(item.createdAt))}</span>}
           {/* Nom accessible qui commence par le texte visible (WCAG 2.5.3) et dit quel sujet est visé. */}
           <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="ml-auto text-xs text-muted-foreground underline-offset-3 hover:text-foreground hover:underline">
@@ -295,7 +295,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             key={value}
             className={cn(
               "relative flex cursor-pointer flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2",
-              kind === value ? "bg-accent-brand/8 ring-2 ring-accent-brand" : "ring-foreground/15 hover:ring-foreground/30",
+              kind === value ? "bg-tint ring-2 ring-accent-brand" : "ring-foreground/15 hover:ring-foreground/30",
             )}
           >
             <input type="radio" name={kindName} value={value} checked={kind === value} onChange={() => setKind(value)} className="sr-only" />

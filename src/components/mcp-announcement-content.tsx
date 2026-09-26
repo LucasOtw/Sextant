@@ -39,7 +39,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
         <Illustration />
         <div className="flex flex-col gap-4 px-6 pb-6 pt-1">
           <div className="flex flex-col gap-2">
-            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-accent-brand/10 px-2.5 py-0.5 text-xs font-semibold text-accent-brand">
+            <span className="inline-flex w-fit items-center gap-1 rounded-full bg-tint px-2.5 py-0.5 text-xs font-semibold text-accent-brand">
               <SparklesIcon className="size-3" aria-hidden /> Nouveau
             </span>
             <DialogTitle className="title-display text-2xl leading-tight">Sextant, dans votre assistant IA</DialogTitle>

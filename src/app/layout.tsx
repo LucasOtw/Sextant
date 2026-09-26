@@ -30,11 +30,14 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-/** Barre du navigateur mobile aux couleurs du fond (--background clair / sombre) ; suit le thème du système, pas la bascule du site. */
+/**
+ * Barre du navigateur mobile aux couleurs du fond (--background clair / sombre de globals.css) selon le système ; la
+ * bascule du site la recale ensuite (lib/theme.ts).
+ */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F9F6F1" },
-    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+    { media: "(prefers-color-scheme: light)", color: "#F9F8F2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D111A" },
   ],
 };
 

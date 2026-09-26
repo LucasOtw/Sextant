@@ -25,7 +25,7 @@ export function SelectionButton({ rect, onClick, busy = false }: Props) {
   const style = coarse ? { bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", left: "50%", transform: "translateX(-50%)" } : { top, left };
   return (
     <div className="fixed z-50 animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none" style={style}>
-      <Button size={coarse ? "lg" : "sm"} onPointerDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-lg">
+      <Button size={coarse ? "lg" : "sm"} onPointerDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-float">
         <HighlighterIcon /> Surligner
       </Button>
     </div>

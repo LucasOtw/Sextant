@@ -20,10 +20,21 @@ function systemPrefersDark(): boolean {
   return typeof matchMedia === "function" && matchMedia(DARK_QUERY).matches;
 }
 
+/**
+ * Barre du navigateur (meta theme-color, une par préférence du système) recalée sur le fond du thème affiché : sans
+ * cela, elle suivrait le système et non la bascule du site. Couleur lue dans les jetons (--background), jamais recopiée.
+ */
+function syncThemeColor() {
+  const color = getComputedStyle(document.documentElement).getPropertyValue("--background").trim();
+  if (!color) return;
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) meta.content = color;
+}
+
 function applyTheme(dark: boolean) {
   const html = document.documentElement;
   html.classList.toggle("dark", dark);
   html.style.colorScheme = dark ? "dark" : "light";
+  syncThemeColor();
 }
 
 /** Enregistre le choix (ou l'efface pour « system ») et l'applique aussitôt. */
@@ -39,6 +50,8 @@ export function setThemePreference(pref: ThemePreference) {
  * qui retire l'écouteur.
  */
 export function followSystemTheme(): () => void {
+  // Thème posé avant l'affichage (lib/pre-hydration.ts) : la barre du navigateur le rejoint dès le montage.
+  syncThemeColor();
   if (typeof matchMedia !== "function") return () => {};
   const query = matchMedia(DARK_QUERY);
   const onChange = () => {

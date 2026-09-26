@@ -36,9 +36,9 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
 function ConnectorUrl({ url }: { url: string }) {
   const { copied, copy } = useCopy();
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-accent-brand/8 p-4 ring-1 ring-accent-brand/25">
+    <div className="flex flex-col gap-3 rounded-xl bg-tint p-4 ring-1 ring-accent-brand/25">
       <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
-      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[0.8125rem] leading-relaxed ring-1 ring-foreground/10">{url}</p>
+      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[0.8125rem] leading-relaxed border border-border">{url}</p>
       <Button size="lg" className="w-full" onClick={() => void copy(url, { message: "Adresse copiée.", failure: COPY_FAILURE })}>
         {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Adresse copiée" : "Copier l'adresse"}
       </Button>
@@ -123,7 +123,7 @@ export function McpKeys() {
   const full = keys !== null && keys.length >= MAX_API_KEYS;
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+    <div className="flex flex-col gap-4 rounded-xl bg-card p-5 border border-border">
       <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
         Donnez à Claude, ChatGPT ou un autre assistant compatible MCP l'accès, en lecture seule, à votre bibliothèque Sextant (favoris,
         listes, citations, notes) et à la recherche d'articles. Chaque assistant reçoit sa propre clé, révocable à tout moment.
@@ -132,7 +132,7 @@ export function McpKeys() {
       {keys === null ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2Icon className="size-4 animate-spin" aria-hidden /> Chargement…</p>
       ) : keys.length > 0 ? (
-        <ul ref={listRef} className="flex flex-col divide-y rounded-lg ring-1 ring-foreground/10">
+        <ul ref={listRef} className="flex flex-col divide-y rounded-lg border border-border">
           {keys.map((k) => (
             <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
               <div className="min-w-0">

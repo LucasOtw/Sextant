@@ -551,7 +551,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
         </div>
         {/* Repli embarqué seulement pour une adresse vérifiée (https, hôte public) : jamais l'adresse brute d'OpenAlex (SEC-16). */}
         {embedUrl && (
-          <object data={embedUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-foreground/10" aria-label="PDF original">
+          <object data={embedUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-border" aria-label="PDF original">
             <div className="rounded-xl border border-dashed p-8 text-center">
               <p className="text-base text-muted-foreground">
                 Votre navigateur n'affiche pas ce PDF ici. <a href={embedUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrez-le dans un nouvel onglet</a>.
@@ -774,7 +774,7 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
   return (
     // Repère « Page N » pour les lecteurs d'écran, focalisable par « aller à la page ». Le canevas redessine le texte de
     // la couche texte : masqué, pour ne pas être lu comme une image de plus.
-    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative scroll-mt-14 bg-white shadow-sm ring-1 ring-foreground/10 outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
+    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative scroll-mt-14 bg-white shadow-sm ring-1 ring-border outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
       <canvas ref={canvasRef} aria-hidden />
       <div ref={textRef} className="textLayer" />
       {!rendered && visible && (

@@ -9,131 +9,151 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-sans);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-tint: var(--tint);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-foreground: var(--accent-brand-foreground);
+  --color-brand: var(--brand);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-sun: var(--sun);
+  --color-overlay: var(--overlay);
+  --color-disabled: var(--disabled);
+  --color-disabled-foreground: var(--disabled-foreground);
+  --color-destructive: var(--destructive);
   --color-oa: var(--oa);
   --color-oa-foreground: var(--oa-foreground);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
+  --color-border: var(--border);
   --color-input: var(--input);
   --color-input-border: var(--input-border);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-ring: var(--ring);
+  /* Une seule ombre, bleutée, réservée aux calques flottants (menus, suggestions, popovers) : pas d'ombre sur les cartes. */
+  --shadow-float: var(--elevation-float);
+  /* Rayons hiérarchisés (DA) : petits éléments serrés, champs et menus à 14 px, cartes à 20, blocs à 24, dialogues à 28.
+     Boutons, badges et puces : rounded-full. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2rem;
 }
 
+/* Palette unique de la direction artistique (docs/handoffs/2026-09-26-da-audit.md, § 3.1). Contrastes WCAG indiqués
+   contre le fond, puis la carte. Aucune couleur de l'interface ne se code ailleurs qu'ici. */
 :root {
-  --accent-brand: oklch(0.47 0.16 262);
-  --accent-brand-foreground: oklch(0.98 0 0);
-  --oa: oklch(0.93 0.06 160);
-  --oa-foreground: oklch(0.35 0.1 160);
-  --background: oklch(0.975 0.008 85);
-  --foreground: oklch(0.18 0.02 262);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 262);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.2 0.015 262);
-  --primary-foreground: oklch(0.985 0.005 85);
-  --secondary: oklch(0.94 0.01 85);
-  --secondary-foreground: oklch(0.3 0.02 262);
-  --muted: oklch(0.955 0.01 85);
-  --muted-foreground: oklch(0.5 0.02 262);
-  --accent: oklch(0.94 0.01 85);
-  --accent-foreground: oklch(0.2 0.015 262);
+  --background: #F9F8F2;
+  --foreground: #0D111A; /* 17,75:1 fond, 18,88:1 carte, 16,17:1 teinte */
+  --card: #FFFFFF;
+  --card-foreground: var(--foreground);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--foreground);
+  /* Bouton plein : bleu foncé, libellé #EEF1FB à 5,88:1 (7,32:1 au survol). */
+  --primary: #3E54B8;
+  --primary-foreground: #EEF1FB;
+  --primary-hover: #34479E;
+  /* Teinte bleue : zones secondaires, survols légers, élément actif. */
+  --tint: #EAEDF9;
+  --secondary: var(--tint);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--tint);
+  --accent-foreground: var(--foreground);
+  /* Neutre chaud : squelettes et fonds passifs, pas les survols. */
+  --muted: #EFEDE5;
+  --muted-foreground: #4A5160; /* 7,48:1 fond, 7,96:1 carte, 6,82:1 teinte */
+  /* Liens, petits textes et icônes bleus : #566ED1 n'atteint pas 4,5:1 en petit texte (6,24:1 fond, 5,68:1 teinte). */
+  --link: #3E54B8;
+  --link-hover: #2E3F8C;
+  --accent-brand: var(--link);
+  --accent-brand-foreground: #EEF1FB;
+  /* Bleu de marque : aplats, graphismes, gros textes seulement (≥ 24 px, ou ≥ 19 px gras : 4,34:1 sur le fond). */
+  --brand: #566ED1;
+  /* Surface bleue qui porte du texte courant : #3E54B8 (texte #EEF1FB à 5,88:1) ; #566ED1 reste aux aplats sans texte. */
+  --brand-surface: #3E54B8;
+  --brand-foreground: #EEF1FB;
+  /* Jaune : étoile et vague, décoratif uniquement et toujours opaque (2,06:1 : jamais du texte). */
+  --sun: #D7A848;
+  --overlay: rgb(13 17 26 / 0.3);
+  /* Contrôles désactivés (exemptés de contraste par WCAG) : pas d'opacité, qui salirait le bleu. */
+  --disabled: #ECEAE2;
+  --disabled-foreground: #8A8F99;
   /* Rouge assombri (#b3000b) : 6,7:1 sur le fond, 5,5:1 sur ses propres teintes à 10 %, 4,5:1 au survol à 20 % (A11Y-15). */
   --destructive: oklch(0.48 0.2 27.3);
-  --border: oklch(0.9 0.01 85);
-  /* Remplissage des champs et bordure des boutons outline en sombre : trop pâle pour délimiter un champ. */
-  --input: oklch(0.86 0.012 85);
-  /* Contour des champs de saisie (Input, Textarea, Select) : 3,3:1 sur le fond, 3,5:1 sur une carte (WCAG 1.4.11, A11Y-17). */
-  --input-border: oklch(0.63 0.012 85);
-  --ring: oklch(0.5 0.16 262);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --oa: oklch(0.93 0.06 160);
+  --oa-foreground: oklch(0.35 0.1 160);
+  /* Filets et bordures de cartes : décoratifs (1,24:1), ils ne délimitent jamais un champ. */
+  --border: #E2E0D6;
+  /* Remplissage des contrôles et bordure des boutons outline en sombre : trop pâle pour délimiter un champ. */
+  --input: #D6D3C8;
+  /* Contour des champs de saisie (Input, Textarea, Select) : 3,52:1 fond, 3,75:1 carte, 3,21:1 teinte (WCAG 1.4.11, A11Y-17). */
+  --input-border: #7D8494;
+  /* Focus : 6,24:1 sur le fond. */
+  --ring: #3E54B8;
+  --elevation-float: 0 12px 32px -12px oklch(0.3 0.08 265 / 0.28);
+  --radius: 0.875rem;
 }
 
+/* Sombre dérivé de l'encre bleutée #0D111A, pas d'un gris neutre. */
 .dark {
-  --accent-brand: oklch(0.74 0.12 262);
-  --accent-brand-foreground: oklch(0.15 0 0);
-  --oa: oklch(0.3 0.06 160);
-  --oa-foreground: oklch(0.85 0.1 160);
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.93 0.005 85);
-  --primary-foreground: oklch(0.18 0.015 262);
-  --secondary: oklch(0.28 0.01 262);
-  --secondary-foreground: oklch(0.9 0.01 85);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.28 0.01 262);
-  --accent-foreground: oklch(0.93 0.005 85);
+  --background: #0D111A;
+  --foreground: #F9F8F2; /* 17,75:1 fond, 16,16:1 carte, 13,48:1 teinte */
+  --card: #161B28;
+  --popover: #1B2130;
+  /* Bouton plein clair sur l'encre : libellé encre à 7,60:1 (9,15:1 au survol) ; #3E54B8 ne se détacherait qu'à 2,85:1. */
+  --primary: #8FA1EA;
+  --primary-foreground: #0D111A;
+  --primary-hover: #A3B2EF;
+  --tint: #20284A;
+  --muted: #1E2433;
+  --muted-foreground: #A3AAB8; /* 8,09:1 fond, 7,37:1 carte, 6,15:1 teinte */
+  --link: #8FA1EA; /* 7,60:1 fond, 6,92:1 carte, 5,78:1 teinte */
+  --link-hover: #A3B2EF;
+  --accent-brand-foreground: #0D111A;
+  --brand: #6F8BE8; /* 5,87:1 fond */
+  /* Un aplat #566ED1 éclairerait trop : surface bleue profonde, texte #EEF1FB à 10,30:1. */
+  --brand-surface: #27346F;
+  --brand-foreground: #EEF1FB;
+  --overlay: rgb(0 0 0 / 0.6);
+  --disabled: #1B2130;
+  --disabled-foreground: #7C8496;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  /* 3,5:1 sur le fond et sur une carte, 3,2:1 contre le remplissage du champ (A11Y-17). */
-  --input-border: oklch(1 0 0 / 38%);
-  --ring: oklch(0.7 0.12 262);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --oa: #12352A;
+  --oa-foreground: #8FDDB5; /* 8,40:1 */
+  /* Filets opaques : un blanc translucide variait selon la surface. */
+  --border: #262C3A;
+  --input: #1E2433;
+  /* 4,58:1 fond, 4,17:1 carte. */
+  --input-border: #767D8E;
+  --ring: #8FA1EA; /* 7,60:1 ; le #3E54B8 du clair tomberait à 2,85:1 */
+  --elevation-float: 0 12px 32px -12px oklch(0 0 0 / 0.6);
+}
+
+/* Surface bleue (section ou bande forte) : texte, liens et focus passent en clair pour rester lisibles. Prête, pas encore
+   utilisée (section forte à valider). */
+.surface-brand {
+  background-color: var(--brand-surface);
+  color: var(--brand-foreground);
+  --link: #FFFFFF;
+  --link-hover: #FFFFFF;
+  --accent-brand: #FFFFFF;
+  --ring: #FFFFFF;
+  --muted-foreground: var(--brand-foreground);
 }
 
 @layer base {
@@ -153,6 +173,23 @@
   /* En-tête collant de 64 px : l'élément focalisé ou l'ancre visée s'arrête dessous (5rem = en-tête + marge). */
   html {
     @apply font-sans scroll-pt-20;
+    /* Cases à cocher, boutons radio, curseurs natifs aux couleurs du bouton plein. */
+    accent-color: var(--primary);
+  }
+  ::selection {
+    background-color: color-mix(in oklch, var(--brand) 30%, transparent);
+  }
+}
+
+/* Mouvement réduit : aucune animation ni transition ne dure, où qu'elle soit déclarée (composants tiers compris). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 /* Titres : sans, graisse marquée, interlettrage resserré ; un mot trop long (sigles, URL) se coupe au lieu de déborder à 320 px */
@@ -233,6 +270,9 @@
   --highlight: oklch(0.92 0.17 96);
   --highlight-foreground: oklch(0.6 0.13 80);
   --highlight-alpha: 55%;
+  /* Page du PDF : le papier reste blanc quel que soit le thème, son surligneur ne change donc pas en sombre. */
+  --highlight-paper: oklch(0.92 0.17 96);
+  --highlight-paper-line: oklch(0.6 0.13 80);
 }
 .dark {
   --highlight: oklch(0.78 0.16 92);
@@ -345,13 +385,12 @@ mark[data-highlight] {
   user-select: none;
 }
 .textLayer ::selection {
-  background: color-mix(in oklch, var(--accent-brand) 35%, transparent);
+  background: color-mix(in oklch, var(--brand) 35%, transparent);
 }
 .textLayer .hl {
-  /* Jaune fixe : le papier du PDF est blanc quel que soit le thème. */
-  background: oklch(0.92 0.17 96);
+  background: var(--highlight-paper);
   /* Trait sous le fragment, comme sur le résumé : le passage se repère sans compter sur la seule couleur (A11Y-31). */
-  box-shadow: inset 0 -2px 0 oklch(0.6 0.13 80);
+  box-shadow: inset 0 -2px 0 var(--highlight-paper-line);
   border-radius: 2px;
 }
 

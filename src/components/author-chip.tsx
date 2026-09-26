@@ -109,7 +109,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
             ref={popupRef}
             onBlur={closeIfFocusLeft}
             aria-label={`À propos de ${name}`}
-            className="w-72 max-w-(--available-width) origin-(--transform-origin) rounded-xl bg-popover p-4 text-left text-sm font-normal text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-open:slide-in-from-top-1 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none"
+            className="w-72 max-w-(--available-width) origin-(--transform-origin) rounded-xl bg-popover p-4 text-left text-sm font-normal text-popover-foreground shadow-float border border-border outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-open:slide-in-from-top-1 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none"
           >
             <p className="text-base font-semibold">{name}</p>
             <p className="mt-0.5 flex items-start gap-1.5 text-muted-foreground">

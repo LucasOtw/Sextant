@@ -8,7 +8,7 @@ import { cn } from "cn";
 export function TooManyRequests({ className }: { className?: string }) {
   return (
     <div role="status" className={cn("rounded-xl border border-dashed p-10 text-center", className)}>
-      <HourglassIcon className="mx-auto size-8 text-accent-brand" aria-hidden />
+      <HourglassIcon className="mx-auto size-8 text-brand" aria-hidden />
       <p className="mt-3 text-lg font-medium">Beaucoup de visites en peu de temps</p>
       <p className="mx-auto mt-1 max-w-md text-balance text-muted-foreground">
         Pour protéger le service, cette page est momentanément limitée. Patientez une minute, puis rechargez la page.

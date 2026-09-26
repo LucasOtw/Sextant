@@ -103,7 +103,7 @@ export function ForYou() {
     <section id="pour-vous" className="py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5">
         <h2 ref={headingRef} tabIndex={-1} className="title-display flex items-center gap-2 text-3xl outline-none sm:text-4xl">
-          <SparklesIcon className="size-7 text-accent-brand" aria-hidden /> Pour vous
+          <SparklesIcon className="size-7 text-brand" aria-hidden /> Pour vous
         </h2>
         <p className="mt-1.5 text-base text-muted-foreground">
           {state.fromFavorites

@@ -66,7 +66,7 @@ export function RecentlyViewed() {
             <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
               <Link
                 href={`/article/${w.id}`}
-                className="flex h-full flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25"
+                className="flex h-full flex-col gap-2 rounded-xl bg-card p-4 border border-border transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/25"
               >
                 <span className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                   {w.isOa && (

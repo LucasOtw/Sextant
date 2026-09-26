@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 /**
  * Manifeste web, prérendu en statique à /manifest.webmanifest : icône nette à l'ajout à l'écran d'accueil.
- * Couleurs = fond clair du thème (--background) et fond de l'icône. Icônes générées depuis public/icon.svg.
+ * Couleurs = fond clair du thème (--background) et encre de la marque (--foreground). Icônes générées depuis public/icon.svg.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -12,8 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "fr",
     start_url: "/",
     display: "browser",
-    background_color: "#F9F6F1",
-    theme_color: "#1D1F2A",
+    background_color: "#F9F8F2",
+    theme_color: "#0D111A",
     icons: [
       { src: "/icon.svg", type: "image/svg+xml", sizes: "any" },
       { src: "/icon-192.png", type: "image/png", sizes: "192x192" },

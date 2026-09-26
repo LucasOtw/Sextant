@@ -48,7 +48,7 @@ export default async function CitationsPage() {
         </p>
         <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <CitationsList initial={highlights} collections={collections} loadError={loadError} retracted={retracted} />) : (
           <SignInPrompt
-            icon={<HighlighterIcon className="mx-auto size-8 text-accent-brand" aria-hidden />}
+            icon={<HighlighterIcon className="mx-auto size-8 text-brand" aria-hidden />}
             title="Vos citations vous attendent."
             text="Connectez-vous pour retrouver les passages que vous avez surlignés, avec leur article et leur page."
             intro="Connectez-vous pour surligner un passage et le retrouver plus tard, avec sa source."
