@@ -7,6 +7,7 @@ import { sameIdSet, type Favorite, type FavoriteSnapshot } from "@/lib/favorites
 import { sameCollections, type Collection } from "@/lib/collections-shared";
 import type { ClientUser } from "@/lib/session-shared";
 import { undoToast } from "@/lib/undo-toast";
+import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 import { useSession } from "@/components/auth/session-provider";
 
 /** Article à enregistrer dès que la connexion aboutit (clic sur un cœur sans compte). */
@@ -98,20 +99,12 @@ interface FavoritesResponse {
 }
 
 async function postFavorite(snapshot: FavoriteSnapshot): Promise<Favorite> {
-  const res = await fetch("/api/favorites", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(snapshot) });
-  if (res.status === 401) throw new Error("signin");
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? "L'enregistrement a échoué.");
-  }
-  return ((await res.json()) as { favorite: Favorite }).favorite;
+  return (await api<{ favorite: Favorite }>("/api/favorites", { method: "POST", json: snapshot, fallback: "L'enregistrement a échoué." })).favorite;
 }
 
-async function jsonOrError(res: Response): Promise<Record<string, unknown>> {
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.status === 401) throw new Error("Connectez-vous pour gérer vos listes.");
-  if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Échec.");
-  return data;
+/** Échec d'une opération sur les listes : une session expirée demande de se reconnecter, sinon le message de la route. */
+function listError(e: unknown, fallback: string): string {
+  return needsSignIn(e) ? "Connectez-vous pour gérer vos listes." : errorMessage(e, fallback);
 }
 
 function without(c: Collection, id: string): Collection {
@@ -294,7 +287,7 @@ export function FavoritesProvider({ children }: Props) {
         setAdded((prev) => new Map(prev).set(favorite.id, favorite));
         toast.success("Article ajouté à vos favoris.", { action: { label: "Voir", onClick: () => router.push("/favoris") } });
       } catch (e) {
-        toast.error(e instanceof Error && e.message !== "signin" ? e.message : "L'article n'a pas pu être enregistré.");
+        toast.error(needsSignIn(e) ? "L'article n'a pas pu être enregistré." : errorMessage(e, "L'article n'a pas pu être enregistré."));
       }
     },
     [router, applyIds],
@@ -381,9 +374,7 @@ export function FavoritesProvider({ children }: Props) {
       if (memberships.length) applyCollections((prev) => prev.map((c) => (memberships.includes(c.id) ? without(c, snapshot.id) : c)));
       try {
         if (wasFavorite) {
-          const res = await fetch(`/api/favorites?id=${snapshot.id}`, { method: "DELETE" });
-          if (res.status === 401) throw new Error("signin");
-          if (!res.ok) throw new Error("La suppression a échoué.");
+          await api(`/api/favorites?id=${snapshot.id}`, { method: "DELETE", fallback: "La suppression a échoué." });
           const n = memberships.length;
           undoToast(n ? `Retiré de vos favoris et de ${n} liste${n > 1 ? "s" : ""}.` : "Retiré de vos favoris.", () => void restoreRef.current?.(snapshot, memberships));
           return "removed";
@@ -401,8 +392,8 @@ export function FavoritesProvider({ children }: Props) {
         if (wasFavorite) setAdded((prev) => new Map(prev).set(snapshot.id, previousSnapshot));
         else setAdded((prev) => { const n = new Map(prev); n.delete(snapshot.id); return n; });
         if (memberships.length) applyCollections((prev) => prev.map((c) => (memberships.includes(c.id) ? withId(c, snapshot.id) : c)));
-        if (e instanceof Error && e.message === "signin") return "signin";
-        toast.error(e instanceof Error ? e.message : "Impossible de mettre à jour vos favoris.");
+        if (needsSignIn(e)) return "signin";
+        toast.error(errorMessage(e, "Impossible de mettre à jour vos favoris."));
         return "error";
       }
     },
@@ -424,12 +415,11 @@ export function FavoritesProvider({ children }: Props) {
       }
       try {
         if (inList) {
-          const data = await jsonOrError(await fetch(`/api/collections/${id}/articles`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(snapshot) }));
-          const favorite = data.favorite as Favorite | undefined;
+          const { favorite } = await api<{ favorite?: Favorite }>(`/api/collections/${id}/articles`, { method: "POST", json: snapshot });
           if (favorite) setAdded((prev) => new Map(prev).set(favorite.id, favorite));
           if (!options?.silent) toast.success(`Ajouté à « ${target.name} ».`, { action: { label: "Voir", onClick: () => router.push(`/favoris?liste=${id}`) } });
         } else {
-          await jsonOrError(await fetch(`/api/collections/${id}/articles?workId=${snapshot.id}`, { method: "DELETE" }));
+          await api(`/api/collections/${id}/articles?workId=${snapshot.id}`, { method: "DELETE" });
           if (!options?.silent) toast(`Retiré de « ${target.name} ».`);
         }
         return true;
@@ -442,7 +432,7 @@ export function FavoritesProvider({ children }: Props) {
           applyIds(reverted);
           setAdded((prev) => { const n = new Map(prev); n.delete(snapshot.id); return n; });
         }
-        toast.error(e instanceof Error ? e.message : "La liste n'a pas pu être mise à jour.");
+        toast.error(listError(e, "La liste n'a pas pu être mise à jour."));
         return false;
       }
     },
@@ -461,14 +451,13 @@ export function FavoritesProvider({ children }: Props) {
     async (name, options) => {
       try {
         mutationSeq.current++;
-        const data = await jsonOrError(await fetch("/api/collections", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name, description: options?.description ?? "" }) }));
-        const collection = data.collection as Collection;
+        const { collection } = await api<{ collection: Collection }>("/api/collections", { method: "POST", json: { name, description: options?.description ?? "" } });
         applyCollections((prev) => (prev.some((c) => c.id === collection.id) ? prev : [...prev, collection]));
         // La liste vient d'être posée dans le miroir synchrone : l'ajout la trouve sans attendre un rendu.
         if (options?.snapshot) await setInCollection(collection.id, options.snapshot, true);
         return collection;
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "La liste n'a pas pu être créée.");
+        toast.error(listError(e, "La liste n'a pas pu être créée."));
         return null;
       }
     },
@@ -482,11 +471,11 @@ export function FavoritesProvider({ children }: Props) {
       mutationSeq.current++;
       applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
       try {
-        await jsonOrError(await fetch(`/api/collections/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(patch) }));
+        await api(`/api/collections/${id}`, { method: "PATCH", json: patch });
         return true;
       } catch (e) {
         applyCollections((prev) => prev.map((c) => (c.id === id ? previous : c)));
-        toast.error(e instanceof Error ? e.message : "La modification a échoué.");
+        toast.error(listError(e, "La modification a échoué."));
         return false;
       }
     },
@@ -499,12 +488,12 @@ export function FavoritesProvider({ children }: Props) {
       mutationSeq.current++;
       applyCollections((prev) => prev.filter((c) => c.id !== id));
       try {
-        await jsonOrError(await fetch(`/api/collections/${id}`, { method: "DELETE" }));
+        await api(`/api/collections/${id}`, { method: "DELETE" });
         toast("Liste supprimée.", { description: "Ses articles restent dans vos favoris." });
         return true;
       } catch (e) {
         applyCollections(() => previous);
-        toast.error(e instanceof Error ? e.message : "La suppression a échoué.");
+        toast.error(listError(e, "La suppression a échoué."));
         return false;
       }
     },
@@ -516,17 +505,17 @@ export function FavoritesProvider({ children }: Props) {
       try {
         mutationSeq.current++;
         if (shared) {
-          const data = await jsonOrError(await fetch(`/api/collections/${id}/share`, { method: "POST" }));
+          const data = await api<{ shareToken?: string }>(`/api/collections/${id}/share`, { method: "POST" });
           const token = String(data.shareToken);
           applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, shareToken: token } : c)));
           return token;
         }
-        await jsonOrError(await fetch(`/api/collections/${id}/share`, { method: "DELETE" }));
+        await api(`/api/collections/${id}/share`, { method: "DELETE" });
         applyCollections((prev) => prev.map((c) => (c.id === id ? { ...c, shareToken: null } : c)));
         toast("Lien désactivé.", { description: "Il ne fonctionne plus pour personne." });
         return null;
       } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Le partage n'a pas pu être modifié.");
+        toast.error(listError(e, "Le partage n'a pas pu être modifié."));
         return undefined;
       }
     },

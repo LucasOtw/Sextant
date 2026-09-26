@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { ClientUser } from "@/lib/session-shared";
+import { initialsOf } from "@/lib/format";
 import { useLogout } from "@/components/auth/use-logout";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 
@@ -25,7 +26,7 @@ export default function AccountMenu({ user }: { user: ClientUser }) {
   const { logout } = useLogout();
   // Session ouverte avant SEC-12 : l'état Firebase resté dans le navigateur est effacé (le cookie seul suffit).
   useEffect(() => purgeStoredFirebaseAuth(), []);
-  const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+  const initials = initialsOf(user);
 
   return (
     <DropdownMenu>

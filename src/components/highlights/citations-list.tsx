@@ -14,6 +14,7 @@ import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
 import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { undoToast } from "@/lib/undo-toast";
+import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 interface Props {
@@ -24,9 +25,9 @@ interface Props {
   retracted?: string[];
 }
 
-async function jsonOrError(res: Response) {
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new Error(data.error ?? "Échec.");
+/** Échec d'une modification : une session expirée le dit (plutôt que le « Non connecté. » brut de la route). */
+function citationError(e: unknown, fallback: string): string {
+  return needsSignIn(e) ? "Votre session a expiré : reconnectez-vous pour modifier vos citations." : errorMessage(e, fallback);
 }
 
 const ALL = "__all__";
@@ -70,24 +71,23 @@ export function CitationsList({ initial, collections, loadError = false, retract
     const previous = items.find((h) => h.id === id)?.note ?? "";
     setItems((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
     try {
-      await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ note }) }));
+      await api(`/api/highlights/${id}`, { method: "PATCH", json: { note } });
       return true;
     } catch (e) {
       setItems((prev) => prev.map((h) => (h.id === id ? { ...h, note: previous } : h)));
-      toast.error(e instanceof Error ? e.message : "La note n'a pas pu être enregistrée.");
+      toast.error(citationError(e, "La note n'a pas pu être enregistrée."));
       return false;
     }
   }
 
   async function restore(removed: Highlight) {
     try {
-      const res = await fetch("/api/highlights", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix, article: removed.article }) });
-      const data = (await res.json().catch(() => ({}))) as { highlight?: Highlight; error?: string };
-      if (!res.ok || !data.highlight) throw new Error(data.error ?? "Échec.");
-      const created = data.highlight;
+      const { text, page, note, source, prefix, suffix, article } = removed;
+      const { highlight: created } = await api<{ highlight?: Highlight }>("/api/highlights", { method: "POST", json: { text, page, note, source, prefix, suffix, article } });
+      if (!created) throw new Error();
       setItems((prev) => [created, ...prev]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "La citation n'a pas pu être rétablie.");
+      toast.error(citationError(e, "La citation n'a pas pu être rétablie."));
     }
   }
 
@@ -96,13 +96,13 @@ export function CitationsList({ initial, collections, loadError = false, retract
     const removed = previous.find((h) => h.id === id);
     setItems((prev) => prev.filter((h) => h.id !== id));
     try {
-      await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
+      await api(`/api/highlights/${id}`, { method: "DELETE" });
       if (removed) undoToast("Citation supprimée.", () => void restore(removed));
       else toast("Citation supprimée.");
       return true;
     } catch (e) {
       setItems(previous);
-      toast.error(e instanceof Error ? e.message : "La suppression a échoué.");
+      toast.error(citationError(e, "La suppression a échoué."));
       return false;
     }
   }

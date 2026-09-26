@@ -15,6 +15,7 @@ import { countFavorites } from "@/lib/favorites";
 import { countCollections } from "@/lib/collections";
 import { countHighlights } from "@/lib/highlights";
 import { countNotes } from "@/lib/notes";
+import { initialsOf } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
 
@@ -58,7 +59,7 @@ export default async function AccountPage() {
     countOrNull("compte.countHighlights", countHighlights(user.uid)),
     countOrNull("compte.countNotes", countNotes(user.uid)),
   ]);
-  const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+  const initials = initialsOf(user);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">

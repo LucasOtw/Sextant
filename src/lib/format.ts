@@ -137,6 +137,11 @@ export function formatDate(iso: string | null): string | null {
   return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d);
 }
 
+/** Initiales d'un compte pour l'avatar de repli : « Ada Lovelace » → « AL », « ada@exemple.fr » → « AE ». */
+export function initialsOf(user: { name?: string | null; email?: string | null }): string {
+  return (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+}
+
 /** Tronque un texte à N mots. */
 export function truncateWords(text: string, n: number): string {
   const words = text.split(/\s+/);

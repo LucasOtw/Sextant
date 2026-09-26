@@ -6,6 +6,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_HIGHLIGHT_TEXT, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
 import { undoToast } from "@/lib/undo-toast";
+import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 
 export type NewHighlight = Omit<HighlightInput, "article">;
 
@@ -23,13 +24,6 @@ interface HighlightsContext {
 }
 
 const Ctx = createContext<HighlightsContext | null>(null);
-
-async function jsonOrError(res: Response): Promise<Record<string, unknown>> {
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.status === 401) throw new Error("signin");
-  if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Échec.");
-  return data;
-}
 
 interface Props {
   enabled: boolean;
@@ -83,18 +77,15 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       }
       mutations.current++;
       try {
-        const data = await jsonOrError(
-          await fetch("/api/highlights", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...input, article: snapshot }) }),
-        );
-        const created = data.highlight as Highlight;
+        const { highlight: created } = await api<{ highlight: Highlight }>("/api/highlights", { method: "POST", json: { ...input, article: snapshot } });
         setHighlights((prev) => [created, ...prev]);
         toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
           description: "Retrouvez-le dans « Mes citations », avec sa source.",
         });
         return created;
       } catch (e) {
-        if (e instanceof Error && e.message === "signin") setSignIn(true);
-        else toast.error(e instanceof Error ? e.message : "Le passage n'a pas pu être enregistré.");
+        if (needsSignIn(e)) setSignIn(true);
+        else toast.error(errorMessage(e, "Le passage n'a pas pu être enregistré."));
         return null;
       }
     },
@@ -107,11 +98,11 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
     mutations.current++;
     setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
     try {
-      await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ note }) }));
+      await api(`/api/highlights/${id}`, { method: "PATCH", json: { note } });
       return true;
     } catch (e) {
       setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note: previous } : h)));
-      toast.error(e instanceof Error && e.message !== "signin" ? e.message : "La note n'a pas pu être enregistrée.");
+      toast.error(needsSignIn(e) ? "La note n'a pas pu être enregistrée." : errorMessage(e, "La note n'a pas pu être enregistrée."));
       return false;
     }
   }, []);
@@ -123,14 +114,14 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       mutations.current++;
       setHighlights((prev) => prev.filter((h) => h.id !== id));
       try {
-        await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
+        await api(`/api/highlights/${id}`, { method: "DELETE" });
         // « Annuler » recrée le passage (nouvel identifiant, même contenu).
         if (removed) undoToast("Citation supprimée.", () => void add({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix }));
         else toast("Citation supprimée.");
         return true;
       } catch (e) {
         setHighlights(previous);
-        toast.error(e instanceof Error && e.message !== "signin" ? e.message : "La suppression a échoué.");
+        toast.error(needsSignIn(e) ? "La suppression a échoué." : errorMessage(e, "La suppression a échoué."));
         return false;
       }
     },

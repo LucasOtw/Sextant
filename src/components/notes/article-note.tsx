@@ -7,6 +7,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_ARTICLE_NOTE, type ArticleNote as Note } from "@/lib/notes-shared";
+import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 
 interface Props {
   enabled: boolean;
@@ -42,20 +43,18 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         const value = pending.current;
         setStatus("saving");
         try {
-          const res = await fetch(url, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) });
-          const data = (await res.json().catch(() => ({}))) as { note?: Note | null; error?: string };
-          if (res.status === 401) {
-            setSignIn(true);
-            setStatus("idle");
-            return;
-          }
-          if (!res.ok) throw new Error(data.error ?? "Échec.");
+          const data = await api<{ note?: Note | null }>(url, { method: "PUT", json: { text: value, article: snapshot } });
           sent.current = value;
           setSavedAt(data.note?.updatedAt ?? null);
           setStatus("saved");
         } catch (e) {
+          if (needsSignIn(e)) {
+            setSignIn(true);
+            setStatus("idle");
+            return;
+          }
           setStatus("error");
-          toast.error(e instanceof Error ? e.message : "La note n'a pas pu être enregistrée.");
+          toast.error(errorMessage(e, "La note n'a pas pu être enregistrée."));
           return;
         }
       }
