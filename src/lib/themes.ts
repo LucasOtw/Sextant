@@ -46,9 +46,14 @@ export function themeMetaDescription(theme: Theme): string {
 
 /**
  * Adresse canonique d'une page de thème (QUAL-18) : ?q, ?sort, ?from… en sont des variantes de la même page, mais pas
- * ?page=2, qui liste d'autres articles. La pagination garde donc son numéro, pour que Google la parcoure (/search est
- * exclu par robots.txt : les thèmes sont le chemin de découverte des articles).
+ * ?page=2 ni ?topic=T…, qui listent d'autres articles (les pastilles de sujet sont des liens explorables). Sujet et
+ * numéro de page sont donc gardés, pour que Google parcoure ces listes au lieu d'ignorer une canonique qui désignerait
+ * une autre liste (/search est exclu par robots.txt : les thèmes sont le chemin de découverte des articles).
  */
-export function themeCanonical(slug: string, page: number | undefined): string {
-  return page && page > 1 ? `/theme/${slug}?page=${page}` : `/theme/${slug}`;
+export function themeCanonical(slug: string, page: number | undefined, topic?: string): string {
+  const params = new URLSearchParams();
+  if (topic) params.set("topic", topic);
+  if (page && page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return query ? `/theme/${slug}?${query}` : `/theme/${slug}`;
 }

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
@@ -14,6 +15,10 @@ const EXAMPLES = ["télétravail et bien-être", "transition énergétique ville
 
 // Accueil prérendu et régénéré toutes les 10 minutes au plus (PERF-01) ; la sélection OpenAlex reste en cache une heure.
 export const revalidate = 600;
+
+// Adresse canonique de l'accueil : ?utm_source=…, ?ref=… ou un ancien /?q=… servent le même HTML prérendu. Pas de
+// titre ni de description ici : ceux du layout restent ceux de l'accueil.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function HomePage() {
   return (

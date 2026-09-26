@@ -18,12 +18,12 @@ interface Props {
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const theme = themeBySlug((await params).slug);
-  const { page } = parseSearchParams(await searchParams);
+  const { page, topic } = parseSearchParams(await searchParams);
   // La page dans le titre : l'annonceur de routes de Next lit le nouveau titre à la pagination (A11Y-12).
   const title = pagedTitle(theme?.name ?? "Thématique", page);
   if (!theme) return { title };
   // Description propre au thème (au lieu de celle du site, répétée sur les 16 pages) et adresse canonique (QUAL-18).
-  return { title, description: themeMetaDescription(theme), alternates: { canonical: themeCanonical(theme.slug, page) } };
+  return { title, description: themeMetaDescription(theme), alternates: { canonical: themeCanonical(theme.slug, page, topic) } };
 }
 
 export default async function ThemePage({ params, searchParams }: Props) {

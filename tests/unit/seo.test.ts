@@ -85,6 +85,24 @@ describe("pages de thème (QUAL-18)", () => {
     expect(canonical({ page: "0" })).toBe("/theme/informatique");
     expect(canonical({ page: "abc" })).toBe("/theme/informatique");
   });
+
+  it("canonique d'un sujet (?topic) : gardé, avec la page au-delà de la première ; sujet mal formé ignoré", () => {
+    const canonical = (sp: Record<string, string>) => {
+      const { page, topic } = parseSearchParams(sp);
+      return themeCanonical("informatique", page, topic);
+    };
+    expect(canonical({ topic: "T10028" })).toBe("/theme/informatique?topic=T10028");
+    expect(canonical({ topic: "T10028", page: "3", sort: "recent" })).toBe("/theme/informatique?topic=T10028&page=3");
+    expect(canonical({ topic: "../x", page: "2" })).toBe("/theme/informatique?page=2");
+  });
+});
+
+describe("accueil", () => {
+  it("adresse canonique « / » : les variantes ?utm_source, ?ref ou /?q s'y rattachent", async () => {
+    const { metadata } = await import("@/app/page");
+    expect(metadata.alternates?.canonical).toBe("/");
+    expect(metadata.title).toBeUndefined();
+  });
 });
 
 describe("robots.txt et sitemap.xml (QUAL-17)", () => {
