@@ -33,12 +33,14 @@ function trackFocus() {
  * n'importe où. Retirer le focus du bouton pendant qu'il existe encore déclenche tout de suite ce retour.
  */
 function leaveToaster() {
+  if (typeof document === "undefined") return;
   const active = document.activeElement;
   if (active instanceof HTMLElement && active.closest(TOASTER)) active.blur();
 }
 
 /** Après le rendu : si le focus est resté sur <body> (élément d'origine retiré), le pose sur la cible de l'appelant ou le repli. */
 function recoverFocus(restoreFocus?: () => HTMLElement | null) {
+  if (typeof requestAnimationFrame === "undefined") return;
   requestAnimationFrame(() => {
     if (document.activeElement && document.activeElement !== document.body) return;
     const target = restoreFocus?.() ?? lastOutside;
