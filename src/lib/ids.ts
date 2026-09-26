@@ -15,6 +15,11 @@ export const BATCH_WORK_ID = /^W\d{2,15}$/;
 export const AUTHOR_ID = /^A\d{1,15}$/;
 export const INSTITUTION_ID = /^I\d{1,15}$/;
 export const TOPIC_ID = /^T\d{1,15}$/;
+/**
+ * DOI sous forme d'URL (« https://doi.org/10.1000/xyz »), tel qu'OpenAlex le donne : préfixe 10.NNNN, suffixe sans
+ * blanc, accolade ni antislash (un DOI réel n'en contient pas ; dans un export BibTeX, ils fermeraient le champ).
+ */
+export const DOI_URL = /^https?:\/\/doi\.org\/10\.\d{4,9}\/[^\s{}\\]+$/;
 /** Document Firestore créé par le serveur (liste, surlignage) : identifiant automatique, jamais un chemin. */
 export const DOC_ID = /^[A-Za-z0-9_-]{1,64}$/;
 

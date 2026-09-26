@@ -94,6 +94,23 @@ function bibtexKind(type: string): { kind: string; venueField: string } {
   return { kind: "article", venueField: "journal" };
 }
 
+/**
+ * Dernière page d'une pagination, ou null quand elle répète la première : les revues à numéro d'article (PeerJ, PLOS,
+ * eLife) donnent `first_page` == `last_page` (« e4375 »), qu'on ne cite pas en intervalle « e4375–e4375 ».
+ */
+function lastPageOf(b: Biblio | null | undefined): string | null {
+  return b?.lastPage && b.lastPage !== b.firstPage ? b.lastPage : null;
+}
+
+/**
+ * Chemin d'un DOI pour le champ BibTeX `doi`, lu en verbatim par biblatex : on n'y échappe ni `_` ni `%`, mais on retire
+ * accolades, antislashs et blancs, qu'un DOI valide ne contient jamais et qui fermeraient le champ au milieu (un
+ * instantané client non vérifié pourrait sinon injecter des champs ou des commandes dans l'export d'une liste partagée).
+ */
+function bibDoi(doi: string): string {
+  return doiPath(doi).replace(/[{}\\\s]/g, "");
+}
+
 function bibtexEntry(s: CitationSource, key: string, retracted: boolean): string {
   const { kind, venueField } = bibtexKind(s.type);
   const lines = [`@${kind}{${key},`, `  title = {${bibField(s.title)}},`];
@@ -103,8 +120,10 @@ function bibtexEntry(s: CitationSource, key: string, retracted: boolean): string
   const b = s.biblio;
   if (b?.volume) lines.push(`  volume = {${bibField(b.volume)}},`);
   if (b?.issue) lines.push(`  number = {${bibField(b.issue)}},`);
-  if (b?.firstPage) lines.push(`  pages = {${bibField(b.firstPage)}${b.lastPage ? `--${bibField(b.lastPage)}` : ""}},`);
-  if (s.doi) lines.push(`  doi = {${doiPath(s.doi)}},`);
+  const lastPage = lastPageOf(b);
+  if (b?.firstPage) lines.push(`  pages = {${bibField(b.firstPage)}${lastPage ? `--${bibField(lastPage)}` : ""}},`);
+  const doi = s.doi ? bibDoi(s.doi) : "";
+  if (doi) lines.push(`  doi = {${doi}},`);
   if (retracted) lines.push(`  note = {${RETRACTED_BIBTEX_NOTE}},`);
   lines.push("}");
   return lines.join("\n");
@@ -135,7 +154,8 @@ export function formatApa(s: CitationSource, retracted = false): string {
   const b = s.biblio;
   const vol = b?.volume ? `, ${b.volume}` : "";
   const issue = b?.issue ? `(${b.issue})` : "";
-  const pages = b?.firstPage ? `, ${b.firstPage}${b.lastPage ? `–${b.lastPage}` : ""}` : "";
+  const lastPage = lastPageOf(b);
+  const pages = b?.firstPage ? `, ${b.firstPage}${lastPage ? `–${lastPage}` : ""}` : "";
   const venue = s.venue ? ` ${s.venue}${vol}${issue}${pages}.` : "";
   return `${authors} ${year}. ${s.title}.${venue}${s.doi ? ` ${s.doi}` : ""}${retracted ? RETRACTED_APA_SUFFIX : ""}`;
 }

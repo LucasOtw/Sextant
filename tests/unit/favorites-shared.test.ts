@@ -54,6 +54,16 @@ describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
     expect(loose).toMatchObject({ year: null, citedByCount: 0, type: "article", isOa: true, venue: null, topic: null, authorNames: [] });
   });
 
+  it("DOI : forme 10.NNNN/suffixe exigée, accolades, antislash et blancs refusés (injection BibTeX)", () => {
+    const doi = (value: string) => sanitizeSnapshot(makeSnapshot({ doi: value }))!.doi;
+    expect(doi("https://doi.org/10.7717/peerj.4375")).toBe("https://doi.org/10.7717/peerj.4375");
+    expect(doi("https://doi.org/10.1/x}, title = {\\input{/etc/passwd}")).toBeNull();
+    expect(doi("https://doi.org/10.1000/a b")).toBeNull();
+    expect(doi("https://doi.org/10.1000/a\\b")).toBeNull();
+    expect(doi("https://doi.org/pas-un-doi")).toBeNull();
+    expect(doi(`https://doi.org/10.1000/${"x".repeat(300)}`)).toBeNull();
+  });
+
   it("snapshotFromWork produit un instantané que l'assainissement accepte sans rien changer", () => {
     const s = snapshotFromWork(makeWork());
     expect(s.id).toBe("W4200000001");

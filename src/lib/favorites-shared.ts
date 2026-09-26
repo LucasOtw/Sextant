@@ -1,5 +1,5 @@
 import type { Work } from "@/lib/openalex";
-import { DOC_ID, shortId, WORK_ID } from "@/lib/ids";
+import { DOC_ID, DOI_URL, shortId, WORK_ID } from "@/lib/ids";
 import type { Biblio, CitationSource } from "@/lib/citation";
 import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { cleanText, fold } from "@/lib/text";
@@ -159,7 +159,7 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
     authorNames: Array.isArray(o.authorNames) ? o.authorNames.map((n) => cleanText(n, 120)).filter(Boolean).slice(0, MAX_SNAPSHOT_AUTHORS) : [],
     venue: cleanText(o.venue, 300) || null,
     year: typeof o.year === "number" && Number.isFinite(o.year) ? Math.trunc(o.year) : null,
-    doi: typeof o.doi === "string" && /^https?:\/\/doi\.org\//.test(o.doi) ? o.doi.slice(0, 300) : null,
+    doi: typeof o.doi === "string" && o.doi.length <= 300 && DOI_URL.test(o.doi) ? o.doi : null,
     type: cleanText(o.type, 40) || "article",
     isOa: Boolean(o.isOa),
     citedByCount: typeof o.citedByCount === "number" && Number.isFinite(o.citedByCount) ? Math.max(0, Math.trunc(o.citedByCount)) : 0,

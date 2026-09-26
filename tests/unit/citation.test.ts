@@ -124,6 +124,22 @@ describe("un même article est cité de la même façon partout (QUAL-02)", () =
     expect(formatBibtex(none)).not.toMatch(/volume|number|pages/);
   });
 
+  it("page unique (numéro d'article, first_page == last_page) : pas d'intervalle « e1234–e1234 »", () => {
+    const work = makeWork({ biblio: { volume: "6", issue: null, first_page: "e1234", last_page: "e1234" } });
+    for (const source of [citationFromWork(work), snapshotFromWork(work)]) {
+      expect(formatApa(source)).toContain(" PeerJ, 6, e1234. https://doi.org/");
+      expect(formatBibtex(source)).toContain("  pages = {e1234},");
+    }
+  });
+
+  it("DOI d'un instantané non vérifié : accolades, antislash et blancs retirés du champ doi, `_` et `%` gardés", () => {
+    const source = makeSnapshot({ doi: "https://doi.org/10.1/x}, title = {\\input{/etc/passwd}" });
+    const bib = formatBibtex(source);
+    expect(bib).toContain("  doi = {10.1/x,title=input/etc/passwd},");
+    expect(bib.match(/^  title = /gm)).toHaveLength(1);
+    expect(formatBibtex(makeSnapshot({ doi: "https://doi.org/10.1000/a_b%c" }))).toContain("  doi = {10.1000/a_b%c},");
+  });
+
   it("sans auteur : pas de champ author vide, « Anonyme » en APA, clé en « anon »", () => {
     const source = citationFromWork(makeWork({ authorships: [] }));
     expect(formatBibtex(source)).not.toContain("author");
