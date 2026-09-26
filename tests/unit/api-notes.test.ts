@@ -39,7 +39,15 @@ describe("PUT /api/notes/[workId]", () => {
     const res = await put("W4200000001", { text: "  Idée\u0000 clé \n\n\n\nsuite ", article: makeSnapshot() });
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("private, no-store");
-    expect(notes.setNote).toHaveBeenCalledWith(`u${n}`, expect.objectContaining({ id: "W4200000001", title: "Open access and citation advantage" }), "Idée clé \n\nsuite");
+    expect(notes.setNote).toHaveBeenCalledWith(`u${n}`, expect.objectContaining({ id: "W4200000001", title: "Open access and citation advantage" }), "Idée clé \n\nsuite", true);
+  });
+
+  it("OpenAlex en panne : instantané du client passé comme non vérifié (il n'écrase pas celui d'une note existante)", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    openalex.getWork.mockRejectedValue(new Error("504"));
+    const res = await put("W4200000001", { text: "x", article: makeSnapshot({ title: "Titre du client" }) });
+    expect(res.status).toBe(200);
+    expect(notes.setNote.mock.calls[0][3]).toBe(false);
   });
 
   it("stocke l'instantané d'OpenAlex, pas le titre envoyé par le client (SEC-06)", async () => {

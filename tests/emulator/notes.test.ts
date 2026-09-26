@@ -51,4 +51,18 @@ describe("listAllNotes (export RGPD)", () => {
     expect(await listAllNotes(uid, 7)).toHaveLength(7);
     expect(await listAllNotes(newUid())).toEqual([]);
   });
+
+  it("instantané non vérifié (OpenAlex en panne) : écrit pour une nouvelle note, jamais par-dessus celui d'une note existante", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    await setNote(uid, snap(1, { title: "Titre vérifié" }), "Première");
+    const out = await setNote(uid, snap(1, { title: "Titre du client" }), "Première, revue", false);
+    const doc = await db.doc(`users/${uid}/notes/W1`).get();
+    expect(doc.get("text")).toBe("Première, revue");
+    expect(doc.get("article.title")).toBe("Titre vérifié");
+    expect(out?.article.title).toBe("Titre vérifié");
+
+    await setNote(uid, snap(2, { title: "Titre du client" }), "Nouvelle", false);
+    expect((await db.doc(`users/${uid}/notes/W2`).get()).get("article.title")).toBe("Titre du client");
+  });
 });

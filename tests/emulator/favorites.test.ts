@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, removeFavorite } from "@/lib/favorites";
+import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, RESTORE_WINDOW_MS, removeFavorite, storedSnapshot } from "@/lib/favorites";
 import { addToCollection, createCollection, listCollections } from "@/lib/collections";
 import { MAX_FAVORITES } from "@/lib/favorites-shared";
 import { exists, newUid, snap, userDoc } from "./helpers";
@@ -110,5 +110,45 @@ describe("favoris (transactions sur émulateur)", () => {
 
     await addFavorite(uid, snap(3));
     expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W3"], favoritesCount: 1 });
+  });
+
+  it("instantané non vérifié (OpenAlex en panne) : jamais par-dessus un favori existant, marqué s'il est nouveau (SEC-06)", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    await addFavorite(uid, snap(1, { title: "Titre vérifié" }));
+    // Rangé dans une liste pendant une panne, avec les métadonnées d'une liste partagée.
+    await addToCollection(uid, (await createCollection(uid, "Thèse")).id, snap(1, { title: "Titre du client" }), false);
+    await addFavorite(uid, snap(1, { title: "Titre du client" }), false);
+    const kept = await db.doc(`users/${uid}/favorites/W1`).get();
+    expect(kept.get("title")).toBe("Titre vérifié");
+    expect(kept.get("unverified")).toBeUndefined();
+
+    // Nouveau favori pendant la panne : écrit, marqué ; un ajout vérifié ensuite le remplace et retire la marque.
+    await addFavorite(uid, snap(2, { title: "Titre du client" }), false);
+    expect((await db.doc(`users/${uid}/favorites/W2`).get()).get("unverified")).toBe(true);
+    await addFavorite(uid, snap(2, { title: "Titre du client" }));
+    const verified = await db.doc(`users/${uid}/favorites/W2`).get();
+    expect(verified.get("unverified")).toBeUndefined();
+    expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W1", "W2"], favoritesCount: 2 });
+  });
+
+  it("storedSnapshot : favori stocké, ou dernier retiré depuis moins de 10 minutes (« Annuler »)", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    await addFavorite(uid, snap(1, { title: "Gardé" }));
+    await addFavorite(uid, snap(2, { title: "Retiré" }));
+    expect(await storedSnapshot(uid, "W1")).toMatchObject({ id: "W1", title: "Gardé" });
+    expect(await storedSnapshot(uid, "W9")).toBeNull();
+
+    await removeFavorite(uid, "W2");
+    expect(await storedSnapshot(uid, "W2")).toMatchObject({ id: "W2", title: "Retiré" });
+    // Rétabli : le document favori est réécrit tel qu'il était.
+    await addFavorite(uid, (await storedSnapshot(uid, "W2"))!, false);
+    expect((await db.doc(`users/${uid}/favorites/W2`).get()).get("title")).toBe("Retiré");
+
+    // Au-delà du délai : plus rien à rétablir.
+    await removeFavorite(uid, "W2");
+    await db.doc(`users/${uid}`).update({ "lastRemovedFavorite.at": Timestamp.fromMillis(Date.now() - RESTORE_WINDOW_MS - 1_000) });
+    expect(await storedSnapshot(uid, "W2")).toBeNull();
   });
 });

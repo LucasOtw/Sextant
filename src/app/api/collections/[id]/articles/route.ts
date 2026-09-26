@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserStrict, strictRefusal } from "@/lib/auth";
 import { addToCollection, CollectionNotFoundError, CollectionsLimitError, removeFromCollection } from "@/lib/collections";
-import { FavoritesLimitError, verifiedSnapshot } from "@/lib/favorites";
+import { checkSnapshot, FavoritesLimitError, storedCheck } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -37,11 +37,12 @@ export async function POST(req: Request, ctx: Ctx) {
   }
   const input = sanitizeSnapshot(body);
   if (!input) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
-  // Métadonnées rechargées depuis OpenAlex : celles du client ne servent qu'à valider l'identifiant (SEC-06).
-  const snapshot = await verifiedSnapshot(input);
-  if (!snapshot) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   try {
-    return NextResponse.json(await addToCollection(g.user.uid, g.id, snapshot), { status: 201, headers: PRIVATE });
+    // Métadonnées rechargées depuis OpenAlex : celles du client ne servent qu'à valider l'identifiant (SEC-06).
+    // Article disparu d'OpenAlex mais déjà en favori : son instantané stocké, sans réécriture.
+    const checked = (await checkSnapshot(input)) ?? (await storedCheck(g.user.uid, input.id));
+    if (!checked) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
+    return NextResponse.json(await addToCollection(g.user.uid, g.id, checked.snapshot, checked.verified), { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof CollectionsLimitError || e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
