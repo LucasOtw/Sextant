@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { HighlighterIcon, PenLineIcon, QuoteIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HighlightItem } from "@/components/highlights/highlight-item";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { ManualCitationDialog } from "@/components/highlights/manual-citation-dialog";
+import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
+import { isAlreadyHighlighted, passagesFrom, splitSentences } from "@/lib/sentences";
 
 interface Props {
   /** Barre latérale du lecteur : plus dense, et la page d'un surlignage fait défiler le PDF. */
@@ -15,21 +17,46 @@ interface Props {
   /** Ce qu'on peut surligner ici : le résumé de la fiche, le PDF dans le lecteur. Sans les deux, il reste la saisie à la main. */
   hasAbstract?: boolean;
   hasPdf?: boolean;
+  /** Texte du résumé (fiche article) : ses phrases peuvent être surlignées sans sélection à la souris (A11Y-18). */
+  abstract?: string;
+  /** Langue du résumé (attribut `lang`). */
+  lang?: string;
 }
 
 /** « Mes surlignages » pour un article : la liste, l'ajout à la main, le lien vers toutes les citations. */
-export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = true, hasPdf = compact }: Props) {
-  const { enabled, retracted, highlights, updateNote, remove, requestSignIn } = useHighlights();
+export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = true, hasPdf = compact, abstract, lang }: Props) {
+  const { enabled, retracted, highlights, add, updateNote, remove, requestSignIn } = useHighlights();
   const [manual, setManual] = useState(false);
+  const [picker, setPicker] = useState(false);
+  const sentences = useMemo(() => (abstract && !compact ? splitSentences(abstract, lang ?? "fr") : []), [abstract, compact, lang]);
   const where = compact ? "du PDF" : hasAbstract && hasPdf ? "du résumé, ou du PDF dans le lecteur" : hasAbstract ? "du résumé" : hasPdf ? "du PDF dans le lecteur" : null;
+  // Au clavier (ou quand la sélection est malaisée) : le bouton « Surligner des phrases » ouvre la liste des phrases.
+  const keyboard = compact ? " Au clavier : « Surligner des phrases », au-dessus du PDF." : sentences.length > 0 ? " Au clavier : « Surligner des phrases du résumé »." : "";
   const howTo = where
-    ? `Sélectionnez une phrase ${where} : un bouton « Surligner » apparaît.`
+    ? `Sélectionnez une phrase ${where} : un bouton « Surligner » apparaît.${keyboard}`
     : "Le résumé et le texte intégral ne sont pas disponibles ici : notez vos citations à la main en lisant l'article ailleurs.";
 
+  const abstractHighlights = highlights.filter((h) => h.source === "abstract").map((h) => h.text);
+  async function saveSentences(indexes: number[]) {
+    if (!abstract) return false;
+    let ok = true;
+    for (const p of passagesFrom(abstract, sentences, indexes)) {
+      ok = Boolean(await add({ source: "abstract", text: p.text, prefix: p.prefix, suffix: p.suffix, page: null, note: "" })) && ok;
+    }
+    return ok;
+  }
+
   const addButton = (
-    <Button variant="outline" size={compact ? "sm" : "default"} onClick={() => (enabled ? setManual(true) : requestSignIn())} className="bg-card">
-      <PenLineIcon /> Ajouter une citation à la main
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      {sentences.length > 0 && (
+        <Button variant="outline" size="default" onClick={() => (enabled ? setPicker(true) : requestSignIn())} className="bg-card">
+          <HighlighterIcon /> Surligner des phrases du résumé
+        </Button>
+      )}
+      <Button variant="outline" size={compact ? "sm" : "default"} onClick={() => (enabled ? setManual(true) : requestSignIn())} className="bg-card">
+        <PenLineIcon /> Ajouter une citation à la main
+      </Button>
+    </div>
   );
 
   return (
@@ -65,6 +92,18 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
         </>
       )}
       <ManualCitationDialog open={manual} onOpenChange={setManual} />
+      {sentences.length > 0 && (
+        <SentencePickerDialog
+          open={picker}
+          onOpenChange={setPicker}
+          title="Surligner des phrases"
+          description="Cochez les phrases du résumé à garder : elles seront marquées dans le résumé et rangées dans « Mes citations », avec leur source."
+          sentences={sentences}
+          lang={lang}
+          isHighlighted={(s) => isAlreadyHighlighted(s.text, abstractHighlights)}
+          onSave={saveSentences}
+        />
+      )}
     </section>
   );
 }

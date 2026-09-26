@@ -8,6 +8,7 @@ import { FavoritesProvider } from "@/components/favorites/favorites-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { isAuthEnabled } from "@/lib/auth";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
+import { ANNOUNCER_ID } from "@/lib/announce";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -48,7 +49,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <SiteFooter />
           </FavoritesProvider>
         </SessionProvider>
+        {/* Toasts d'information : 3,5 s. Ceux qui proposent « Annuler » durent plus longtemps (lib/undo-toast.ts). */}
         <Toaster position="bottom-right" duration={3500} />
+        {/* Région d'annonce aux lecteurs d'écran, montée vide (lib/announce.ts) : « Copié », nombre de résultats… */}
+        <div id={ANNOUNCER_ID} aria-live="polite" aria-atomic="true" className="sr-only" />
       </body>
     </html>
   );

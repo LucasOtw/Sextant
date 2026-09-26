@@ -42,6 +42,15 @@ describe("markSpans (surlignage dans le lecteur PDF)", () => {
     markSpans(el, ["   "]);
     expect(marked(el)).toEqual([]);
   });
+
+  it("expose le marquage aux lecteurs d'écran (rôle mark), et le retire avec la marque", () => {
+    const el = textLayer(["un", "deux"]);
+    for (const s of el.querySelectorAll("span")) s.setAttribute("role", "presentation");
+    markSpans(el, ["deux"]);
+    expect([...el.querySelectorAll("span")].map((s) => s.getAttribute("role"))).toEqual(["presentation", "mark"]);
+    markSpans(el, ["un"]);
+    expect([...el.querySelectorAll("span")].map((s) => s.getAttribute("role"))).toEqual(["mark", "presentation"]);
+  });
 });
 
 describe("stockage local : historique et suggestions écartées", () => {

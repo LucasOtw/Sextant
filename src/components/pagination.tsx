@@ -1,6 +1,7 @@
-import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { ResultsLink } from "@/components/results-status";
 import { buttonVariants } from "@/components/ui/button";
+import { lastPageOf } from "@/lib/search-params";
 import { cn } from "cn";
 
 interface Props {
@@ -11,11 +12,8 @@ interface Props {
   hrefFor: (page: number) => string;
 }
 
-/** OpenAlex limite la pagination simple à 10 000 résultats. */
-const MAX_RESULTS = 10_000;
-
 export function Pagination({ page, perPage, total, hrefFor }: Props) {
-  const lastPage = Math.max(1, Math.ceil(Math.min(total, MAX_RESULTS) / perPage));
+  const lastPage = lastPageOf(total, perPage);
   if (lastPage <= 1) return null;
 
   const link = (p: number, label: string, icon: React.ReactNode, disabled: boolean) =>
@@ -27,10 +25,11 @@ export function Pagination({ page, perPage, total, hrefFor }: Props) {
         {label}
       </span>
     ) : (
-      <Link href={hrefFor(p)} className={buttonVariants({ variant: "outline" })} rel={p < page ? "prev" : "next"}>
+      // La liste suivante prendra le focus : ce lien disparaît pendant le chargement (A11Y-12).
+      <ResultsLink href={hrefFor(p)} className={buttonVariants({ variant: "outline" })} rel={p < page ? "prev" : "next"}>
         {icon}
         {label}
-      </Link>
+      </ResultsLink>
     );
 
   return (

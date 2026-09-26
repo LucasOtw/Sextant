@@ -8,22 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
+import { useCopy } from "@/hooks/use-copy";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
-function useCopy() {
-  const [copied, setCopied] = useState(false);
-  async function copy(value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("Presse-papiers indisponible : sélectionnez le texte pour le copier.");
-    }
-  }
-  return { copied, copy };
-}
+const COPY_FAILURE = "Presse-papiers indisponible : sélectionnez le texte pour le copier.";
 
 /** Bloc technique secondaire : libellé et bouton sur une ligne, texte en dessous, retour à la ligne plutôt que défilement. */
 function CopyBlock({ label, value }: { label: string; value: string }) {
@@ -32,7 +21,7 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
     <div className="flex min-w-0 flex-col gap-1.5">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-medium">{label}</p>
-        <Button size="sm" variant="ghost" onClick={() => void copy(value)}>
+        <Button size="sm" variant="ghost" onClick={() => void copy(value, { failure: COPY_FAILURE })}>
           {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}
         </Button>
       </div>
@@ -48,7 +37,7 @@ function ConnectorUrl({ url }: { url: string }) {
     <div className="flex flex-col gap-3 rounded-xl bg-accent-brand/8 p-4 ring-1 ring-accent-brand/25">
       <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
       <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[13px] leading-relaxed ring-1 ring-foreground/10">{url}</p>
-      <Button size="lg" className="w-full" onClick={() => void copy(url)}>
+      <Button size="lg" className="w-full" onClick={() => void copy(url, { message: "Adresse copiée.", failure: COPY_FAILURE })}>
         {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Adresse copiée" : "Copier l'adresse"}
       </Button>
     </div>

@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   abstractFromInvertedIndex,
+  contentLang,
   formatAuthors,
   formatCount,
   formatDate,
@@ -36,6 +37,7 @@ import {
   openAccessUrl,
   publisherUrl,
   toApa,
+  titleLang,
   toBibtex,
   typeLabel,
   venueName,
@@ -143,7 +145,8 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </div>
 
-        <h1 className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
+        {/* Titre et résumé dans la langue de l'article : lus avec la bonne voix par les lecteurs d'écran (A11Y-04). */}
+        <h1 lang={titleLang(work)} className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
 
         <Authors work={work} />
 
@@ -195,8 +198,8 @@ export default async function ArticlePage({ params }: Props) {
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
             </a>
           )}
-          <CopyButton text={toApa(work)} label="Citer (APA)" size="lg" className="bg-card px-3.5" />
-          <CopyButton text={toBibtex(work)} label="BibTeX" size="lg" className="bg-card px-3.5" />
+          <CopyButton text={toApa(work)} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
+          <CopyButton text={toBibtex(work)} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
           {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
           {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
         </div>
@@ -229,7 +232,7 @@ export default async function ArticlePage({ params }: Props) {
             )}
           </h2>
           {abstract ? (
-            <HighlightableAbstract text={abstract} className="mt-3 text-[17px] leading-relaxed" />
+            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 text-[17px] leading-relaxed" />
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -243,7 +246,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </section>
 
-        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} />
+        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} abstract={abstract ?? undefined} lang={contentLang(work.language)} />
 
         <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialNote} />
 

@@ -4,8 +4,10 @@ import type { Work } from "@/lib/openalex";
 import { shortId } from "@/lib/openalex";
 import {
   abstractFromInvertedIndex,
+  contentLang,
   formatAuthors,
   formatCount,
+  titleLang,
   truncateWords,
   typeLabel,
   venueName,
@@ -54,7 +56,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
         )}
       </div>
 
-      <h3 className={cn("title-display leading-snug", compact ? "text-lg" : "text-xl sm:text-[1.4rem]")}>
+      <h3 lang={titleLang(work)} className={cn("title-display leading-snug", compact ? "text-lg" : "text-xl sm:text-[1.4rem]")}>
         <Link href={href} className="after:absolute after:inset-0 hover:text-accent-brand">
           {workTitle(work)}
         </Link>
@@ -70,7 +72,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
       </p>
 
       {!compact && abstract && (
-        <p className="text-[15px] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
+        <p lang={contentLang(work.language)} className="text-[15px] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
       )}
 
       <div className="mt-auto flex items-center gap-1 pt-1 text-sm text-muted-foreground">

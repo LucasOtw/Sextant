@@ -1,11 +1,12 @@
 import { Suspense } from "react";
 import { EmptyState } from "@/components/empty-state";
 import { Pagination } from "@/components/pagination";
+import { RESULTS_ID, ResultsStatus } from "@/components/results-status";
 import { SearchFilters } from "@/components/search-filters";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OpenAlexError, searchWorks, type SearchParams } from "@/lib/openalex";
-import { buildHref, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, resultsMessage, type RawSearchParams } from "@/lib/search-params";
 
 interface Props {
   base: string;
@@ -29,6 +30,19 @@ export function Results({ base, sp, params, filterDefaults }: Props) {
   );
 }
 
+/**
+ * Liste sans résultat (aucun, erreur, quota) : le message remplace la liste, il est annoncé et reçoit le focus comme
+ * elle (cible `RESULTS_ID`).
+ */
+function Empty({ title, hint, retryHref }: { title: string; hint: string; retryHref?: string }) {
+  return (
+    <div id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 outline-none">
+      <ResultsStatus message={title} />
+      <EmptyState title={title} hint={hint} retryHref={retryHref} inResults />
+    </div>
+  );
+}
+
 async function List({ base, sp, params }: Props) {
   let page: Awaited<ReturnType<typeof searchWorks>>;
   try {
@@ -36,32 +50,31 @@ async function List({ base, sp, params }: Props) {
   } catch (e) {
     if (e instanceof OpenAlexError && e.isRateLimited) {
       return (
-        <EmptyState
+        <Empty
           title="OpenAlex est très sollicité en ce moment."
           hint="Notre source limite temporairement les recherches. Réessayez dans une minute, les résultats reviendront."
           retryHref={buildHref(base, sp, {})}
         />
       );
     }
-    return <EmptyState title="La recherche a échoué." hint="OpenAlex ne répond pas pour le moment. Réessayez dans quelques instants." retryHref={buildHref(base, sp, {})} />;
+    return <Empty title="La recherche a échoué." hint="OpenAlex ne répond pas pour le moment. Réessayez dans quelques instants." retryHref={buildHref(base, sp, {})} />;
   }
 
   if (page.results.length === 0) {
-    return (
-      <EmptyState
-        title="Aucun résultat."
-        hint="Essayez des mots-clés plus généraux, en anglais, ou retirez un filtre."
-      />
-    );
+    return <Empty title="Aucun résultat." hint="Essayez des mots-clés plus généraux, en anglais, ou retirez un filtre." />;
   }
 
   const total = page.meta.count;
+  const current = params.page ?? 1;
+  const perPage = params.perPage ?? 20;
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[15px] text-muted-foreground">
+      <ResultsStatus message={resultsMessage(total, current, perPage, params.q)} />
+      {/* Titre de la liste, focalisable : cible du focus après un changement de page (sinon renvoyé sur la page, A11Y-12). */}
+      <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-[15px] font-normal text-muted-foreground outline-none">
         {new Intl.NumberFormat("fr-FR").format(total)} résultat{total > 1 ? "s" : ""}
         {params.q && <> pour « {params.q} »</>}
-      </p>
+      </h2>
       <ul className="flex flex-col gap-3">
         {page.results.map((w, i) => (
           <li
@@ -74,8 +87,8 @@ async function List({ base, sp, params }: Props) {
         ))}
       </ul>
       <Pagination
-        page={params.page ?? 1}
-        perPage={params.perPage ?? 20}
+        page={current}
+        perPage={perPage}
         total={total}
         hrefFor={(p) => buildHref(base, sp, { page: p > 1 ? p : undefined })}
       />
@@ -85,7 +98,8 @@ async function List({ base, sp, params }: Props) {
 
 function ListSkeleton() {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" aria-busy="true">
+      <p role="status" className="sr-only">Chargement des résultats…</p>
       <Skeleton className="h-4 w-40" />
       {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
     </div>

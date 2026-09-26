@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckIcon, CopyIcon, QuoteIcon, Trash2Icon } from "lucide-react";
-import { toast } from "sonner";
+import { CheckIcon, CopyIcon, PenLineIcon, QuoteIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useCopy } from "@/hooks/use-copy";
 import { Textarea } from "@/components/ui/textarea";
 import { citationBlock, MAX_NOTE, sourceLabel, type Highlight } from "@/lib/highlights-shared";
 import { cn } from "cn";
@@ -27,12 +27,16 @@ interface Props {
 
 /** Un passage retenu : la citation au surligneur, sa source, une note modifiable, copier avec la référence, supprimer. */
 export function HighlightItem({ highlight: h, retracted = false, onNote, onDelete, onGoToPage, compact = false, deferPaint = false }: Props) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyText } = useCopy();
   const [note, setNote] = useState(h.note);
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
   /** Vrai dès que l'édition se ferme : le blur émis par Chrome au démontage du champ ne doit pas ré-enregistrer. */
   const closedRef = useRef(false);
+  /** Bouton qui ouvre l'édition (« Ajouter une note… » ou « Modifier la note ») : le focus y revient à la fermeture. */
+  const noteButtonRef = useRef<HTMLButtonElement>(null);
+  /** Levé par Échap et Cmd/Ctrl+Entrée : sans cela, le démontage du champ ferait retomber le focus sur la page (A11Y-06). */
+  const restoreFocusRef = useRef(false);
   const long = h.text.length > LONG_TEXT;
   const unsaved = editing && note.trim() !== h.note;
 
@@ -44,20 +48,19 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
     return () => window.removeEventListener("beforeunload", warn);
   }, [unsaved]);
 
+  // Pas au blur : l'utilisateur est déjà parti ailleurs (Tab, clic), on ne lui reprend pas le focus.
+  useEffect(() => {
+    if (editing || !restoreFocusRef.current) return;
+    restoreFocusRef.current = false;
+    noteButtonRef.current?.focus();
+  }, [editing]);
+
   function startEditing() {
     closedRef.current = false;
     setEditing(true);
   }
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(citationBlock(h, retracted));
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("Presse-papiers indisponible.");
-    }
-  }
+  const copy = () => void copyText(citationBlock(h, retracted), { message: "Passage copié avec sa référence.", failure: "Presse-papiers indisponible." });
 
   async function saveNote() {
     if (closedRef.current) return;
@@ -106,8 +109,14 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
           onChange={(e) => setNote(e.target.value)}
           onBlur={() => void saveNote()}
           onKeyDown={(e) => {
-            if (e.key === "Escape") cancelNote();
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void saveNote();
+            if (e.key === "Escape") {
+              restoreFocusRef.current = true;
+              cancelNote();
+            }
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+              restoreFocusRef.current = true;
+              void saveNote();
+            }
           }}
           maxLength={MAX_NOTE}
           rows={2}
@@ -115,12 +124,24 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
           aria-label="Note"
           className="mt-2 text-base md:text-sm"
         />
+      ) : h.note ? (
+        // La note est du texte, lu comme tel ; « Modifier la note » est un bouton à part, dans la barre d'actions. Dans le
+        // nom d'un bouton, une note (jusqu'à 1 000 caractères) serait masquée par son aria-label ou interminable (A11Y-06).
+        <p className="mt-2 pl-6 text-sm whitespace-pre-line wrap-break-word text-foreground">
+          <span className="sr-only">Votre note : </span>
+          {h.note}
+        </p>
       ) : (
-        <button type="button" onClick={startEditing} aria-label={h.note ? "Modifier la note" : "Ajouter une note"} className={cn("mt-2 block w-full rounded-md pl-6 text-left text-sm whitespace-pre-line", h.note ? "text-foreground" : "text-muted-foreground italic hover:text-foreground")}>
-          {h.note || "Ajouter une note…"}
+        <button ref={noteButtonRef} type="button" onClick={startEditing} className="mt-2 block w-full rounded-md pl-6 text-left text-sm text-muted-foreground italic hover:text-foreground">
+          Ajouter une note…
         </button>
       )}
       <div className="mt-2.5 flex flex-wrap items-center gap-1 pl-4">
+        {h.note && !editing && (
+          <Button ref={noteButtonRef} variant="ghost" size="sm" onClick={startEditing}>
+            <PenLineIcon /> Modifier la note
+          </Button>
+        )}
         <Button variant="ghost" size="sm" onClick={copy} aria-label={`Copier le passage « ${h.text.slice(0, 40)}… » avec sa référence`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
         <Button variant="ghost" size="sm" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${h.text.slice(0, 40)}… »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
       </div>

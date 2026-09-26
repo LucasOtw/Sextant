@@ -2,16 +2,19 @@
 
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist";
-import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
+import { AlertTriangleIcon, ChevronDownIcon, HighlighterIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
 import { useHighlights } from "@/components/highlights/highlights-provider";
-import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
+import { cleanSelectionText, readSelection, SELECTION_STATUS, SelectionButton } from "@/components/highlights/selection-button";
+import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
+import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
 import { cn } from "cn";
 
 type PdfLib = typeof import("pdfjs-dist");
@@ -394,7 +397,10 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       const page = (e as CustomEvent<number>).detail;
       // Saut instantané : un défilement doux ferait rendre les pages traversées, dont la hauteur peut changer en route
       // (documents mêlant plusieurs formats), et la cible, calculée au départ, ne serait plus au bon endroit.
-      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "auto", block: "start" });
+      const el = containerRef.current?.querySelector<HTMLElement>(`[data-page="${page}"]`);
+      el?.scrollIntoView({ behavior: "auto", block: "start" });
+      // Le focus suit (« aller à la page » depuis « Mes surlignages ») : le lecteur d'écran lit la page, pas la barre latérale.
+      el?.focus({ preventScroll: true });
     };
     window.addEventListener(GOTO_EVENT, onGoto);
     return () => window.removeEventListener(GOTO_EVENT, onGoto);
@@ -422,6 +428,44 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       window.getSelection()?.removeAllRanges();
       setSelection(null);
     }
+  }
+
+  // Surligner sans sélection à la souris (A11Y-18) : les phrases d'une page, en cases à cocher.
+  const [picker, setPicker] = useState<{ page: number; input: string; text: string; sentences: Sentence[] | null; error: string | null } | null>(null);
+  const pickerLoad = useRef(0);
+
+  async function loadPickerPage(page: number, input = String(page)) {
+    if (!doc) return;
+    const run = ++pickerLoad.current;
+    setPicker({ page, input, text: "", sentences: null, error: null });
+    try {
+      const text = pdfPageText((await (await doc.getPage(page)).getTextContent()).items);
+      if (run === pickerLoad.current) setPicker({ page, input, text, sentences: splitSentences(text), error: null });
+    } catch {
+      if (run === pickerLoad.current) setPicker({ page, input, text: "", sentences: [], error: "Le texte de cette page n'a pas pu être lu." });
+    }
+  }
+
+  /** Page en haut de l'écran (sous l'en-tête collant) : point de départ du choix de phrases. */
+  function currentPage(): number {
+    const pages = containerRef.current?.querySelectorAll<HTMLElement>("[data-page]") ?? [];
+    for (const el of pages) if (el.getBoundingClientRect().bottom > 96) return Number(el.dataset.page) || 1;
+    return 1;
+  }
+
+  function changePickerPage(input: string) {
+    const n = Number(input);
+    if (doc && Number.isInteger(n) && n >= 1 && n <= doc.numPages) void loadPickerPage(n, input);
+    else setPicker((p) => (p ? { ...p, input } : p));
+  }
+
+  async function savePicked(indexes: number[]) {
+    if (!picker?.sentences) return false;
+    let ok = true;
+    for (const p of passagesFrom(picker.text, picker.sentences, indexes)) {
+      ok = Boolean(await add({ source: "pdf", text: p.text, page: picker.page, prefix: "", suffix: "", note: "" })) && ok;
+    }
+    return ok;
   }
 
   if (error) {
@@ -484,7 +528,12 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       )}
       {doc && lib && width > 0 && (
         <>
-          <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner.</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner, ou choisissez des phrases.</p>
+            <Button variant="outline" size="sm" className="bg-card" onClick={() => void loadPickerPage(currentPage())}>
+              <HighlighterIcon /> Surligner des phrases
+            </Button>
+          </div>
           {interrupted && (
             <div role="alert" className="rounded-xl border border-dashed p-4 text-[15px]">
               <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
@@ -507,7 +556,39 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           ))}
         </>
       )}
+      {/* Le bouton flottant apparaît sans prévenir : on l'annonce (texte fixe pendant que la sélection s'étend, lu une fois). */}
+      <p role="status" className="sr-only">{selection ? SELECTION_STATUS : ""}</p>
       <SelectionButton rect={selection?.rect ?? null} onClick={() => void save()} busy={busy} />
+      {doc && (
+        <SentencePickerDialog
+          open={picker !== null}
+          onOpenChange={(open) => {
+            if (open) return;
+            pickerLoad.current++;
+            setPicker(null);
+          }}
+          title="Surligner des phrases"
+          description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans « Mes citations », avec leur page."
+          sentences={picker?.sentences ?? null}
+          error={picker?.error}
+          isHighlighted={(s) => isAlreadyHighlighted(s.text, (byPage.get(picker?.page ?? 0) ?? NO_HIGHLIGHTS).map((h) => h.text))}
+          onSave={savePicked}
+        >
+          <label className="flex items-center gap-2 text-sm font-medium">
+            Page
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={doc.numPages}
+              value={picker?.input ?? ""}
+              onChange={(e) => changePickerPage(e.target.value)}
+              className="h-9 w-24 text-base md:text-sm"
+            />
+            <span className="font-normal text-muted-foreground">sur {doc.numPages}</span>
+          </label>
+        </SentencePickerDialog>
+      )}
     </div>
   );
 }
@@ -536,6 +617,8 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
   const [failed, setFailed] = useState(false);
 
   // Rendu paresseux : une page se dessine quand elle approche de l'écran, et libère son canevas quand elle s'en éloigne.
+  // Sa couche texte reste (A11Y-22) : lecteur d'écran, recherche du navigateur (Ctrl+F) et navigation rapide trouvent
+  // le texte de toutes les pages déjà affichées, pas seulement des 3 ou 4 proches de l'écran.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -549,7 +632,6 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
             canvas.width = 0;
             canvas.height = 0;
           }
-          textRef.current?.replaceChildren();
           setRendered(false);
         }
       },
@@ -604,13 +686,22 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
     };
   }, [visible, width, doc, lib, pageNumber]);
 
+  // Largeur changée (rotation, fenêtre) : la couche texte gardée d'une page éloignée n'est plus à l'échelle (elle
+  // déborderait de la page et la recherche Ctrl+F viserait à côté). Elle sera refaite quand la page reviendra.
   useEffect(() => {
-    if (rendered && textRef.current) markSpans(textRef.current, highlights.map((h) => h.text));
+    if (!visible) textRef.current?.replaceChildren();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seulement au changement de largeur, pas quand la page s'éloigne
+  }, [width]);
+
+  useEffect(() => {
+    if (textRef.current) markSpans(textRef.current, highlights.map((h) => h.text));
   }, [rendered, highlights]);
 
   return (
-    <div ref={ref} data-page={pageNumber} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10" style={{ width, height: rendered ? undefined : width * aspect }}>
-      <canvas ref={canvasRef} aria-label={`Page ${pageNumber}`} />
+    // Repère « Page N » pour les lecteurs d'écran, focalisable par « aller à la page ». Le canevas redessine le texte de
+    // la couche texte : masqué, pour ne pas être lu comme une image de plus.
+    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10 outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
+      <canvas ref={canvasRef} aria-hidden />
       <div ref={textRef} className="textLayer" />
       {!rendered && visible && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500" aria-live="polite">

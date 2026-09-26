@@ -210,3 +210,18 @@ const LANGUAGE_NAMES: Record<string, string> = {
 export function languageName(code: string): string {
   return LANGUAGE_NAMES[code.toLowerCase()] ?? code.toUpperCase();
 }
+
+/**
+ * Attribut `lang` d'un passage dans la langue de l'article (WCAG 3.1.2) : les lecteurs d'écran changent alors de voix.
+ * Code OpenAlex (ISO 639-1, détecté automatiquement) validé en balise de langue ; undefined s'il est absent, mal formé
+ * ou français (le passage hérite alors du `fr` de la page).
+ */
+export function contentLang(code: string | null | undefined): string | undefined {
+  const c = code?.trim().toLowerCase();
+  return c && c !== "fr" && /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/.test(c) ? c : undefined;
+}
+
+/** Langue du titre : celle de l'article, sauf quand le titre manque et que « Sans titre » (français) le remplace. */
+export function titleLang(w: Pick<Work, "title" | "display_name" | "language">): string | undefined {
+  return w.title || w.display_name ? contentLang(w.language) : undefined;
+}

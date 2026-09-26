@@ -3,10 +3,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cleanSelectionText } from "@/components/highlights/selection-button";
 import { useHighlights } from "@/components/highlights/highlights-provider";
-import { readSelection, SelectionButton } from "@/components/highlights/selection-button";
+import { readSelection, SELECTION_STATUS, SelectionButton } from "@/components/highlights/selection-button";
 
 interface Props {
   text: string;
+  /** Langue du résumé (attribut `lang`, A11Y-04) ; absente : celle de la page. */
+  lang?: string;
   className?: string;
 }
 
@@ -34,7 +36,7 @@ function locate(full: string, text: string, prefix: string, suffix: string): [nu
 }
 
 /** Le résumé de l'article : sélectionner un passage propose de le surligner ; les passages déjà retenus sont marqués. */
-export function HighlightableAbstract({ text, className }: Props) {
+export function HighlightableAbstract({ text, lang, className }: Props) {
   const { highlights, add } = useHighlights();
   const ref = useRef<HTMLParagraphElement>(null);
   const [selection, setSelection] = useState<ReturnType<typeof readSelection>>(null);
@@ -97,17 +99,20 @@ export function HighlightableAbstract({ text, className }: Props) {
 
   return (
     <>
-      <p ref={ref} className={className}>
+      <p ref={ref} lang={lang} className={className}>
         {segments.map((s, i) =>
           s.id ? (
             <mark key={s.id} data-highlight={s.id}>
-              <span className="sr-only" data-sr>Début du passage surligné. </span>{s.text}<span className="sr-only" data-sr> Fin du passage surligné.</span>
+              {/* Repères en français dans un résumé qui peut être dans une autre langue : `lang` explicite. */}
+              <span className="sr-only" lang="fr" data-sr>Début du passage surligné. </span>{s.text}<span className="sr-only" lang="fr" data-sr> Fin du passage surligné.</span>
             </mark>
           ) : (
             <span key={i}>{s.text}</span>
           ),
         )}
       </p>
+      {/* Le bouton flottant apparaît sans prévenir : on l'annonce (texte fixe pendant que la sélection s'étend, lu une fois). */}
+      <p role="status" className="sr-only">{selection ? SELECTION_STATUS : ""}</p>
       <SelectionButton rect={selection?.rect ?? null} onClick={() => void save()} busy={busy} />
     </>
   );

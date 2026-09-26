@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SearchBox } from "@/components/search-box";
 import { Results } from "@/components/results";
-import { parseSearchParams, type RawSearchParams } from "@/lib/search-params";
+import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Badge } from "@/components/ui/badge";
 import { getTopicsForField } from "@/lib/openalex";
 import { THEMES, themeBySlug } from "@/lib/themes";
@@ -19,9 +19,10 @@ export function generateStaticParams() {
   return THEMES.map((t) => ({ slug: t.slug }));
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const theme = themeBySlug((await params).slug);
-  return { title: theme?.name ?? "Thématique" };
+  // La page dans le titre : l'annonceur de routes de Next lit le nouveau titre à la pagination (A11Y-12).
+  return { title: pagedTitle(theme?.name ?? "Thématique", parseSearchParams(await searchParams).page) };
 }
 
 export default async function ThemePage({ params, searchParams }: Props) {

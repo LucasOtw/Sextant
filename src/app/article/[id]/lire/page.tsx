@@ -8,7 +8,7 @@ import { ReaderLayout } from "@/components/highlights/pdf-reader";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, workTitle } from "@/lib/format";
+import { embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, titleLang, workTitle } from "@/lib/format";
 import { listHighlights } from "@/lib/highlights";
 import { getWork, OpenAlexError, shortId, type Work } from "@/lib/openalex";
 import { logError, recover } from "@/lib/log";
@@ -53,7 +53,7 @@ export default async function ReaderPage({ params }: Props) {
           <ArrowLeftIcon /> Fiche article
         </Link>
         {/* Sur mobile, le titre passe en entier sous les deux boutons au lieu d'être haché dans une colonne étroite. */}
-        <h1 className="title-display order-last basis-full wrap-break-word text-xl sm:order-none sm:min-w-0 sm:flex-1 sm:basis-0">{workTitle(work)}</h1>
+        <h1 lang={titleLang(work)} className="title-display order-last basis-full wrap-break-word text-xl sm:order-none sm:min-w-0 sm:flex-1 sm:basis-0">{workTitle(work)}</h1>
         <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "ghost", size: "sm" })}>
           <ExternalLinkIcon /> PDF original
         </a>

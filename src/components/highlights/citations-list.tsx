@@ -13,6 +13,7 @@ import { ShowMore, useRevealFocus } from "@/components/show-more";
 import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
 import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
+import { undoToast } from "@/lib/undo-toast";
 
 interface Props {
   initial: Highlight[];
@@ -92,7 +93,8 @@ export function CitationsList({ initial, collections, loadError = false, retract
     setItems((prev) => prev.filter((h) => h.id !== id));
     try {
       await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
-      toast("Citation supprimée.", removed ? { action: { label: "Annuler", onClick: () => void restore(removed) } } : undefined);
+      if (removed) undoToast("Citation supprimée.", () => void restore(removed));
+      else toast("Citation supprimée.");
       return true;
     } catch (e) {
       setItems(previous);

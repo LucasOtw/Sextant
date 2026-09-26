@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { Results } from "@/components/results";
-import { parseSearchParams, type RawSearchParams } from "@/lib/search-params";
+import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAuthorProfile, getTopic, getWork } from "@/lib/openalex";
 import { workTitle } from "@/lib/format";
@@ -14,9 +14,9 @@ interface Props {
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { q } = await searchParams;
-  const query = Array.isArray(q) ? q[0] : q;
-  return { title: query ? `« ${query} »` : "Recherche" };
+  const { q, page } = parseSearchParams(await searchParams);
+  // La page dans le titre : l'annonceur de routes de Next lit le nouveau titre à la pagination (A11Y-12).
+  return { title: pagedTitle(q ? `« ${q} »` : "Recherche", page) };
 }
 
 export default async function SearchPage({ searchParams }: Props) {

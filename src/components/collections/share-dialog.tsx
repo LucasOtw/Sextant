@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { CheckIcon, CopyIcon, Link2Icon, Link2OffIcon, Loader2Icon } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { shareUrl, type Collection } from "@/lib/collections-shared";
+import { useCopy } from "@/hooks/use-copy";
 
 interface Props {
   open: boolean;
@@ -19,18 +19,10 @@ interface Props {
 export function ShareDialog({ open, onOpenChange, collection }: Props) {
   const { setShared } = useFavorites();
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyText } = useCopy();
   const url = collection.shareToken ? shareUrl(typeof window === "undefined" ? "" : window.location.origin, collection.shareToken) : null;
 
-  async function copy(link: string) {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("Presse-papiers indisponible : sélectionnez le lien pour le copier.");
-    }
-  }
+  const copy = (link: string) => copyText(link, { message: "Lien de partage copié.", failure: "Presse-papiers indisponible : sélectionnez le lien pour le copier." });
 
   async function enable() {
     setBusy(true);
