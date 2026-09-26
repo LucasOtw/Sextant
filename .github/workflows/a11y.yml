@@ -1,0 +1,41 @@
+# Banc d'accessibilité (QUAL-43) : Playwright + axe sur chaque aperçu Vercel réussi (tests/a11y.spec.ts).
+# Il vise l'URL de l'aperçu plutôt qu'un serveur lancé dans la CI : aucun compte de service de production ici.
+# Les pages lisent la base de production ; le banc bloque toute requête autre que GET/HEAD.
+# Aperçus protégés (Deployment Protection) : secret VERCEL_AUTOMATION_BYPASS_SECRET (« Protection Bypass for
+# Automation » de Vercel), envoyé en en-tête x-vercel-protection-bypass au seul site testé.
+name: a11y
+
+on: deployment_status
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a11y-${{ github.event.deployment.sha }}
+  cancel-in-progress: true
+
+jobs:
+  a11y:
+    if: github.event.deployment_status.state == 'success' && startsWith(github.event.deployment_status.environment, 'Preview')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      BASE_URL: ${{ github.event.deployment_status.target_url }}
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.deployment.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:a11y
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: rapport-a11y
+          path: playwright-report/
+          retention-days: 7

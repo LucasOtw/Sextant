@@ -53,11 +53,31 @@ function readServiceAccount(): { ok: true; sa: ServiceAccount } | { ok: false; r
  * (et laisse une ligne dans les journaux) au lieu de faire échouer chaque connexion après le passage par Google.
  */
 export function isAdminConfigured(): boolean {
-  return readServiceAccount().ok;
+  return emulatorProjectId() !== null || readServiceAccount().ok;
+}
+
+/**
+ * Projet de l'émulateur local (tests `npm run test:emulator`), ou null hors émulateur. Si FIRESTORE_EMULATOR_HOST est
+ * défini, aucun identifiant n'est chargé : le SDK parle à l'émulateur. Seul un projet `demo-…` est accepté (Firebase
+ * garantit qu'un tel projet n'atteint jamais un service réel), jamais celui de .firebaserc (la production).
+ */
+function emulatorProjectId(): string | null {
+  if (!process.env.FIRESTORE_EMULATOR_HOST) return null;
+  const projectId = process.env.GCLOUD_PROJECT || "demo-sextant";
+  if (!projectId.startsWith("demo-")) {
+    throw new Error(`Émulateur Firestore : projet « ${projectId} » refusé, seul un projet demo-… est accepté.`);
+  }
+  return projectId;
 }
 
 async function adminApp(): Promise<App> {
   if (app) return app;
+  const emulated = emulatorProjectId();
+  if (emulated) {
+    const { getApps, initializeApp } = await import("firebase-admin/app");
+    app = getApps()[0] ?? initializeApp({ projectId: emulated });
+    return app;
+  }
   const read = readServiceAccount();
   if (!read.ok) throw new Error(read.reason);
   const { sa } = read;
@@ -94,7 +114,8 @@ export async function adminDb(): Promise<Firestore> {
   const { getFirestore, initializeFirestore } = await import("firebase-admin/firestore");
   const firebaseApp = await adminApp();
   try {
-    db = initializeFirestore(firebaseApp, { preferRest: true });
+    // Sur l'émulateur (tests), gRPC : en REST, le SDK Firestore exige des identifiants Google même pour l'émulateur.
+    db = initializeFirestore(firebaseApp, { preferRest: !process.env.FIRESTORE_EMULATOR_HOST });
   } catch (e) {
     // Instance déjà créée avec d'autres réglages dans ce processus (rechargement à chaud en dev) : on la reprend.
     // Journalisé : un repli inattendu en gRPC (en production) doit rester visible.

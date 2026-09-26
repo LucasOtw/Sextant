@@ -1,0 +1,53 @@
+# Mises à jour hebdomadaires, groupées pour limiter le nombre de PR, vers dev (mises à jour de version ; les correctifs
+# de sécurité automatiques de Dependabot visent la branche par défaut du dépôt et ignorent groupes et exclusions).
+# Les autres montées majeures arrivent à part, une PR chacune.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    open-pull-requests-limit: 5
+    groups:
+      # Next et eslint-config-next sont figés ensemble (version exacte) : ils montent dans la même PR.
+      next:
+        patterns: [next, eslint-config-next]
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # Montée majeure de Next : manuelle, guide de migration à lire (node_modules/next/dist/docs/).
+      - dependency-name: next
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint-config-next
+        update-types: ["version-update:semver-major"]
+      # Node 24 en production (engines) : les types suivent la version majeure du runtime.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+      # Migrations à mener sur une branche dédiée, jamais par une PR automatique : la CI y serait verte à tort
+      # (Firebase Admin est remplacé par un module factice dans les tests unitaires). firebase-admin 14 exige Node 22+
+      # et touche verifySessionCookie, recursiveDelete et les transactions : vérifier à la main les connexions, et les
+      # transactions avec `npm run test:emulator`. typescript 7 et eslint 10 changent l'outillage.
+      - dependency-name: firebase-admin
+        update-types: ["version-update:semver-major"]
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Paris
+    groups:
+      actions:
+        patterns: ["*"]

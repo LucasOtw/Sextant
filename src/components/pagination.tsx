@@ -20,7 +20,12 @@ export function Pagination({ page, perPage, total, hrefFor }: Props) {
 
   const link = (p: number, label: string, icon: React.ReactNode, disabled: boolean) =>
     disabled ? (
-      <span className={cn(buttonVariants({ variant: "outline" }), "pointer-events-none opacity-50")}>{icon}{label}</span>
+      // Lien inactif exposé comme tel (aria-disabled) : les lecteurs d'écran l'annoncent « indisponible », et un
+      // composant inactif est exempté du contraste minimal (WCAG 1.4.3), d'où l'opacité réduite.
+      <span role="link" aria-disabled="true" className={cn(buttonVariants({ variant: "outline" }), "pointer-events-none opacity-50")}>
+        {icon}
+        {label}
+      </span>
     ) : (
       <Link href={hrefFor(p)} className={buttonVariants({ variant: "outline" })} rel={p < page ? "prev" : "next"}>
         {icon}

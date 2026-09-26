@@ -53,6 +53,7 @@ function NameForm({ initialName, initialDescription, submitLabel, onSubmit, onCl
   return (
     <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
       <Input
+        // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'un formulaire que l'utilisateur vient d'ouvrir : le focus y est attendu.
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}

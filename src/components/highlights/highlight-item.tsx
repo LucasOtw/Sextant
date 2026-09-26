@@ -98,6 +98,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
       </div>
       {editing ? (
         <Textarea
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- édition de la note ouverte par le bouton « Modifier / Ajouter une note » : le focus y est attendu.
           autoFocus
           value={note}
           onChange={(e) => setNote(e.target.value)}
