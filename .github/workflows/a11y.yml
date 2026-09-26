@@ -37,11 +37,11 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.acces.outputs.ok == 'true'
         with:
           ref: ${{ github.event.deployment.sha }}
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         if: steps.acces.outputs.ok == 'true'
         with:
           node-version-file: .nvmrc
@@ -52,7 +52,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - if: steps.acces.outputs.ok == 'true'
         run: npm run test:a11y
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: rapport-a11y
