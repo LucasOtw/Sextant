@@ -41,9 +41,17 @@ const FEEDBACK_TAG = "feedback";
  */
 export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list"], { tags: [FEEDBACK_TAG], revalidate: 60 });
 
-/** À appeler après une écriture sur `feedback` (sujet publié, vote, compte supprimé) : la prochaine visite relit la base. */
+/**
+ * À appeler après une écriture sur `feedback` (sujet publié, vote, compte supprimé) : la prochaine visite relit la base.
+ * Jamais bloquant : l'écriture est faite, un échec d'invalidation (hors contexte de requête Next, cache indisponible)
+ * laisse au pire la liste en retard de 60 s ; il ne doit pas transformer un vote ou une suppression réussis en erreur.
+ */
 export function invalidateFeedbackList(): void {
-  revalidateTag(FEEDBACK_TAG, { expire: 0 });
+  try {
+    revalidateTag(FEEDBACK_TAG, { expire: 0 });
+  } catch (e) {
+    logError("feedback.invalidate", e);
+  }
 }
 
 /**

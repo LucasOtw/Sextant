@@ -34,7 +34,7 @@ describe("POST /api/summary", () => {
     id = `W42000000${10 + ++n}`;
     ai.activeProvider.mockReturnValue("mistral");
     ai.modelFor.mockReturnValue("ministral-8b-latest");
-    ai.completeOpenAiCompatible.mockResolvedValue({ text: "**Question** posée\n- Méthode", complete: true });
+    ai.completeOpenAiCompatible.mockResolvedValue({ text: "**Question** posée\n- Méthode", complete: true, finish: "stop" });
     summaries.readStoredSummary.mockResolvedValue(null);
     openalex.getWork.mockResolvedValue(makeWork({ abstract_inverted_index: { Un: [0], résumé: [1], original: [2] } }));
   });
@@ -65,13 +65,13 @@ describe("POST /api/summary", () => {
 
   it("condensé coupé par la limite de jetons : montré à ce visiteur, mais ni enregistré ni gardé en mémoire", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    ai.completeOpenAiCompatible.mockResolvedValue({ text: "Question posée, méthode, résul", complete: false });
+    ai.completeOpenAiCompatible.mockResolvedValue({ text: "Question posée, méthode, résul", complete: false, finish: "length" });
     const res = await post(id);
     expect(res.status).toBe(200);
     expect(await res.json()).toMatchObject({ summary: "Question posée, méthode, résul" });
     expect(summaries.storeSummary).not.toHaveBeenCalled();
     // Pas en mémoire non plus : la demande suivante régénère.
-    ai.completeOpenAiCompatible.mockResolvedValue({ text: "Condensé complet.", complete: true });
+    ai.completeOpenAiCompatible.mockResolvedValue({ text: "Condensé complet.", complete: true, finish: "stop" });
     expect(await (await post(id)).json()).toMatchObject({ summary: "Condensé complet." });
     expect(ai.completeOpenAiCompatible).toHaveBeenCalledTimes(2);
   });
@@ -89,16 +89,18 @@ describe("POST /api/summary", () => {
   });
 });
 
-describe("completeOpenAiCompatible : réponse coupée par la limite de jetons", () => {
+describe("completeOpenAiCompatible : seule une fin normale compte comme complète", () => {
   it.each([
     ["stop", true],
     ["length", false],
     ["model_length", false],
-    [undefined, true],
+    ["error", false],
+    ["content_filter", false],
+    [undefined, false],
   ])("finish_reason %s → complet : %s", async (finish, complete) => {
     const { completeOpenAiCompatible } = await vi.importActual<typeof import("@/lib/ai")>("@/lib/ai");
     vi.stubEnv("MISTRAL_API_KEY", "cle-de-test");
     vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ message: { content: " Texte " }, finish_reason: finish }] })));
-    await expect(completeOpenAiCompatible("mistral", "consigne", "résumé")).resolves.toEqual({ text: "Texte", complete });
+    await expect(completeOpenAiCompatible("mistral", "consigne", "résumé")).resolves.toEqual({ text: "Texte", complete, finish: finish ?? null });
   });
 });

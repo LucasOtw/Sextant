@@ -108,11 +108,11 @@ export async function POST(req: Request) {
     .join("\n");
 
   try {
-    const { text: raw, complete } = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
+    const { text: raw, complete, finish } = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
     const text = stripMarkdown(raw);
     // Seuls les succès complets sont gardés, jamais les erreurs : une panne passagère ne se fige pas, et un condensé
     // coupé par la limite de jetons, montré tel quel à ce visiteur, n'est servi ni aux autres ni aux déploiements suivants.
-    if (!complete) logError("summary.truncated", new Error("Condensé coupé par la limite de jetons."), { work: id, model });
+    if (!complete) logError("summary.incomplete", new Error("Condensé incomplet : non enregistré."), { work: id, model, finish });
     if (text && complete) {
       remember(cacheKey, text);
       storeSummary(model, PROMPT_VERSION, id, text);
@@ -178,5 +178,7 @@ async function completeAnthropic(model: string, userContent: string): Promise<Ai
     .join("\n")
     .trim();
   if (!text) throw new AiError("Réponse vide.", 502);
-  return { text, complete: response.stop_reason !== "max_tokens" && response.stop_reason !== "model_context_window_exceeded" };
+  // Fin normale seulement : fin de tour ou séquence d'arrêt (jamais max_tokens, fenêtre de contexte, pause, refus).
+  const finish = response.stop_reason ?? null;
+  return { text, complete: finish === "end_turn" || finish === "stop_sequence", finish };
 }

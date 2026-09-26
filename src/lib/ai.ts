@@ -100,14 +100,19 @@ export class AiError extends Error {
   }
 }
 
-/** Réponse d'un modèle : le texte, et s'il est complet (pas coupé par la limite de jetons). */
+/**
+ * Réponse d'un modèle : le texte, s'il est complet, et la raison d'arrêt telle que le fournisseur l'a donnée. Complet =
+ * fin normale seulement (liste d'autorisation) : une réponse coupée par la limite de jetons, une erreur en cours de
+ * génération ou un filtre de contenu peut être montrée, mais ne doit pas être gardée pour tous.
+ */
 export interface AiCompletion {
   text: string;
   complete: boolean;
+  finish: string | null;
 }
 
-/** Raisons d'arrêt d'une réponse coupée par la limite de jetons (Groq, OpenRouter : `length` ; Mistral : `model_length`). */
-const TRUNCATED_FINISH = new Set(["length", "model_length", "max_tokens"]);
+/** Fin normale d'une génération « chat/completions » (Groq, Mistral et OpenRouter renvoient tous `stop`). */
+const NORMAL_FINISH = "stop";
 
 /**
  * Appel « chat/completions » (Groq, Mistral, OpenRouter). Renvoie le texte de la réponse et s'il est complet : un
@@ -170,5 +175,6 @@ export async function completeOpenAiCompatible(
   const choice = data.choices?.[0];
   const text = choice?.message?.content?.trim();
   if (!text) throw new AiError("Réponse vide du fournisseur IA.", 502);
-  return { text, complete: !TRUNCATED_FINISH.has(choice?.finish_reason ?? "") };
+  const finish = choice?.finish_reason ?? null;
+  return { text, complete: finish === NORMAL_FINISH, finish };
 }
