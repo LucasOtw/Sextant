@@ -177,6 +177,12 @@ const CORE_SOURCE = "primary_location.source.is_core:true";
  * n'ont presque jamais de bibliographie extraite : on l'exige côté API, puis `isPlausiblyRecent` écarte le reste.
  */
 const HAS_REFERENCES = "referenced_works_count:>0";
+
+/**
+ * Garde-fous qualité des suggestions (articles proches par sujet, « Pour vous ») : types vérifiés, revues indexées,
+ * résumé présent. La sélection de l'accueil (getFeaturedWorks) filtre à part, sur `type:article|review` (QUAL-41).
+ */
+const QUALITY_FILTERS = [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, "has_abstract:true"];
 const RECENT_SELECT_EXTRA = ",created_date,referenced_works_count";
 
 /** Identifiants attribués avant 2022 (héritage Microsoft Academic, `W1…`-`W3…`) : texte forcément antérieur. */
@@ -287,6 +293,33 @@ async function get<T>(
   return (await res.json()) as T;
 }
 
+/** Notice unique (article, sujet, auteur) : null si OpenAlex ne la connaît pas (404), les autres erreurs remontent. */
+async function getOrNull<T>(path: string, params: Record<string, string | number | undefined>, revalidate: number): Promise<T | null> {
+  try {
+    return await get<T>(path, params, revalidate);
+  } catch (e) {
+    if (e instanceof OpenAlexError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+/**
+ * Travaux par identifiant (`ids.openalex:A|B|…`), dans l'ordre demandé : identifiants raccourcis, doublons retirés,
+ * 50 au plus (une page), `filters` avant le filtre d'identifiants. Ceux qu'OpenAlex ne renvoie pas (filtrés,
+ * inconnus) sont omis. Une seule mécanique pour les trois lectures par identifiants (QUAL-41).
+ */
+async function fetchByIds<T extends { id: string }>(ids: string[], filters: string[], select: string): Promise<T[]> {
+  const short = [...new Set(ids.map(shortId).filter(Boolean))].slice(0, 50);
+  if (short.length === 0) return [];
+  const page = await get<Page<T>>(
+    "/works",
+    { filter: [...filters, `ids.openalex:${short.join("|")}`].join(","), "per-page": short.length, select },
+    3600,
+  );
+  const byId = new Map(page.results.map((w) => [shortId(w.id), w]));
+  return short.map((id) => byId.get(id)).filter((w): w is T => Boolean(w));
+}
+
 /** Réexporté pour le code serveur ; le client l'importe de lib/ids (QUAL-15). */
 export { shortId };
 
@@ -329,12 +362,7 @@ export async function searchWorks(p: SearchParams): Promise<Page<Work>> {
 }
 
 export async function getWork(id: string): Promise<Work | null> {
-  try {
-    return await get<Work>(`/works/${encodeURIComponent(shortId(id))}`, { select: DETAIL_SELECT }, 3600);
-  } catch (e) {
-    if (e instanceof OpenAlexError && e.status === 404) return null;
-    throw e;
-  }
+  return getOrNull<Work>(`/works/${encodeURIComponent(shortId(id))}`, { select: DETAIL_SELECT }, 3600);
 }
 
 /** Valeurs au plus dans un filtre « ou » d'OpenAlex (`ids.openalex:A|B|…`). */
@@ -361,29 +389,17 @@ export async function getRetractedIds(ids: string[]): Promise<Set<string>> {
   return new Set(pages.flatMap((p) => p.results.map((w) => shortId(w.id).toUpperCase())));
 }
 
-/** Récupère plusieurs travaux par identifiant, dans l'ordre demandé. */
-export async function getWorksByIds(ids: string[]): Promise<Work[]> {
-  const short = ids.map(shortId).filter(Boolean).slice(0, 50);
-  if (short.length === 0) return [];
-  const page = await get<Page<Work>>(
-    "/works",
-    {
-      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, `ids.openalex:${short.join("|")}`].join(","),
-      "per-page": short.length,
-      select: LIST_SELECT,
-    },
-    3600,
-  );
-  const byId = new Map(page.results.map((w) => [shortId(w.id), w]));
-  return short.map((id) => byId.get(id)).filter((w): w is Work => Boolean(w));
+/** Récupère plusieurs travaux par identifiant (types vérifiés, sans paratexte ni rétracté), dans l'ordre demandé. */
+function getWorksByIds(ids: string[]): Promise<Work[]> {
+  return fetchByIds<Work>(ids, [...BASE_FILTERS, `type:${VERIFIED_TYPES}`], LIST_SELECT);
 }
 
 /** Travaux du même sujet principal, hors l'article courant. */
-export async function getWorksBySameTopic(topicId: string, excludeId: string, n = 6): Promise<Work[]> {
+async function getWorksBySameTopic(topicId: string, excludeId: string, n: number): Promise<Work[]> {
   const page = await get<Page<Work>>(
     "/works",
     {
-      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, "has_abstract:true"].join(","),
+      filter: [...QUALITY_FILTERS, `primary_topic.id:${shortId(topicId)}`].join(","),
       sort: "cited_by_count:desc",
       "per-page": n + 1,
       select: LIST_SELECT,
@@ -393,34 +409,29 @@ export async function getWorksBySameTopic(topicId: string, excludeId: string, n 
   return page.results.filter((w) => shortId(w.id) !== shortId(excludeId)).slice(0, n);
 }
 
+/**
+ * Articles proches d'un article : ses apparentés OpenAlex (related_works, dans leur ordre), complétés par les plus
+ * cités de son sujet principal quand il y en a moins de `fillBelow` (`topicCount` demandés, sans doublon ni l'article
+ * lui-même). Une seule règle pour la fiche et l'outil MCP get_related_articles (QUAL-39) ; chacun coupe à sa taille.
+ */
+export async function getSimilarWorks(work: Pick<Work, "id" | "related_works" | "primary_topic">, fillBelow: number, topicCount: number): Promise<Work[]> {
+  const related = await getWorksByIds(work.related_works ?? []);
+  if (related.length >= fillBelow || !work.primary_topic) return related;
+  const more = await getWorksBySameTopic(work.primary_topic.id, work.id, topicCount);
+  const seen = new Set(related.map((w) => w.id));
+  return [...related, ...more.filter((w) => !seen.has(w.id))];
+}
+
+type SeedMeta = Pick<Work, "id" | "display_name" | "title" | "primary_topic" | "related_works">;
+
 /** Sujet principal et articles apparentés (related_works) des graines d'une recommandation, dans l'ordre demandé. */
-export async function getSeedMeta(ids: string[]): Promise<Pick<Work, "id" | "display_name" | "title" | "primary_topic" | "related_works">[]> {
-  const short = ids.map(shortId).filter(Boolean).slice(0, 50);
-  if (short.length === 0) return [];
-  const page = await get<Page<Pick<Work, "id" | "display_name" | "title" | "primary_topic" | "related_works">>>(
-    "/works",
-    { filter: `ids.openalex:${short.join("|")}`, "per-page": short.length, select: "id,display_name,title,primary_topic,related_works" },
-    3600,
-  );
-  const byId = new Map(page.results.map((w) => [shortId(w.id), w]));
-  return short.map((id) => byId.get(id)).filter((w): w is NonNullable<typeof w> => Boolean(w));
+export function getSeedMeta(ids: string[]): Promise<SeedMeta[]> {
+  return fetchByIds<SeedMeta>(ids, [], "id,display_name,title,primary_topic,related_works");
 }
 
 /** Travaux par identifiant, avec les garde-fous qualité de la recherche (types vérifiés, revues indexées, résumé). */
-export async function getQualityWorksByIds(ids: string[]): Promise<Work[]> {
-  const short = ids.map(shortId).filter(Boolean).slice(0, 50);
-  if (short.length === 0) return [];
-  const page = await get<Page<Work>>(
-    "/works",
-    {
-      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, "has_abstract:true", `ids.openalex:${short.join("|")}`].join(","),
-      "per-page": short.length,
-      select: RECO_SELECT,
-    },
-    3600,
-  );
-  const byId = new Map(page.results.map((w) => [shortId(w.id), w]));
-  return short.map((id) => byId.get(id)).filter((w): w is Work => Boolean(w));
+export function getQualityWorksByIds(ids: string[]): Promise<Work[]> {
+  return fetchByIds<Work>(ids, QUALITY_FILTERS, RECO_SELECT);
 }
 
 /**
@@ -431,7 +442,7 @@ export async function getRecentByTopic(topicId: string, sinceYear: number, n = 6
   const page = await get<Page<Work>>(
     "/works",
     {
-      filter: [...BASE_FILTERS, `type:${VERIFIED_TYPES}`, CORE_SOURCE, `primary_topic.id:${shortId(topicId)}`, `publication_year:>${sinceYear - 1}`, "has_abstract:true", HAS_REFERENCES].join(","),
+      filter: [...QUALITY_FILTERS, `primary_topic.id:${shortId(topicId)}`, `publication_year:>${sinceYear - 1}`, HAS_REFERENCES].join(","),
       sort: "cited_by_count:desc",
       "per-page": Math.min(n * 2, 50),
       select: RECO_SELECT + RECENT_SELECT_EXTRA,
@@ -457,12 +468,7 @@ export async function getTopicsForField(fieldId: string, n = 12): Promise<Topic[
 }
 
 export async function getTopic(topicId: string): Promise<Topic | null> {
-  try {
-    return await get<Topic>(`/topics/${encodeURIComponent(shortId(topicId))}`, {}, 86400);
-  } catch (e) {
-    if (e instanceof OpenAlexError && e.status === 404) return null;
-    throw e;
-  }
+  return getOrNull<Topic>(`/topics/${encodeURIComponent(shortId(topicId))}`, {}, 86400);
 }
 
 /**
@@ -514,17 +520,12 @@ interface RawAuthor {
  * `fallbackInstitutionId` : institution indiquée sur l'article, utilisée si OpenAlex n'en connaît aucune pour l'auteur.
  */
 export async function getAuthorProfile(id: string, fallbackInstitutionId?: string | null): Promise<AuthorProfile | null> {
-  let a: RawAuthor;
-  try {
-    a = await get<RawAuthor>(
-      `/authors/${encodeURIComponent(shortId(id))}`,
-      { select: "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions" },
-      86400,
-    );
-  } catch (e) {
-    if (e instanceof OpenAlexError && e.status === 404) return null;
-    throw e;
-  }
+  const a = await getOrNull<RawAuthor>(
+    `/authors/${encodeURIComponent(shortId(id))}`,
+    { select: "id,display_name,orcid,works_count,cited_by_count,summary_stats,last_known_institutions" },
+    86400,
+  );
+  if (!a) return null;
   let inst: { display_name: string; country_code: string | null } | undefined = a.last_known_institutions?.[0];
   const instId = a.last_known_institutions?.[0]?.id ?? fallbackInstitutionId ?? null;
   let homepage: string | null = null;

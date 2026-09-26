@@ -12,7 +12,7 @@ import { getNote, listNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
 import { fold } from "@/lib/text";
 import { BATCH_WORK_ID, shortId } from "@/lib/ids";
-import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, type Work } from "@/lib/openalex";
+import { getRetractedIds, getSimilarWorks, getWork, searchWorks, type Work } from "@/lib/openalex";
 import { SITE } from "@/lib/site";
 
 /**
@@ -155,12 +155,8 @@ export function registerSextantTools(server: McpServer) {
       const w = await getWork(id);
       if (!w) return text(`Article ${id} introuvable.`);
       const n = limit ?? 6;
-      let similar = await getWorksByIds(w.related_works ?? []);
-      if (similar.length < n && w.primary_topic) {
-        const more = await getWorksBySameTopic(w.primary_topic.id, w.id, n);
-        const seen = new Set(similar.map((x) => x.id));
-        similar = [...similar, ...more.filter((x) => !seen.has(x.id))];
-      }
+      // L'outil promet `n` articles : complément par sujet dès qu'il en manque.
+      const similar = await getSimilarWorks(w, n, n);
       const warning = w.is_retracted ? `${RETRACTED_WARNING}\n\n` : "";
       if (similar.length === 0) return text(`${warning}Pas d'article proche trouvé pour « ${workTitle(w)} ».`);
       return text(`${warning}Articles proches de « ${workTitle(w)} » :\n\n${similar.slice(0, n).map(workLine).join("\n\n")}`);

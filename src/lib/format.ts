@@ -90,6 +90,15 @@ export function openAccessPdfUrls(w: Work): string[] {
   return [...new Set(urls.filter((u): u is string => Boolean(u) && isPublicPdfUrl(u!)))];
 }
 
+/**
+ * Le lecteur intégré (/article/[id]/lire) peut-il ouvrir l'article ? Il faut que le meilleur lien libre soit un PDF, et
+ * qu'au moins une adresse de PDF soit relayable par /api/pdf. Même règle pour le bouton « Lire » de la fiche, la
+ * surlignage dans le PDF et la redirection du lecteur (QUAL-39).
+ */
+export function canReadInline(w: Work): boolean {
+  return Boolean(openAccessUrl(w)?.isPdf) && openAccessPdfUrls(w).length > 0;
+}
+
 export function publisherUrl(w: Work): string | null {
   return safeHttpUrl(w.doi) ?? safeHttpUrl(w.primary_location?.landing_page_url);
 }

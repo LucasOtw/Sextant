@@ -29,13 +29,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   abstractFromInvertedIndex,
   articleMetaDescription,
+  canReadInline,
   contentLang,
   formatAuthors,
   formatCount,
   formatDate,
   languageName,
   oaLabel,
-  openAccessPdfUrls,
   openAccessUrl,
   publisherUrl,
   titleLang,
@@ -44,7 +44,7 @@ import {
   workTitle,
 } from "@/lib/format";
 import { doiPath, normalizeWorkId, shortId } from "@/lib/ids";
-import { getWork, getWorksByIds, getWorksBySameTopic, OpenAlexError, type Work } from "@/lib/openalex";
+import { getSimilarWorks, getWork, OpenAlexError, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
@@ -110,7 +110,9 @@ export default async function ArticlePage({ params }: Props) {
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const oa = openAccessUrl(work);
   // Le lecteur intégré ne s'ouvre que si une copie libre est relayable ; sinon le PDF s'ouvre chez son hébergeur.
-  const readable = openAccessPdfUrls(work).length > 0;
+  const inline = canReadInline(work);
+  // Un seul instantané par rendu : passé à quatre composants clients, il n'est sérialisé qu'une fois (QUAL-39).
+  const snapshot = snapshotFromWork(work);
   const publisher = publisherUrl(work);
   const doiUrl = safeHttpUrl(work.doi);
   const venue = venueName(work);
@@ -139,7 +141,7 @@ export default async function ArticlePage({ params }: Props) {
         isOa={work.open_access.is_oa}
       />
       <article className="mx-auto max-w-3xl">
-      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initialHighlights}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshot} retracted={Boolean(work.is_retracted)} initial={initialHighlights}>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
@@ -191,8 +193,8 @@ export default async function ArticlePage({ params }: Props) {
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && oa.isPdf && readable && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
-          {oa && oa.isPdf && !readable && (
+          {oa && inline && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
+          {oa && oa.isPdf && !inline && (
             <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire le PDF
             </ExternalLink>
@@ -209,8 +211,8 @@ export default async function ArticlePage({ params }: Props) {
           )}
           <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
           <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
-          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
-          {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshot} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
+          {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
           <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
@@ -253,9 +255,9 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </section>
 
-        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} abstract={abstract ?? undefined} lang={contentLang(work.language)} />
+        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={inline} abstract={abstract ?? undefined} lang={contentLang(work.language)} />
 
-        <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialNote} />
+        <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshot} initial={initialNote} />
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
@@ -324,12 +326,8 @@ function Stat({ icon, label, children }: { icon?: React.ReactNode; label: string
 async function Similar({ work }: { work: Work }) {
   let similar: Work[] = [];
   try {
-    similar = await getWorksByIds(work.related_works ?? []);
-    if (similar.length < 3 && work.primary_topic) {
-      const more = await getWorksBySameTopic(work.primary_topic.id, work.id, 6);
-      const seen = new Set(similar.map((w) => w.id));
-      similar = [...similar, ...more.filter((w) => !seen.has(w.id))];
-    }
+    // Complément par sujet sous 3 apparentés seulement ; jusqu'à 9 cartes.
+    similar = await getSimilarWorks(work, 3, 6);
   } catch (e) {
     logError("article.similar", e, { work: shortId(work.id) });
     return <p className="mt-4 text-sm text-muted-foreground">Suggestions indisponibles pour le moment.</p>;

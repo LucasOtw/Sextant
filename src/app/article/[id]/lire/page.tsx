@@ -8,7 +8,7 @@ import { ReaderLayout } from "@/components/highlights/pdf-reader";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { contentLang, embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, titleLang, workTitle } from "@/lib/format";
+import { canReadInline, contentLang, embeddablePdfUrl, openAccessUrl, titleLang, workTitle } from "@/lib/format";
 import { listHighlights } from "@/lib/highlights";
 import { normalizeWorkId, shortId } from "@/lib/ids";
 import { getWork, OpenAlexError, type Work } from "@/lib/openalex";
@@ -43,7 +43,8 @@ export default async function ReaderPage({ params }: Props) {
   if (!work) notFound();
   const wid = shortId(work.id);
   const oa = openAccessUrl(work);
-  if (!oa?.isPdf || openAccessPdfUrls(work).length === 0) redirect(`/article/${wid}`);
+  // Même règle que le bouton « Lire » de la fiche (QUAL-39).
+  if (!oa || !canReadInline(work)) redirect(`/article/${wid}`);
 
   const sessionUser = await sessionUserP;
   const initial = sessionUser ? await listHighlights(sessionUser.uid, wid).catch(recover("reader.highlights", [])) : [];
