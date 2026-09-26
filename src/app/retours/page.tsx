@@ -4,13 +4,14 @@ import { FeedbackBoard } from "@/components/feedback/feedback-board";
 import { TooManyRequests } from "@/components/too-many-requests";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { listFeedbackCached, userFeedbackVotes } from "@/lib/feedback";
-import type { FeedbackItem } from "@/lib/feedback-shared";
+import type { FeedbackItem, FeedbackTotals } from "@/lib/feedback-shared";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Bugs et idées",
   description: "Signalez un bug ou proposez une amélioration de Sextant, et votez pour ce qui compte pour vous.",
+  alternates: { canonical: "/retours" },
 };
 
 // Rendu à chaque visite (votes de l'utilisateur, limite par IP) ; la liste elle-même vient du cache de 60 s, vidé à
@@ -21,6 +22,7 @@ export default async function FeedbackPage() {
   // Page publique : limite par IP avant Firestore (par instance), assez large pour un campus derrière un NAT.
   const limited = !rateLimit(`feedback-view:${clientIp(await headers())}`, 120, 60_000);
   let items: FeedbackItem[] = [];
+  let totals: FeedbackTotals | null = null;
   let voted: string[] = [];
   let loadError = false;
   let user: Awaited<ReturnType<typeof getCurrentUser>> = null;
@@ -33,7 +35,7 @@ export default async function FeedbackPage() {
       userP,
     ]);
     if (sessionUser.status === "fulfilled") user = sessionUser.value;
-    if (list.status === "fulfilled") items = list.value;
+    if (list.status === "fulfilled") ({ items, totals } = list.value);
     else loadError = true;
     if (votes.status === "fulfilled") voted = votes.value;
   }
@@ -49,6 +51,7 @@ export default async function FeedbackPage() {
           {limited ? <TooManyRequests /> : (
             <FeedbackBoard
               initial={items}
+              totals={totals}
               initialVoted={voted}
               signedIn={Boolean(user)}
               loadError={loadError}

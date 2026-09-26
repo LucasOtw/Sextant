@@ -13,7 +13,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { feedbackCounts, feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind, type FeedbackTotals } from "@/lib/feedback-shared";
 import { announce } from "@/lib/announce";
 import { voteLabel } from "@/lib/labels";
 import { REPORT_SECTION, reportHref } from "@/lib/report";
@@ -28,6 +28,8 @@ type Filter = "all" | FeedbackKind;
 
 interface Props {
   initial: FeedbackItem[];
+  /** Totaux de la base (lib/feedback.ts) : `initial` peut n'en être qu'une partie (plus votés et plus récents). */
+  totals?: FeedbackTotals | null;
   initialVoted: string[];
   signedIn: boolean;
   loadError?: boolean;
@@ -36,7 +38,7 @@ interface Props {
 }
 
 /** Liste publique des bugs et idées, avec vote (un par personne, retirable) et publication d'un nouveau sujet. */
-export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = false, report = { email: null, pageUrl: "/retours" } }: Props) {
+export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, loadError = false, report = { email: null, pageUrl: "/retours" } }: Props) {
   const [items, setItems] = useState(initial);
   const [voted, setVoted] = useState(() => new Set(initialVoted));
   const [filter, setFilter] = useState<Filter>("all");
@@ -52,7 +54,10 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
 
   const shown = useMemo(() => inOrder(items, order.ids).filter((i) => filter === "all" || i.kind === filter), [items, order.ids, filter]);
 
-  const counts = useMemo(() => ({ all: items.length, bug: items.filter((i) => i.kind === "bug").length, idea: items.filter((i) => i.kind === "idea").length }), [items]);
+  // Totaux de la base (justes même si la liste est tronquée), plus les sujets publiés depuis l'arrivée sur la page.
+  const [initialIds] = useState(() => new Set(initial.map((i) => i.id)));
+  const counts = useMemo(() => feedbackCounts(items, totals, initialIds), [items, totals, initialIds]);
+  const truncated = totals !== null && totals.all > initial.length;
 
   async function vote(item: FeedbackItem) {
     if (!signedIn) return setSignIn("Connectez-vous pour voter. Un vote par personne, retirable à tout moment.");
@@ -122,6 +127,12 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
           <Button className="h-10" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
         </div>
       </div>
+
+      {truncated && (
+        <p className="text-sm text-muted-foreground">
+          Sont affichés les sujets les plus votés et les plus récents : {initial.length} sur {totals.all}.
+        </p>
+      )}
 
       {loadError && items.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
