@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildCsp, makeNonce, STATIC_PAGES, summarizeCspReport } from "@/lib/csp";
 import { PRE_HYDRATION_SCRIPT, PRE_HYDRATION_SCRIPT_HASH } from "@/lib/pre-hydration";
 import { NextRequest } from "next/server";
@@ -131,16 +131,25 @@ describe("pages en cache et script d'avant hydratation (PERF-01)", () => {
   });
 });
 
-describe("proxy : nonce transmis à Next (SEC-03)", () => {
-  it("passe la politique à Next sous l'en-tête de requête content-security-policy, le navigateur ne reçoit que la version Report-Only", () => {
+describe("proxy : nonce (SEC-03)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("par défaut, pas de nonce : politique Report-Only avec 'unsafe-inline', aucune surcharge d'en-tête de requête", () => {
     const res = proxy(new NextRequest("https://sextant.test/search?q=climat"));
-    // Surcharge d'en-tête de requête (lue par Next au rendu) : nom standard, sinon Vercel ne la transmet pas au rendu.
+    const reportOnly = res.headers.get("content-security-policy-report-only") ?? "";
+    expect(reportOnly).toContain("'unsafe-inline'");
+    expect(reportOnly).not.toMatch(/'nonce-/);
+    expect(res.headers.get("x-middleware-request-content-security-policy")).toBeNull();
+    expect(res.headers.get("content-security-policy")).toBeNull();
+  });
+
+  it("CSP_NONCE=1 : la politique à nonce est passée à Next sous l'en-tête de requête content-security-policy, le navigateur ne reçoit que la version Report-Only", () => {
+    vi.stubEnv("CSP_NONCE", "1");
+    const res = proxy(new NextRequest("https://sextant.test/search?q=climat"));
     const forwarded = res.headers.get("x-middleware-request-content-security-policy");
     expect(forwarded).toMatch(/'nonce-[A-Za-z0-9+/=]+'/);
     expect(res.headers.get("x-middleware-request-content-security-policy-report-only")).toBeNull();
-    // Réponse : politique Report-Only avec le même nonce, jamais la version appliquée.
-    const reportOnly = res.headers.get("content-security-policy-report-only");
-    expect(reportOnly).toBe(forwarded);
+    expect(res.headers.get("content-security-policy-report-only")).toBe(forwarded);
     expect(res.headers.get("content-security-policy")).toBeNull();
   });
 });
