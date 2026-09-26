@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildCsp, makeNonce, STATIC_PAGES, summarizeCspReport } from "@/lib/csp";
 import { PRE_HYDRATION_SCRIPT, PRE_HYDRATION_SCRIPT_HASH } from "@/lib/pre-hydration";
-import { config, isRenderedOnRequest } from "@/proxy";
+import { NextRequest } from "next/server";
+import { config, isRenderedOnRequest, proxy } from "@/proxy";
 import { SESSION_COOKIE, SESSION_HINT_COOKIE } from "@/lib/session-shared";
 
 // Le compilateur de motifs de Next lui-même (non typé), pour vérifier le `matcher` du proxy tel que Next l'applique.
@@ -127,5 +128,28 @@ describe("pages en cache et script d'avant hydratation (PERF-01)", () => {
       expect(isRenderedOnRequest(page), page).toBe(true);
     }
     for (const page of ["/inconnue", "/theme/inconnu", "/article/W1/autre", "/wp-login.php", "/favoris/x"]) expect(isRenderedOnRequest(page), page).toBe(false);
+  });
+});
+
+describe("proxy : nonce (SEC-03)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("par défaut, pas de nonce : politique Report-Only avec 'unsafe-inline', aucune surcharge d'en-tête de requête", () => {
+    const res = proxy(new NextRequest("https://sextant.test/search?q=climat"));
+    const reportOnly = res.headers.get("content-security-policy-report-only") ?? "";
+    expect(reportOnly).toContain("'unsafe-inline'");
+    expect(reportOnly).not.toMatch(/'nonce-/);
+    expect(res.headers.get("x-middleware-request-content-security-policy")).toBeNull();
+    expect(res.headers.get("content-security-policy")).toBeNull();
+  });
+
+  it("CSP_NONCE=1 : la politique à nonce est passée à Next sous l'en-tête de requête content-security-policy, le navigateur ne reçoit que la version Report-Only", () => {
+    vi.stubEnv("CSP_NONCE", "1");
+    const res = proxy(new NextRequest("https://sextant.test/search?q=climat"));
+    const forwarded = res.headers.get("x-middleware-request-content-security-policy");
+    expect(forwarded).toMatch(/'nonce-[A-Za-z0-9+/=]+'/);
+    expect(res.headers.get("x-middleware-request-content-security-policy-report-only")).toBeNull();
+    expect(res.headers.get("content-security-policy-report-only")).toBe(forwarded);
+    expect(res.headers.get("content-security-policy")).toBeNull();
   });
 });

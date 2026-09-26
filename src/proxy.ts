@@ -21,8 +21,11 @@ export function isRenderedOnRequest(pathname: string): boolean {
 }
 
 /**
- * CSP à nonce (SEC-03, étape 2), en Report-Only : un nonce neuf par page, transmis à Next par l'en-tête de requête
- * (Next le lit dans `content-security-policy-report-only` et l'ajoute à ses propres scripts). Le script d'avant
+ * CSP à nonce (SEC-03, étape 2), en Report-Only : un nonce neuf par page, transmis à Next par l'en-tête de REQUÊTE
+ * `content-security-policy` (Next y lit le nonce et l'ajoute à ses propres scripts). Surtout pas sous le nom
+ * `content-security-policy-report-only` : sur Vercel, cet en-tête de requête n'atteint pas le rendu (il marche avec
+ * `next start`), et les scripts de Next partaient sans nonce, avec une vingtaine de rapports de violation par page.
+ * Le navigateur, lui, ne reçoit que la version Report-Only (en-tête de RÉPONSE). Le script d'avant
  * hydratation est autorisé par son empreinte. Les pages en cache (STATIC_PAGES de lib/csp.ts) ne passent ici que pour
  * rattraper l'indice de connexion (seconde entrée du `matcher`) : leur politique, sans nonce, est posée par
  * next.config.ts avec les autres en-têtes de sécurité fixes. La 404
@@ -32,6 +35,18 @@ export function isRenderedOnRequest(pathname: string): boolean {
  * une session ouverte avant son introduction, effacé quand la session a disparu. Sans vérification ici : les routes
  * vérifient la session elle-même, l'indice ne donne aucun droit.
  */
+/**
+ * Nonce désactivé par défaut (CSP_NONCE=1 pour le réessayer, par exemple après une montée de Next). Mesuré en
+ * production le 26/09 : la politique porte le nonce, mais le HTML servi par Vercel n'a aucun attribut `nonce`, que la
+ * politique soit transmise à Next sous `content-security-policy` ou sous `content-security-policy-report-only`
+ * (Turbopack dans le mode de déploiement de Vercel, cf. vercel/next.js#96063 ; `next start` en local le pose bien).
+ * Chaque page rendue à la demande envoyait alors une vingtaine de rapports de violation. Sans nonce, toutes les pages
+ * ont la politique des pages en cache ('unsafe-inline' pour les scripts), toujours en Report-Only.
+ */
+function nonceEnabled(): boolean {
+  return process.env.CSP_NONCE === "1";
+}
+
 export function proxy(request: NextRequest) {
   // Page en cache, atteinte par la seconde entrée du `matcher` (session présente, indice absent) : l'indice seul est
   // posé, sans CSP ni nonce (la politique vient de next.config.ts), et la page reste servie depuis le cache.
@@ -41,7 +56,7 @@ export function proxy(request: NextRequest) {
     if (fix !== null) setSessionHint(response, fix);
     return response;
   }
-  const nonce = isRenderedOnRequest(request.nextUrl.pathname) ? makeNonce() : null;
+  const nonce = nonceEnabled() && isRenderedOnRequest(request.nextUrl.pathname) ? makeNonce() : null;
   const csp = buildCsp({
     nonce,
     scriptHashes: nonce ? [PRE_HYDRATION_SCRIPT_HASH] : [],
@@ -52,7 +67,7 @@ export function proxy(request: NextRequest) {
     reportUri: process.env.NODE_ENV === "production" ? "/api/csp-report" : undefined,
   });
   const requestHeaders = new Headers(request.headers);
-  if (nonce) requestHeaders.set("content-security-policy-report-only", csp);
+  if (nonce) requestHeaders.set("content-security-policy", csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set("content-security-policy-report-only", csp);
   const fix = sessionHintFix(request.cookies.has(SESSION_COOKIE), request.cookies.get(SESSION_HINT_COOKIE)?.value);

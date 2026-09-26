@@ -23,16 +23,35 @@ jobs:
       BASE_URL: ${{ github.event.deployment_status.target_url }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
+      # Aperçu protégé sans secret de contournement (ou secret refusé) : Vercel renvoie sa page de connexion, et axe
+      # testerait celle-ci au lieu du site (18 fausses violations). Le banc n'est alors pas lancé, avec un avertissement.
+      - name: Aperçu accessible ?
+        id: acces
+        run: |
+          args=()
+          if [ -n "$VERCEL_AUTOMATION_BYPASS_SECRET" ]; then args=(-H "x-vercel-protection-bypass: $VERCEL_AUTOMATION_BYPASS_SECRET"); fi
+          res=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' "${args[@]}" "$BASE_URL/")
+          if echo "$res" | grep -qE '^(401|403)|vercel\.com/sso-api'; then
+            echo "::warning title=Banc a11y non lancé::Aperçu protégé par Vercel (réponse : ${res%% *}). Ajouter le secret GitHub VERCEL_AUTOMATION_BYPASS_SECRET (Vercel > Settings > Deployment Protection > Protection Bypass for Automation)."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v5
+        if: steps.acces.outputs.ok == 'true'
         with:
           ref: ${{ github.event.deployment.sha }}
       - uses: actions/setup-node@v5
+        if: steps.acces.outputs.ok == 'true'
         with:
           node-version-file: .nvmrc
           cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:a11y
+      - if: steps.acces.outputs.ok == 'true'
+        run: npm ci
+      - if: steps.acces.outputs.ok == 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.acces.outputs.ok == 'true'
+        run: npm run test:a11y
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
