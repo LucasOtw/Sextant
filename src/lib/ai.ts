@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Résumé IA : fournisseurs interchangeables via variables d'environnement.
  * Par défaut : Mistral (modèles ouverts, hébergement européen, offre gratuite « Experiment »).

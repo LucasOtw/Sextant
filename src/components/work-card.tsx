@@ -1,5 +1,5 @@
 import type { Work } from "@/lib/openalex";
-import { shortId } from "@/lib/openalex";
+import { shortId } from "@/lib/ids";
 import { abstractFromInvertedIndex, contentLang, formatAuthors, titleLang, truncateWords, venueName, workTitle } from "@/lib/format";
 import { ArticleBadges, ArticleMeta, ArticleTitle, CitationCount } from "@/components/article-card";
 import { FavoriteButton } from "@/components/favorites/favorite-button";

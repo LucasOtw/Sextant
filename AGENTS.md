@@ -13,7 +13,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Section maintenue à la main, hors du bloc ci-dessus (régénéré par `next dev`). Présentation, commandes et routes : `README.md`.
 
 ## Serveur et données
-- Tout module qui touche Firestore, Firebase Auth ou un secret commence par `import "server-only"` (`src/lib/<module>.ts`).
+- Tout module qui touche Firestore, Firebase Auth, un secret ou un service tiers (OpenAlex, fournisseur IA) commence par
+  `import "server-only"` (`src/lib/<module>.ts`). Ce qui sert aux deux côtés va dans un `*-shared.ts` ou un module sans
+  dépendance (ex. `src/lib/ids.ts`), jamais importé en valeur depuis un module serveur (QUAL-15).
 - Types et validations communs au client et au serveur : `src/lib/<module>-shared.ts`, sans dépendance serveur. Le serveur
   revalide toujours ce qui vient du client (instantanés d'article rechargés depuis OpenAlex, textes nettoyés et bornés).
 - Firestore n'est lu et écrit que par le serveur (SDK Admin) ; `firestore.rules` ferme tout au client.

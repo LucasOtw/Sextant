@@ -6,7 +6,7 @@ import { EyeIcon, EyeOffIcon, SparklesIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { shortId } from "@/lib/openalex";
+import { shortId } from "@/lib/ids";
 import { readRecent } from "@/lib/recent";
 import { clearHidden, hideRecommendation, readHidden, reasonText, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
 import { undoToast } from "@/lib/undo-toast";

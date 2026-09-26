@@ -1,5 +1,5 @@
 import type { Work } from "@/lib/openalex";
-import { shortId } from "@/lib/openalex";
+import { shortId } from "@/lib/ids";
 import type { Biblio, CitationSource } from "@/lib/citation";
 import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { cleanText } from "@/lib/text";

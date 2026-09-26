@@ -1,3 +1,5 @@
+import "server-only";
+
 /**
  * Client minimal pour l'API OpenAlex (https://help.openalex.org/api/).
  * Fonctionne sans clé, mais OpenAlex limite les recherches anonymes en période de charge (429) :
@@ -5,6 +7,7 @@
  * Un `mailto` (OPENALEX_MAILTO) identifie poliment l'application.
  */
 
+import { shortId } from "@/lib/ids";
 import { safeHttpUrl } from "@/lib/text";
 
 const BASE = "https://api.openalex.org";
@@ -284,10 +287,8 @@ async function get<T>(
   return (await res.json()) as T;
 }
 
-/** "https://openalex.org/W123" → "W123" */
-export function shortId(id: string): string {
-  return id.replace(/^https?:\/\/openalex\.org\//, "");
-}
+/** Réexporté pour le code serveur ; le client l'importe de lib/ids (QUAL-15). */
+export { shortId };
 
 function sortParam(sort: SortKey | undefined, hasQuery: boolean): string | undefined {
   switch (sort) {
