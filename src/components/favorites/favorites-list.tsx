@@ -151,6 +151,8 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const { containerRef: listRef, reveal } = useRevealFocus<HTMLUListElement>(":scope > li");
   /** Favori retiré sous le focus (cœur) : le cœur de l'article suivant, sinon du précédent, sinon le compteur (A11Y-19). */
   const countRef = useRef<HTMLParagraphElement>(null);
+  /** Suppression confirmée : la fenêtre rend le focus au compteur, pas au déclencheur disparu. */
+  const listDeleted = useRef(false);
   useFocusRecovery(listRef, ":scope > li", () => countRef.current);
   /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
   const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
@@ -240,7 +242,17 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       />
       {collection && <ShareDialog open={sharing} onOpenChange={setSharing} collection={collection} />}
       <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent
+          className="sm:max-w-sm"
+          // Liste supprimée : son en-tête et le déclencheur « Gérer » disparaissent, le focus serait rendu à <body>. Il va
+          // au compteur d'articles (ou au titre de l'état vide), repère stable après la suppression (A11Y-19). Sur
+          // « Annuler », Base UI le rend au déclencheur, comme d'habitude.
+          finalFocus={() => {
+            const deleted = listDeleted.current;
+            listDeleted.current = false;
+            return deleted && countRef.current?.isConnected ? countRef.current : true;
+          }}
+        >
           <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
           <DialogDescription className="text-[0.9375rem] text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
@@ -252,6 +264,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
               onClick={async () => {
                 if (!collection) return;
                 const id = collection.id;
+                listDeleted.current = true;
                 setDeleting(false);
                 if (await favorites.deleteCollection(id)) select(null);
               }}
