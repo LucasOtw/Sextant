@@ -8,7 +8,7 @@ import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shortId } from "@/lib/ids";
 import { readRecent } from "@/lib/recent";
-import { clearHidden, hideRecommendation, readHidden, reasonText, RECO_LIMITS, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
+import { clearHidden, forYouStatus, hideRecommendation, readHidden, reasonText, RECO_LIMITS, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
 import { undoToast } from "@/lib/undo-toast";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
@@ -62,8 +62,9 @@ export function ForYou() {
     fetch(`/api/recommendations?${q}`, { signal: ctrl.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((data: { items: Recommendation[] }) => {
-        setState({ status: data.items.length ? "ready" : "hidden", items: data.items, fromFavorites: fav.length > 0 });
-        setHiddenCount(readHidden().length);
+        const hidden = readHidden().length;
+        setState({ status: forYouStatus(data.items.length, hidden), items: data.items, fromFavorites: fav.length > 0 });
+        setHiddenCount(hidden);
       })
       .catch(() => {
         // Un échec de rechargement (429, panne OpenAlex) garde les suggestions déjà affichées.
