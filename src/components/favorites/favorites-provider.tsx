@@ -14,6 +14,8 @@ export const PENDING_FAVORITE_KEY = "sextant:pendingFavorite";
 const PENDING_MAX_AGE_MS = 10 * 60 * 1000;
 /** Rechargement au retour sur l'onglet, au plus une fois par minute. */
 const FOCUS_REFRESH_MIN_MS = 60 * 1000;
+/** Délai avant de relancer un chargement revenu sans identité (réseau, panne passagère de la vérification de session). */
+const IDENTITY_RETRY_MS = 4000;
 const NO_LISTS: Collection[] = [];
 
 export interface PendingFavorite {
@@ -151,6 +153,11 @@ export function FavoritesProvider({ children }: Props) {
   const inFlightLists = useRef(false);
   /** Le dernier chargement a reçu un 401 : la session a expiré ou a été révoquée. */
   const unauthorized = useRef(false);
+  /**
+   * Session dont un chargement est revenu sans identité (réseau, 503), à relancer (voir l'effet plus bas). Une seule
+   * relance par session : un nouvel échec repose la même valeur, sans nouveau rendu ni nouvelle relance.
+   */
+  const [identityRetryFor, setIdentityRetryFor] = useState<string | null>(null);
   const restoreRef = useRef<((snapshot: FavoriteSnapshot, lists: string[]) => Promise<void>) | null>(null);
 
   const applyIds = useCallback((next: Set<string>) => {
@@ -176,13 +183,18 @@ export function FavoritesProvider({ children }: Props) {
     const withCollections = options?.lists ?? collectionsWanted.current;
     lastRefreshAt.current = Date.now();
     const run = (async () => {
+      /** La réponse a tranché l'identité (confirmée, ou session refusée). */
+      let identified = false;
       try {
         const res = await fetch(withCollections ? "/api/favorites?collections=1" : "/api/favorites", { cache: "no-store" });
         unauthorized.current = res.status === 401;
         const data = (await res.json().catch(() => ({}))) as FavoritesResponse;
-        // Identité confirmée (y compris quand Firestore échoue), ou session expirée : l'en-tête suit.
+        // Identité confirmée (y compris quand Firestore échoue ou que la limite de débit est atteinte), ou session
+        // refusée : l'en-tête suit. Un 503 (session invérifiable pour cause de panne) ne tranche rien : l'état
+        // « connecté » est gardé et le chargement est relancé.
         if (res.status === 401) identify(null, forUser);
         else if (data.user) identify(data.user, forUser);
+        identified = res.status === 401 || Boolean(data.user);
         if (!res.ok || !Array.isArray(data.ids)) throw new Error(String(res.status));
         // Réponse périmée : une mutation a eu lieu, ou l'utilisateur a changé entre-temps.
         if (seq !== mutationSeq.current || forUser !== loadedFor.current) return idsRef.current;
@@ -199,7 +211,12 @@ export function FavoritesProvider({ children }: Props) {
         return next;
       } catch {
         lastRefreshAt.current = 0;
-        if (forUser === loadedFor.current) setError(true);
+        if (forUser === loadedFor.current) {
+          setError(true);
+          // Réponse sans identité (réseau coupé, panne passagère) : sans relance, l'en-tête resterait sur la place de
+          // l'avatar, sans menu ni déconnexion, jusqu'au retour sur l'onglet. Une seule relance par session.
+          if (!identified && forUser) setIdentityRetryFor(forUser);
+        }
         return null;
       } finally {
         inFlight.current = null;
@@ -297,6 +314,14 @@ export function FavoritesProvider({ children }: Props) {
     // Listes embarquées seulement si un écran les montre et que le serveur de la page ne les a pas déjà fournies.
     void refresh({ lists: collectionsWanted.current && !collectionsLoadedRef.current }).then((known) => consumePending(known));
   }, [userId, refresh, consumePending, applyIds, applyCollections, markCollectionsLoaded]);
+
+  // Relance, quelques secondes après, d'un chargement revenu sans identité, si elle n'est pas arrivée entre-temps.
+  const identityKnown = session.user !== null;
+  useEffect(() => {
+    if (!userId || identityRetryFor !== userId || identityKnown) return;
+    const timer = setTimeout(() => void refresh(), IDENTITY_RETRY_MS);
+    return () => clearTimeout(timer);
+  }, [identityRetryFor, userId, identityKnown, refresh]);
 
   // Retour sur l'onglet : on se réaligne avec ce qui a pu être fait sur un autre appareil.
   useEffect(() => {

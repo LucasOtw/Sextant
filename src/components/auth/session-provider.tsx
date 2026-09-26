@@ -56,7 +56,7 @@ function clearHint() {
 /**
  * Identité côté client (PERF-01). Le layout ne lit plus le cookie de session : l'accueil et les pages sans données
  * personnelles sont mises en cache au bord, identiques pour tous. Le navigateur sait par l'indice `sextant_signed_in`
- * (posé et effacé avec la session, sans valeur secrète) s'il y a une session, sans requête pour un anonyme ; l'identité
+ * (qui suit la session, sans valeur secrète) s'il y a une session, sans requête pour un anonyme ; l'identité
  * elle-même vient de GET /api/favorites (FavoritesProvider), jamais du HTML en cache. L'indice est relu à chaque
  * navigation et au retour sur l'onglet (session ouverte ou fermée dans un autre onglet, ou rattrapée par le proxy pour
  * une session ouverte avant l'indice).

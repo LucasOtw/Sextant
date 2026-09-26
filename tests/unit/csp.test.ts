@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildCsp, makeNonce, STATIC_PAGES, summarizeCspReport } from "@/lib/csp";
 import { PRE_HYDRATION_SCRIPT, PRE_HYDRATION_SCRIPT_HASH } from "@/lib/pre-hydration";
 import { config, isRenderedOnRequest } from "@/proxy";
+import { SESSION_COOKIE, SESSION_HINT_COOKIE } from "@/lib/session-shared";
 
 // Le compilateur de motifs de Next lui-même (non typé), pour vérifier le `matcher` du proxy tel que Next l'applique.
 const { pathToRegexp } = createRequire(import.meta.url)("next/dist/compiled/path-to-regexp") as {
@@ -105,6 +106,15 @@ describe("pages en cache et script d'avant hydratation (PERF-01)", () => {
       expect(re.test(page), page).toBe(true);
     }
     for (const asset of ["/api/favorites", "/icon.svg", "/_next/static/x.js", "/pdfjs/6/pdf.worker.mjs", "/__/auth/handler"]) expect(re.test(asset), asset).toBe(false);
+  });
+
+  it("seconde entrée : les pages en cache, seulement pour rattraper l'indice d'une session ouverte avant lui", () => {
+    const entry = config.matcher[1];
+    const re = pathToRegexp(entry.source, [], { delimiter: "/", sensitive: false, strict: true });
+    for (const page of STATIC_PAGES) expect(re.test(page), page).toBe(true);
+    for (const page of ["/search", "/favoris", "/article/W1", "/a-propos/x", "/api/favorites", "/inconnue"]) expect(re.test(page), page).toBe(false);
+    expect(entry.has).toEqual([{ type: "cookie", key: SESSION_COOKIE }]);
+    expect(entry.missing).toEqual([{ type: "cookie", key: SESSION_HINT_COOKIE }]);
   });
 
   it("nonce réservé aux pages rendues à la demande ; une 404 prérendue reçoit la politique sans nonce", () => {

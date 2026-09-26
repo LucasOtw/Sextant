@@ -51,10 +51,20 @@ export function forgetRevocationCheck(uid: string): void {
   forgetAccountState(uid);
 }
 
-async function readSession(strict: boolean): Promise<SessionUser | null> {
-  if (!isAuthEnabled()) return null;
+/**
+ * Résultat d'une lecture de session. `failure` distingue, quand `user` est null, un cookie refusé pour une raison
+ * attendue (`rejected` : expiré, révoqué, invalide, compte supprimé ou désactivé) d'une panne (`unavailable` : SDK
+ * Admin, réseau, certificats), et vaut null sans cookie de session ni comptes actifs.
+ */
+export interface SessionRead {
+  user: SessionUser | null;
+  failure: "rejected" | "unavailable" | null;
+}
+
+async function readSession(strict: boolean): Promise<SessionRead> {
+  if (!isAuthEnabled()) return { user: null, failure: null };
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
-  if (!token) return null;
+  if (!token) return { user: null, failure: null };
   try {
     const auth = await adminAuth();
     // Vérification locale (signature, expiration) : aucun appel réseau une fois les clés publiques en cache.
@@ -74,18 +84,22 @@ async function readSession(strict: boolean): Promise<SessionUser | null> {
       logError("auth.accountState", e);
       account = null;
     }
-    if (account && (!account.active || authTime * 1000 < account.validAfter)) return null;
+    if (account && (!account.active || authTime * 1000 < account.validAfter)) return { user: null, failure: "rejected" };
     return {
-      uid: claims.uid,
-      email: claims.email ?? null,
-      name: (claims.name as string | undefined) ?? null,
-      picture: (claims.picture as string | undefined) ?? null,
-      authTime,
+      user: {
+        uid: claims.uid,
+        email: claims.email ?? null,
+        name: (claims.name as string | undefined) ?? null,
+        picture: (claims.picture as string | undefined) ?? null,
+        authTime,
+      },
+      failure: null,
     };
   } catch (e) {
     // On échoue fermé (déconnecté), mais une panne du SDK Admin ou du réseau doit laisser une trace.
-    if (!isExpectedAuthError(e)) logError("auth.session", e);
-    return null;
+    if (isExpectedAuthError(e)) return { user: null, failure: "rejected" };
+    logError("auth.session", e);
+    return { user: null, failure: "unavailable" };
   }
 }
 
@@ -97,11 +111,17 @@ async function readSession(strict: boolean): Promise<SessionUser | null> {
  * ne doit jamais écrire sous `users/{uid}` quand le profil n'existe pas (cf. `listFavoriteIds`) : elle recréerait un
  * document orphelin pour un compte supprimé. Les écritures passent par `getCurrentUserStrict`.
  */
-export const getCurrentUser = cache((): Promise<SessionUser | null> => readSession(false));
+export const getCurrentUser = cache(async (): Promise<SessionUser | null> => (await readSessionWithReason()).user);
+
+/**
+ * Comme `getCurrentUser`, avec la raison d'une absence d'utilisateur : refus attendu ou panne. Sert à GET /api/favorites,
+ * qui ne marque l'indice de connexion « refusé » que pour un vrai refus (une panne passagère ne déconnecte personne).
+ */
+export const readSessionWithReason = cache((): Promise<SessionRead> => readSession(false));
 
 /**
  * Variante stricte, pour les écritures et les opérations sensibles (export, clés d'API, partage, suppression) : même
  * contrôle, mais échec fermé si Firebase Auth ne répond pas. Sans quoi un cookie resté sur un autre appareil pourrait
  * recréer des données sous users/{uid} après la suppression du compte.
  */
-export const getCurrentUserStrict = cache((): Promise<SessionUser | null> => readSession(true));
+export const getCurrentUserStrict = cache(async (): Promise<SessionUser | null> => (await readSession(true)).user);

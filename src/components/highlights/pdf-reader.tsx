@@ -233,6 +233,8 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** Téléchargement complet coupé après l'ouverture du document (mode plages) : des pages peuvent rester sans contenu. */
+  const [interrupted, setInterrupted] = useState(false);
   const [progress, setProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [width, setWidth] = useState(0);
   const [defaultAspect, setDefaultAspect] = useState(A4_ASPECT);
@@ -289,8 +291,12 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           stream.done.then(
             () => transport.onDataProgressiveDone(),
             () => {
-              // Coupure avant l'ouverture du document : repli sur le PDF original, comme un échec du relais.
-              if (!cancelled && !loaded) setError("Le PDF n'a pas pu être chargé dans le lecteur.");
+              if (cancelled) return;
+              // Coupure avant l'ouverture du document : repli sur le PDF original, comme un échec du relais. Après
+              // l'ouverture, les pages déjà lues restent affichées, mais celles dont les octets manquent resteraient en
+              // squelette sans explication (les plages refusées comptaient sur ce téléchargement) : on le signale.
+              if (!loaded) setError("Le PDF n'a pas pu être chargé dans le lecteur.");
+              else setInterrupted(true);
             },
           );
         }
@@ -332,6 +338,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
     })();
     return () => {
       cancelled = true;
+      setInterrupted(false);
       download.abort();
       void task?.destroy();
       worker?.destroy(); // fourni par nous : PDF.js ne le détruit pas avec le document
@@ -477,6 +484,15 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       {doc && lib && width > 0 && (
         <>
           <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner.</p>
+          {interrupted && (
+            <div role="alert" className="rounded-xl border border-dashed p-4 text-[15px]">
+              <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
+              <p className="mt-1 text-muted-foreground">
+                Rechargez la page pour réessayer, ou{" "}
+                <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrez le PDF original</a> dans un nouvel onglet.
+              </p>
+            </div>
+          )}
           {Array.from({ length: doc.numPages }, (_, i) => (
             <PdfPage
               key={i + 1}

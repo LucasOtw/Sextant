@@ -59,8 +59,9 @@ export default function PrivacyPage() {
         <li><strong>Durée</strong> : tant que le compte existe. Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.</li>
         <li>
           <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours,
-          accompagné d'un cookie <code>sextant_signed_in</code> sans donnée personnelle, qui indique seulement aux pages qu'une session est ouverte
-          (pour afficher votre compte sans attendre), posé et effacé en même temps. Le module de connexion de Google n'est chargé qu'au moment de la connexion, et l'état qu'il laisse dans le stockage du navigateur est
+          accompagné d'un cookie <code>sextant_signed_in</code> sans donnée personnelle, qui indique seulement aux pages si une session est ouverte
+          (pour afficher votre compte sans attendre) ; il suit la durée de la session (une heure au plus quand une session expirée ou révoquée
+          est refusée) et disparaît à la déconnexion. Le module de connexion de Google n'est chargé qu'au moment de la connexion, et l'état qu'il laisse dans le stockage du navigateur est
           effacé dès la session ouverte.
         </li>
       </ul>

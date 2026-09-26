@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildCsp, makeNonce } from "@/lib/csp";
+import { buildCsp, makeNonce, STATIC_PAGES } from "@/lib/csp";
 import { PRE_HYDRATION_SCRIPT_HASH } from "@/lib/pre-hydration";
 import { SESSION_COOKIE, SESSION_HINT_COOKIE, sessionHintFix, setSessionHint } from "@/lib/session-shared";
 import { THEMES } from "@/lib/themes";
@@ -23,8 +23,9 @@ export function isRenderedOnRequest(pathname: string): boolean {
 /**
  * CSP à nonce (SEC-03, étape 2), en Report-Only : un nonce neuf par page, transmis à Next par l'en-tête de requête
  * (Next le lit dans `content-security-policy-report-only` et l'ajoute à ses propres scripts). Le script d'avant
- * hydratation est autorisé par son empreinte. Les pages en cache (STATIC_PAGES de lib/csp.ts) ne passent pas ici :
- * leur politique, sans nonce, est posée par next.config.ts avec les autres en-têtes de sécurité fixes. La 404
+ * hydratation est autorisé par son empreinte. Les pages en cache (STATIC_PAGES de lib/csp.ts) ne passent ici que pour
+ * rattraper l'indice de connexion (seconde entrée du `matcher`) : leur politique, sans nonce, est posée par
+ * next.config.ts avec les autres en-têtes de sécurité fixes. La 404
  * prérendue, elle, passe ici et reçoit cette même politique sans nonce (`isRenderedOnRequest`).
  *
  * Au passage, l'indice de connexion lisible par le navigateur est accordé au cookie de session (PERF-01) : posé pour
@@ -32,6 +33,14 @@ export function isRenderedOnRequest(pathname: string): boolean {
  * vérifient la session elle-même, l'indice ne donne aucun droit.
  */
 export function proxy(request: NextRequest) {
+  // Page en cache, atteinte par la seconde entrée du `matcher` (session présente, indice absent) : l'indice seul est
+  // posé, sans CSP ni nonce (la politique vient de next.config.ts), et la page reste servie depuis le cache.
+  if ((STATIC_PAGES as readonly string[]).includes(request.nextUrl.pathname)) {
+    const response = NextResponse.next();
+    const fix = sessionHintFix(request.cookies.has(SESSION_COOKIE), request.cookies.get(SESSION_HINT_COOKIE)?.value);
+    if (fix !== null) setSessionHint(response, fix);
+    return response;
+  }
   const nonce = isRenderedOnRequest(request.nextUrl.pathname) ? makeNonce() : null;
   const csp = buildCsp({
     nonce,
@@ -63,6 +72,15 @@ export const config = {
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
       ],
+    },
+    {
+      // Pages en cache (STATIC_PAGES), seulement pour rattraper l'indice d'une session ouverte avant son introduction :
+      // sans cela, un connecté revenu par l'accueil y paraîtrait anonyme jusqu'à sa première page dynamique. Les
+      // autres requêtes vers ces pages (anonyme, indice déjà posé, marque `0`) ne passent pas par la fonction. Noms
+      // en toutes lettres : Next lit ce `config` sans l'exécuter (SESSION_COOKIE et SESSION_HINT_COOKIE).
+      source: "/((?:a-propos|conditions|confidentialite|mentions-legales)?)",
+      has: [{ type: "cookie", key: "sextant_session" }],
+      missing: [{ type: "cookie", key: "sextant_signed_in" }],
     },
   ],
 };

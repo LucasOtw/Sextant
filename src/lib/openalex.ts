@@ -244,7 +244,7 @@ export function retryBudget(status: number, elapsedMs: number, deadlineMs = DEAD
 async function fetchWithDeadline(url: URL, revalidate: number, path: string, timeoutMs = DEADLINE_MS): Promise<Response> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new OpenAlexError(`OpenAlex hors délai (${DEADLINE_MS} ms) sur ${path}`, 504)), timeoutMs);
+    timer = setTimeout(() => reject(new OpenAlexError(`OpenAlex hors délai (${timeoutMs} ms) sur ${path}`, 504)), timeoutMs);
   });
   try {
     return await Promise.race([fetch(url, { next: { revalidate } }), deadline]);

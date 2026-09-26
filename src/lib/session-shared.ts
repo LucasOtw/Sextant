@@ -2,12 +2,13 @@
  * Cookies de session, partagés par le serveur (routes, proxy) et le navigateur. Pur, sans import serveur.
  *
  * - `sextant_session` : le cookie de session Firebase, HttpOnly, seul à prouver l'identité.
- * - `sextant_signed_in` : simple indice, lisible par le navigateur, posé et effacé en même temps que la session. Il ne
+ * - `sextant_signed_in` : simple indice, lisible par le navigateur, qui suit la session. Il ne
  *   donne aucun droit (toute route vérifie le vrai cookie) ; il permet seulement aux pages mises en cache au bord, donc
  *   identiques pour tous, de savoir sans requête qu'un visiteur est anonyme, et d'afficher la bonne place dans l'en-tête
  *   avant l'hydratation (PERF-01). Valeurs : `1` = session ouverte ; `0` = cookie de session présent mais refusé
  *   (révoqué, expiré), pour une heure : le proxy ne le remet pas à `1` à chaque page, ce qui ferait clignoter l'en-tête
- *   et coûterait une requête par page ; passé ce délai, une nouvelle vérification a lieu (panne passagère rattrapée).
+ *   et coûterait une requête par page ; passé ce délai, une nouvelle vérification a lieu. Une panne de la vérification
+ *   (SDK Admin, réseau) ne pose pas cette marque : GET /api/favorites répond alors 503 et l'indice reste tel quel.
  */
 export const SESSION_COOKIE = "sextant_session";
 export const SESSION_HINT_COOKIE = "sextant_signed_in";

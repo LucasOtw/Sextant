@@ -12,6 +12,9 @@ import { logError } from "@/lib/log";
 // Liens d'exemple non préchargés : /search est dynamique, le préchargement coûtait une invocation sans rien apporter (PERF-18).
 const EXAMPLES = ["télétravail et bien-être", "transition énergétique villes", "réseaux sociaux santé mentale adolescents", "fast fashion supply chain"];
 
+// Accueil prérendu et régénéré toutes les 10 minutes au plus (PERF-01) ; la sélection OpenAlex reste en cache une heure.
+export const revalidate = 600;
+
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -66,6 +69,10 @@ async function Featured() {
     works = await getFeaturedWorks(6);
   } catch (e) {
     logError("home.featured", e);
+    // En production hors build, l'échec est relancé : une régénération ratée garde la dernière page réussie au lieu de
+    // mettre ce repli en cache pour tous. Au build, le repli évite qu'une panne d'OpenAlex fasse échouer le
+    // déploiement ; en développement, rien n'est mis en cache et le repli reste plus lisible qu'une erreur.
+    if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") throw e;
     return <p className="text-sm text-muted-foreground">La sélection est momentanément indisponible.</p>;
   }
   return (

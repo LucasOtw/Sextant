@@ -33,7 +33,7 @@ describe("CitationsList par tranches (PERF-11)", () => {
     await render(Array.from({ length: 120 }, (_, i) => highlight(i)));
     expect(cards()).toBe(PAGE_SIZE);
     expect(container.textContent).toContain("120 citations");
-    expect(container.textContent).toContain(`${PAGE_SIZE} affichés sur 120`);
+    expect(container.textContent).toContain(`${PAGE_SIZE} affichées sur 120`);
 
     await act(async () => more()!.click());
     expect(cards()).toBe(2 * PAGE_SIZE);

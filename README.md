@@ -188,7 +188,7 @@ npm run build
 
 ### Réglages hors du code
 
-Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont listées dans les notes de lot de `docs/handoffs/`, section « À faire par le propriétaire » : lot 1 (pare-feu Vercel, clé Mistral, budget) et lot 6 (sauvegarde Firestore, variables Vercel, fournisseurs de connexion, CSP et COOP).
+Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont listées dans les notes de lot de `docs/handoffs/`, section « À faire par le propriétaire » : lot 1 (pare-feu Vercel, clé Mistral, budget), lot 6 (sauvegarde Firestore, variables Vercel, fournisseurs de connexion, CSP et COOP) et lot 7 (index Firestore, cache au bord, CSP des pages en cache, plan Firebase).
 
 ### Branches
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { getCurrentUserStrict, readSessionWithReason } from "@/lib/auth";
 import { addFavorite, FavoritesLimitError, listFavoriteIds, removeFavorite, verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -16,7 +16,8 @@ const PRIVATE = { "cache-control": "private, no-store" };
 function tooMany(uid: string) {
   return !rateLimit(`favorites:${uid}`, 90, 60_000);
 }
-const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+const TOO_MANY_MESSAGE = "Trop de requêtes, réessayez dans une minute.";
+const TOO_MANY = () => NextResponse.json({ error: TOO_MANY_MESSAGE }, { status: 429 });
 
 /**
  * Par défaut : les identifiants seulement (une lecture Firestore), ce qu'il faut pour les cœurs.
@@ -26,8 +27,11 @@ const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez
  * Sans session valide : 401, et l'indice de connexion lisible par le navigateur est effacé.
  */
 export async function GET(req: Request) {
-  const user = await getCurrentUser();
+  const { user, failure } = await readSessionWithReason();
   if (!user) {
+    // Session illisible pour cause de panne (SDK Admin, réseau, certificats) : 503 sans toucher à l'indice, le client
+    // garde l'état « connecté » et réessaie plus tard. Marquer `0` déconnecterait l'en-tête pendant une heure.
+    if (failure === "unavailable") return NextResponse.json({ error: "Session momentanément invérifiable." }, { status: 503, headers: PRIVATE });
     const res = NextResponse.json({ error: "Non connecté." }, { status: 401, headers: PRIVATE });
     // Cookie de session présent mais refusé (révoqué, expiré) : marqué `0` une heure, pour que le proxy ne rétablisse
     // pas l'indice à chaque page ; sans cookie de session, l'indice est simplement effacé.
@@ -36,7 +40,8 @@ export async function GET(req: Request) {
     else if (readCookie(cookie, SESSION_HINT_COOKIE) !== undefined) setSessionHint(res, "off");
     return res;
   }
-  if (tooMany(user.uid)) return TOO_MANY();
+  // L'identité accompagne aussi le 429 : sans elle, l'en-tête resterait sans menu (ni déconnexion, ni « Mon compte »).
+  if (tooMany(user.uid)) return NextResponse.json({ error: TOO_MANY_MESSAGE, user: toClientUser(user) }, { status: 429, headers: PRIVATE });
   const params = new URL(req.url).searchParams;
   try {
     const withCollections = params.get("collections") === "1";

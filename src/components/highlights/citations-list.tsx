@@ -169,7 +169,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
           );
         })}
       </div>
-      <ShowMore shown={Math.min(limit, shown.length)} total={shown.length} onMore={() => setPage((p) => nextPage(p, pageKey))} />
+      <ShowMore shown={Math.min(limit, shown.length)} total={shown.length} feminine onMore={() => setPage((p) => nextPage(p, pageKey))} />
     </div>
   );
 }

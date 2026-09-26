@@ -24,7 +24,7 @@ vi.mock("@/lib/firebase/admin", () => ({
 }));
 vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/log")>()), logError: vi.fn() }));
 
-const { forgetRevocationCheck, getCurrentUser, getCurrentUserStrict } = await import("@/lib/auth");
+const { forgetRevocationCheck, getCurrentUser, getCurrentUserStrict, readSessionWithReason } = await import("@/lib/auth");
 const { forgetAccountState } = await import("@/lib/account-state");
 
 const revokedAt = Date.parse("2026-09-20T10:00:00Z");
@@ -103,5 +103,21 @@ describe("readSession : révocation, compte supprimé ou désactivé", () => {
     state.verifySessionCookie.mockRejectedValue(Object.assign(new Error("expiré"), { code: "auth/session-cookie-expired" }));
     await expect(getCurrentUser()).resolves.toBeNull();
     expect(state.getUser).not.toHaveBeenCalled();
+  });
+
+  it("readSessionWithReason distingue un refus attendu d'une panne de la vérification", async () => {
+    state.cookie = undefined;
+    await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: null });
+    state.cookie = "cookie";
+    state.verifySessionCookie.mockRejectedValue(Object.assign(new Error("révoqué"), { code: "auth/session-cookie-revoked" }));
+    await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "rejected" });
+    // Certificats injoignables, SDK en panne : pas un refus, l'indice de connexion ne doit pas être marqué.
+    state.verifySessionCookie.mockRejectedValue(new Error("fetch failed"));
+    await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "unavailable" });
+    state.verifySessionCookie.mockImplementation(async () => ({ uid: "u1", auth_time: sec(revokedAt) - 60 }));
+    state.getUser.mockResolvedValue(account());
+    await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "rejected" });
+    state.verifySessionCookie.mockImplementation(async () => ({ uid: "u1", auth_time: sec(revokedAt) + 60 }));
+    await expect(readSessionWithReason()).resolves.toMatchObject({ user: { uid: "u1" }, failure: null });
   });
 });
