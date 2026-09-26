@@ -16,6 +16,11 @@ vi.mock("@/lib/auth", async (importOriginal) => ({
   forgetRevocationCheck: () => {},
 }));
 
+// Hors d'une requête Next, revalidateTag lève « static generation store missing » : l'invalidation du cache est
+// simulée (la route ne doit de toute façon pas échouer à cause d'elle).
+const cache = vi.hoisted(() => ({ revalidateTag: vi.fn() }));
+vi.mock("next/cache", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/cache")>()), revalidateTag: cache.revalidateTag }));
+
 describe("retours et votes (transactions sur émulateur)", () => {
   it("l'auteur vote d'office ; un second appel retire le vote, un troisième le remet", async () => {
     const uid = newUid();
@@ -73,6 +78,31 @@ describe("withdrawVotes (suppression du compte, SEC-14)", () => {
     expect(await exists(`feedback/${gone.id}`)).toBe(false);
   });
 
+  it("idempotent : chaque vote est supprimé avec sa décrémentation, un nouvel essai ne décompte rien deux fois", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const a = await createFeedback(newUid(), { kind: "idea", title: "A", description: "" });
+    await toggleVote(uid, a.id);
+    await toggleVote(newUid(), a.id);
+    expect((await db.doc(`feedback/${a.id}`).get()).get("votes")).toBe(3);
+
+    await withdrawVotes(uid);
+    expect((await db.doc(`feedback/${a.id}`).get()).get("votes")).toBe(2);
+    expect(await userFeedbackVotes(uid)).toEqual([]);
+    // Suppression du compte relancée après un échec de recursiveDelete : plus rien à retirer.
+    await withdrawVotes(uid);
+    expect((await db.doc(`feedback/${a.id}`).get()).get("votes")).toBe(2);
+  });
+
+  it("appels concurrents : un seul décompte par vote", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const a = await createFeedback(newUid(), { kind: "idea", title: "A", description: "" });
+    await toggleVote(uid, a.id);
+    await Promise.all([withdrawVotes(uid), withdrawVotes(uid)]);
+    expect((await db.doc(`feedback/${a.id}`).get()).get("votes")).toBe(1);
+  });
+
   it("sans vote : rien n'est écrit", async () => {
     await expect(withdrawVotes(newUid())).resolves.toBeUndefined();
   });
@@ -113,6 +143,9 @@ describe("suppression du compte (DELETE /api/auth/account, émulateurs Firestore
     expect(await exists(`shares/${token}`)).toBe(false);
     expect(await exists(`apiKeys/${info.id}`)).toBe(false);
     await expect(auth.getUser(uid)).rejects.toMatchObject({ code: "auth/user-not-found" });
+
+    // Le cache de /retours est invalidé après la suppression (hors du chemin critique).
+    expect(cache.revalidateTag).toHaveBeenCalledWith("feedback", { expire: 0 });
 
     const kept = await db.doc(`feedback/${item.id}`).get();
     expect(kept.exists).toBe(true);

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * GET /api/favorites porte l'identité de l'en-tête (PERF-01) et tient à jour l'indice de connexion lisible par le
  * navigateur. Session et stockage simulés : aucune requête vers la base.
  */
-const auth = vi.hoisted(() => ({ readSessionWithReason: vi.fn(), getCurrentUserStrict: vi.fn() }));
+const auth = vi.hoisted(() => ({ readSessionWithReason: vi.fn(), getCurrentUserStrict: vi.fn(), strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })) }));
 const store = vi.hoisted(() => ({ listFavoriteIds: vi.fn(), listCollections: vi.fn() }));
 vi.mock("@/lib/auth", () => auth);
 vi.mock("@/lib/favorites", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/favorites")>()), listFavoriteIds: store.listFavoriteIds }));
@@ -46,11 +46,14 @@ describe("GET /api/favorites : identité et indice de connexion", () => {
     expect(((await res.json()) as { user: { name: string } }).user.name).toBe("Ada");
   });
 
-  it("cookie de session refusé : 401 et indice marqué « refusé » pour une heure (pas de boucle avec le proxy)", async () => {
+  it("cookie de session refusé : 401, cookie de session et indice effacés (le proxy n'a plus rien à rétablir)", async () => {
     session(null, "rejected");
     const res = await get("sextant_session=revoque; sextant_signed_in=1");
     expect(res.status).toBe(401);
-    expect(hint(res)).toMatch(/^sextant_signed_in=0;.*Max-Age=3600/i);
+    expect(hint(res)).toMatch(/^sextant_signed_in=;.*Max-Age=0/i);
+    const sessionCookie = res.headers.getSetCookie().find((c) => c.startsWith("sextant_session="));
+    expect(sessionCookie).toMatch(/^sextant_session=;.*Max-Age=0/i);
+    expect(sessionCookie).toMatch(/HttpOnly/i);
   });
 
   it("vérification de session en panne : 503, indice laissé tel quel (personne n'est déconnecté pour une heure)", async () => {
@@ -59,6 +62,7 @@ describe("GET /api/favorites : identité et indice de connexion", () => {
     expect(res.status).toBe(503);
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(hint(res)).toBeUndefined();
+    expect(res.headers.getSetCookie()).toEqual([]);
   });
 
   it("limite de débit atteinte : 429, avec l'identité pour que l'en-tête garde son menu", async () => {

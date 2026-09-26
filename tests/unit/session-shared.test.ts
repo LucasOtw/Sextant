@@ -13,7 +13,7 @@ describe("indice de connexion lisible par le navigateur (PERF-01)", () => {
     expect(hasSessionHint("sextant_signed_in=0")).toBe(false);
   });
 
-  it("accordé par le proxy à la seule présence du cookie de session, marque « refusée » respectée", () => {
+  it("accordé par le proxy à la seule présence du cookie de session, marque « refusée » des versions précédentes respectée", () => {
     expect(sessionHintFix(true, undefined)).toBe("on");
     expect(sessionHintFix(true, "1")).toBeNull();
     expect(sessionHintFix(true, "0")).toBeNull();
@@ -22,18 +22,15 @@ describe("indice de connexion lisible par le navigateur (PERF-01)", () => {
     expect(sessionHintFix(false, undefined)).toBeNull();
   });
 
-  it("posé lisible (pas HttpOnly), Lax, sur tout le site ; « refusée » pour une heure ; effacé avec Max-Age 0", () => {
+  it("posé lisible (pas HttpOnly), Lax, sur tout le site ; effacé avec Max-Age 0", () => {
     const calls: unknown[][] = [];
     const res = { cookies: { set: (...args: unknown[]) => calls.push(args) } };
     setSessionHint(res, "on");
-    setSessionHint(res, "rejected");
     setSessionHint(res, "off");
     expect(calls[0]).toEqual([SESSION_HINT_COOKIE, "1", { ...sessionHintOptions("on"), httpOnly: false, sameSite: "lax", path: "/" }]);
     expect((calls[0][2] as { maxAge: number }).maxAge).toBe(14 * 24 * 3600);
-    expect(calls[1]).toEqual([SESSION_HINT_COOKIE, "0", sessionHintOptions("rejected")]);
-    expect((calls[1][2] as { maxAge: number }).maxAge).toBe(3600);
-    expect(calls[2]).toEqual([SESSION_HINT_COOKIE, "", sessionHintOptions("off")]);
-    expect((calls[2][2] as { maxAge: number }).maxAge).toBe(0);
+    expect(calls[1]).toEqual([SESSION_HINT_COOKIE, "", sessionHintOptions("off")]);
+    expect((calls[1][2] as { maxAge: number }).maxAge).toBe(0);
   });
 
   it("readCookie : valeur exacte d'un cookie nommé", () => {

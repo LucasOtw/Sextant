@@ -49,10 +49,24 @@ const EXPECTED_AUTH_CODES = new Set([
   "auth/invalid-id-token",
 ]);
 
+/**
+ * Messages du vérificateur de jetons de firebase-admin (token-verifier.js) pour un jeton mal formé ou mal signé : ils
+ * nomment toujours le jeton (« Firebase session cookie has invalid signature », « Decoding Firebase ID token failed »,
+ * « verifySessionCookie() expects a session cookie… »). Une panne du téléchargement des clés publiques de Google
+ * ressort, elle, avec le même code `auth/argument-error` mais le message brut de l'erreur réseau
+ * (« Error fetching public keys… », délai dépassé) : ce n'est pas un refus.
+ */
+const TOKEN_VERIFIER_MESSAGE = /^(Firebase (session cookie|ID token)\b|Decoding Firebase |First argument to verify(SessionCookie|IdToken)\(\)|verify(SessionCookie|IdToken)\(\) expects )/;
+
 /** Vrai si l'erreur Firebase Auth relève d'un jeton refusé (et non d'une panne du SDK, du réseau ou de la configuration). */
 export function isExpectedAuthError(err: unknown): boolean {
-  const code = (err as { code?: unknown } | null)?.code;
-  return typeof code === "string" && EXPECTED_AUTH_CODES.has(code);
+  const e = err as { code?: unknown; message?: unknown } | null;
+  const code = e?.code;
+  if (typeof code !== "string" || !EXPECTED_AUTH_CODES.has(code)) return false;
+  // `auth/argument-error` est aussi le code par défaut de firebase-admin pour une erreur de clés publiques
+  // (JwtErrorCode.KEY_FETCH_ERROR, sans cas dédié) : refus seulement si le message vient du vérificateur lui-même.
+  if (code === "auth/argument-error") return typeof e?.message === "string" && TOKEN_VERIFIER_MESSAGE.test(e.message);
+  return true;
 }
 
 /**

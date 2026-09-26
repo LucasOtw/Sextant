@@ -5,7 +5,15 @@ import { REAUTH_MAX_AGE_S, REAUTH_REQUIRED } from "@/lib/reauth-shared";
  * Ré-authentification (SEC-09) et « déconnexion de tous les appareils » (SEC-08) : routes testées avec session,
  * Firebase Auth et stockage simulés. Aucune requête ne part vers la base.
  */
-const auth = vi.hoisted(() => ({ getCurrentUserStrict: vi.fn(), getCurrentUser: vi.fn(), forgetRevocationCheck: vi.fn() }));
+const auth = vi.hoisted(() => ({
+  getCurrentUserStrict: vi.fn(),
+  getCurrentUser: vi.fn(),
+  forgetRevocationCheck: vi.fn(),
+  // Sans utilisateur strict : 401 par défaut ; une panne de la vérification est simulée au cas par cas (503).
+  strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })),
+  recheckSession: vi.fn(async () => true),
+}));
+const server = vi.hoisted(() => ({ after: vi.fn() }));
 const admin = vi.hoisted(() => ({ revokeRefreshTokens: vi.fn(), deleteUser: vi.fn(), verifyIdToken: vi.fn(), createSessionCookie: vi.fn(), getUser: vi.fn() }));
 const keys = vi.hoisted(() => ({ deleteAllKeys: vi.fn(), createKey: vi.fn(), listKeys: vi.fn() }));
 
@@ -18,6 +26,8 @@ vi.mock("@/lib/firebase/admin", () => ({
 }));
 vi.mock("firebase-admin/firestore", () => ({ FieldValue: { serverTimestamp: () => "maintenant" }, Timestamp: { fromDate: (d: Date) => d } }));
 vi.mock("@/lib/api-keys", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/api-keys")>()), ...keys }));
+// `after` n'existe que dans une requête Next : relevé ici, sans exécution.
+vi.mock("next/server", async (importOriginal) => ({ ...(await importOriginal<typeof import("next/server")>()), after: server.after }));
 
 const { isRecentLogin } = await import("@/lib/auth");
 const accountRoute = await import("@/app/api/auth/account/route");
@@ -76,7 +86,37 @@ describe("opérations sensibles : connexion Google récente exigée", () => {
     keys.createKey.mockResolvedValue({ key: "sxt_x", info: { id: "a", name: "Claude", prefix: "sxt_x", createdAt: null, lastUsedAt: null } });
     const res = await keysRoute.POST(req("/api/account/keys", "POST", { name: "Claude" }));
     expect(res.status).toBe(201);
-    expect(keys.createKey).toHaveBeenCalledWith(`u${n}`, "Claude");
+    // Clé rattachée à la session qui la crée (auth_time) : elle tombe avec elle à la prochaine révocation.
+    expect(keys.createKey).toHaveBeenCalledWith(`u${n}`, "Claude", now() - 30);
+    expect(auth.recheckSession).toHaveBeenCalledWith(expect.objectContaining({ uid: `u${n}` }));
+  });
+
+  it("POST /api/account/keys : révocation faite sur une autre instance (état du compte relu) : 401, aucune clé", async () => {
+    auth.getCurrentUserStrict.mockResolvedValue(sessionUser(30));
+    auth.recheckSession.mockResolvedValueOnce(false);
+    const res = await keysRoute.POST(req("/api/account/keys", "POST", { name: "Claude" }));
+    expect(res.status).toBe(401);
+    expect(keys.createKey).not.toHaveBeenCalled();
+  });
+
+  it("POST /api/account/keys : Firebase Auth injoignable à la relecture : 503, aucune clé", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    auth.getCurrentUserStrict.mockResolvedValue(sessionUser(30));
+    auth.recheckSession.mockRejectedValueOnce(new Error("panne"));
+    const res = await keysRoute.POST(req("/api/account/keys", "POST", { name: "Claude" }));
+    expect(res.status).toBe(503);
+    expect(res.headers.get("retry-after")).toBe("5");
+    expect(keys.createKey).not.toHaveBeenCalled();
+  });
+
+  it("vérification de session en panne : 503 et non « Non connecté » (suppression du compte, clés)", async () => {
+    auth.getCurrentUserStrict.mockResolvedValue(null);
+    const unavailable = () => Response.json({ error: "Vérification de session momentanément impossible, réessayez." }, { status: 503 });
+    auth.strictRefusal.mockImplementationOnce(async () => unavailable()).mockImplementationOnce(async () => unavailable());
+    expect((await accountRoute.DELETE(req("/api/auth/account", "DELETE"))).status).toBe(503);
+    expect((await keysRoute.POST(req("/api/account/keys", "POST", { name: "Claude" }))).status).toBe(503);
+    expect(keys.createKey).not.toHaveBeenCalled();
+    expect(admin.deleteUser).not.toHaveBeenCalled();
   });
 
   it("DELETE /api/auth/account : limite de 3 tentatives par minute", async () => {
@@ -121,6 +161,31 @@ describe("DELETE /api/auth/sessions (se déconnecter de tous les appareils)", ()
     expect((await sessionsRoute.DELETE(req("/api/auth/sessions", "DELETE"))).status).toBe(401);
   });
 
+  it("révocation réussie mais suppression des clés en échec : 200 keysPending, cookie et indice effacés, nouvel essai différé", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    auth.getCurrentUserStrict.mockResolvedValue(sessionUser(60));
+    keys.deleteAllKeys.mockRejectedValueOnce(new Error("Firestore"));
+    const res = await sessionsRoute.DELETE(req("/api/auth/sessions", "DELETE"));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, keysPending: true });
+    const cookies = res.headers.getSetCookie();
+    expect(cookies.find((c) => c.startsWith("sextant_session="))).toMatch(/Max-Age=0/i);
+    expect(cookies.find((c) => c.startsWith("sextant_signed_in="))).toMatch(/^sextant_signed_in=;.*Max-Age=0/i);
+    expect(auth.forgetRevocationCheck).toHaveBeenCalledWith(`u${n}`);
+    // Nouvel essai après la réponse : il supprime les clés.
+    expect(server.after).toHaveBeenCalledTimes(1);
+    keys.deleteAllKeys.mockResolvedValueOnce(undefined);
+    await (server.after.mock.calls[0][0] as () => Promise<void>)();
+    expect(keys.deleteAllKeys).toHaveBeenCalledTimes(2);
+  });
+
+  it("vérification de session en panne : 503, pas « Non connecté »", async () => {
+    auth.getCurrentUserStrict.mockResolvedValue(null);
+    auth.strictRefusal.mockImplementationOnce(async () => Response.json({ error: "Vérification de session momentanément impossible, réessayez." }, { status: 503 }));
+    expect((await sessionsRoute.DELETE(req("/api/auth/sessions", "DELETE"))).status).toBe(503);
+    expect(admin.revokeRefreshTokens).not.toHaveBeenCalled();
+  });
+
   it("502 si la révocation échoue, le cookie est gardé", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     auth.getCurrentUserStrict.mockResolvedValue(sessionUser(60));
@@ -128,6 +193,7 @@ describe("DELETE /api/auth/sessions (se déconnecter de tous les appareils)", ()
     const res = await sessionsRoute.DELETE(req("/api/auth/sessions", "DELETE"));
     expect(res.status).toBe(502);
     expect(res.headers.get("set-cookie")).toBeNull();
+    expect(keys.deleteAllKeys).not.toHaveBeenCalled();
   });
 });
 
@@ -185,6 +251,17 @@ describe("POST /api/auth/session : fournisseur et taille du corps (SEC-14, SEC-1
     expect(await res.json()).toEqual({ error: "Connexion Google requise." });
     expect(admin.createSessionCookie).not.toHaveBeenCalled();
     expect(res.headers.get("set-cookie")).toBeNull();
+  });
+
+  it("clés publiques de Google injoignables (auth/argument-error au message réseau) : 503 et non « Jeton invalide »", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    admin.verifyIdToken.mockRejectedValueOnce(Object.assign(new Error("network timeout"), { code: "auth/argument-error" }));
+    const res = await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton" }));
+    expect(res.status).toBe(503);
+    expect(res.headers.get("set-cookie")).toBeNull();
+    // Jeton réellement mal formé : refus (401).
+    admin.verifyIdToken.mockRejectedValueOnce(Object.assign(new Error("Firebase ID token has invalid signature. See …"), { code: "auth/argument-error" }));
+    expect((await sessionRoute.POST(req("/api/auth/session", "POST", { idToken: "jeton" }))).status).toBe(401);
   });
 
   it("refuse un corps annoncé au-delà de 8 Ko avant de vérifier le jeton", async () => {

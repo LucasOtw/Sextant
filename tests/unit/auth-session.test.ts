@@ -24,7 +24,7 @@ vi.mock("@/lib/firebase/admin", () => ({
 }));
 vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/log")>()), logError: vi.fn() }));
 
-const { forgetRevocationCheck, getCurrentUser, getCurrentUserStrict, readSessionWithReason } = await import("@/lib/auth");
+const { forgetRevocationCheck, getCurrentUser, getCurrentUserStrict, readSessionWithReason, recheckSession, strictRefusal } = await import("@/lib/auth");
 const { forgetAccountState } = await import("@/lib/account-state");
 
 const revokedAt = Date.parse("2026-09-20T10:00:00Z");
@@ -119,5 +119,43 @@ describe("readSession : révocation, compte supprimé ou désactivé", () => {
     await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "rejected" });
     state.verifySessionCookie.mockImplementation(async () => ({ uid: "u1", auth_time: sec(revokedAt) + 60 }));
     await expect(readSessionWithReason()).resolves.toMatchObject({ user: { uid: "u1" }, failure: null });
+  });
+
+  it("clés publiques de Google injoignables : `auth/argument-error` au message réseau = panne, pas un refus", async () => {
+    // firebase-admin 13 range KEY_FETCH_ERROR sous le code par défaut `auth/argument-error`, avec le message brut.
+    state.verifySessionCookie.mockRejectedValue(Object.assign(new Error("network timeout"), { code: "auth/argument-error" }));
+    await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "unavailable" });
+    // Cookie mal formé ou mal signé : message du vérificateur, refus.
+    state.verifySessionCookie.mockRejectedValue(Object.assign(new Error("Firebase session cookie has invalid signature. See …"), { code: "auth/argument-error" }));
+    await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "rejected" });
+  });
+
+  it("strictRefusal : 503 quand la vérification est en panne, 401 pour un refus ou sans cookie", async () => {
+    state.claims = { uid: "u1", auth_time: sec(revokedAt) + 60 };
+    state.getUser.mockRejectedValue(new Error("réseau"));
+    const down = await strictRefusal();
+    expect(down.status).toBe(503);
+    expect(down.headers.get("retry-after")).toBe("5");
+    expect(((await down.json()) as { error: string }).error).not.toBe("Non connecté.");
+
+    state.getUser.mockResolvedValue(account());
+    state.claims = { uid: "u1", auth_time: sec(revokedAt) - 60 };
+    expect((await strictRefusal()).status).toBe(401);
+    state.cookie = undefined;
+    const none = await strictRefusal("Connectez-vous pour voter.");
+    expect(none.status).toBe(401);
+    expect(await none.json()).toEqual({ error: "Connectez-vous pour voter." });
+  });
+
+  it("recheckSession relit l'état du compte sans le cache de l'instance (révocation faite ailleurs)", async () => {
+    state.claims = { uid: "u1", auth_time: sec(revokedAt) - 60 };
+    // Instance au cache périmé : l'état d'avant la révocation est mémorisé.
+    state.getUser.mockResolvedValueOnce(account({ tokensValidAfterTime: new Date(revokedAt - 3_600_000).toUTCString() }));
+    await expect(getCurrentUserStrict()).resolves.toMatchObject({ uid: "u1" });
+    state.getUser.mockResolvedValue(account());
+    await expect(recheckSession({ uid: "u1", authTime: sec(revokedAt) - 60 })).resolves.toBe(false);
+    await expect(recheckSession({ uid: "u1", authTime: sec(revokedAt) + 60 })).resolves.toBe(true);
+    state.getUser.mockRejectedValue(new Error("réseau"));
+    await expect(recheckSession({ uid: "u1", authTime: sec(revokedAt) + 60 })).rejects.toThrow();
   });
 });

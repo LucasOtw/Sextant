@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict } from "@/lib/auth";
-import { createFeedback, invalidateFeedbackList } from "@/lib/feedback";
+import { getCurrentUserStrict, strictRefusal } from "@/lib/auth";
+import { createFeedback, refreshFeedbackList } from "@/lib/feedback";
 import { sanitizeFeedback } from "@/lib/feedback-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 16_384);
   if (refused) return refused;
   const user = await getCurrentUserStrict();
-  if (!user) return NextResponse.json({ error: "Connectez-vous pour publier." }, { status: 401 });
+  if (!user) return strictRefusal("Connectez-vous pour publier.");
   if (!rateLimit(`feedback-post:${user.uid}`, 5, 60 * 60_000)) return NextResponse.json({ error: "Vous avez publié plusieurs sujets récemment : réessayez dans une heure." }, { status: 429 });
   let body: unknown;
   try {
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   if (!input) return NextResponse.json({ error: "Choisissez Bug ou Idée et donnez un titre d'au moins 5 caractères." }, { status: 400 });
   try {
     const item = await createFeedback(user.uid, input);
-    invalidateFeedbackList();
+    refreshFeedbackList("feedback.invalidate");
     return NextResponse.json({ item }, { status: 201, headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     logError("feedback.POST", e);

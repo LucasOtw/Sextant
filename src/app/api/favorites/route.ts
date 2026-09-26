@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict, readSessionWithReason } from "@/lib/auth";
+import { getCurrentUserStrict, strictRefusal, readSessionWithReason } from "@/lib/auth";
 import { addFavorite, FavoritesLimitError, listFavoriteIds, removeFavorite, verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -33,11 +33,14 @@ export async function GET(req: Request) {
     // garde l'état « connecté » et réessaie plus tard. Marquer `0` déconnecterait l'en-tête pendant une heure.
     if (failure === "unavailable") return NextResponse.json({ error: "Session momentanément invérifiable." }, { status: 503, headers: PRIVATE });
     const res = NextResponse.json({ error: "Non connecté." }, { status: 401, headers: PRIVATE });
-    // Cookie de session présent mais refusé (révoqué, expiré) : marqué `0` une heure, pour que le proxy ne rétablisse
-    // pas l'indice à chaque page ; sans cookie de session, l'indice est simplement effacé.
     const cookie = req.headers.get("cookie") ?? "";
-    if (readCookie(cookie, SESSION_COOKIE) !== undefined) setSessionHint(res, "rejected");
-    else if (readCookie(cookie, SESSION_HINT_COOKIE) !== undefined) setSessionHint(res, "off");
+    if (readCookie(cookie, SESSION_COOKIE) !== undefined) {
+      // Cookie de session vérifié et refusé (révoqué, expiré, compte supprimé ou désactivé) : inutilisable pour de bon,
+      // il est effacé avec l'indice. Laissé en place, le proxy reposerait l'indice « 1 » dès la fin d'une marque
+      // temporaire, et l'en-tête basculerait de l'avatar à « Se connecter » à chaque fois, jusqu'à son expiration.
+      res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
+      setSessionHint(res, "off");
+    } else if (readCookie(cookie, SESSION_HINT_COOKIE) !== undefined) setSessionHint(res, "off");
     return res;
   }
   // L'identité accompagne aussi le 429 : sans elle, l'en-tête resterait sans menu (ni déconnexion, ni « Mon compte »).
@@ -60,7 +63,7 @@ export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
   const user = await getCurrentUserStrict();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (!user) return strictRefusal();
   if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
   try {
@@ -87,7 +90,7 @@ export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
   const user = await getCurrentUserStrict();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (!user) return strictRefusal();
   if (tooMany(user.uid)) return TOO_MANY();
   const id = new URL(req.url).searchParams.get("id") ?? "";
   if (!WORK_ID.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });

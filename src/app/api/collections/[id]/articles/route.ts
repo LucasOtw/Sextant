@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict } from "@/lib/auth";
+import { getCurrentUserStrict, strictRefusal } from "@/lib/auth";
 import { addToCollection, CollectionNotFoundError, CollectionsLimitError, removeFromCollection } from "@/lib/collections";
 import { FavoritesLimitError, verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
@@ -18,7 +18,7 @@ async function guard(req: Request, ctx: Ctx) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return { refused };
   const user = await getCurrentUserStrict();
-  if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
+  if (!user) return { refused: await strictRefusal() };
   if (!rateLimit(`collections-items:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
   if (!ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };

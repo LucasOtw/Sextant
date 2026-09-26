@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { forgetRevocationCheck, getCurrentUserStrict, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
+import { forgetRevocationCheck, getCurrentUserStrict, strictRefusal, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
-import { detachAuthor, invalidateFeedbackList, withdrawVotes } from "@/lib/feedback";
+import { detachAuthor, refreshFeedbackList, withdrawVotes } from "@/lib/feedback";
 import { logError } from "@/lib/log";
 import { setSessionHint } from "@/lib/session-shared";
 
@@ -18,7 +18,7 @@ export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
   const user = await getCurrentUserStrict();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  if (!user) return strictRefusal();
   if (!rateLimit(`account-del:${user.uid}`, 3, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   if (!isRecentLogin(user)) return reauthRequired();
 
@@ -35,14 +35,17 @@ export async function DELETE(req: Request) {
     await detachAuthor(user.uid);
     // Avant l'effacement de users/{uid}, qui contient la liste des votes : sinon ils resteraient comptés (SEC-14).
     await withdrawVotes(user.uid);
-    invalidateFeedbackList();
     await db.recursiveDelete(db.doc(`users/${user.uid}`));
     await (await adminAuth()).deleteUser(user.uid);
     forgetRevocationCheck(user.uid);
   } catch (e) {
     logError("auth.account.DELETE", e);
+    // Des votes ont pu être retirés avant l'échec : la liste publique est relue quand même.
+    refreshFeedbackList("auth.account.invalidate");
     return NextResponse.json({ error: "La suppression a échoué, réessayez." }, { status: 500 });
   }
+  // Hors du chemin critique : une invalidation du cache qui échoue ne doit pas couper la suppression en plein milieu.
+  refreshFeedbackList("auth.account.invalidate");
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, sameSite: "lax", path: "/", maxAge: 0 });

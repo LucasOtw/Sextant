@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { getCurrentUser, getCurrentUserStrict, strictRefusal } from "@/lib/auth";
 import { verifiedSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { cleanText } from "@/lib/highlights-shared";
@@ -21,7 +21,7 @@ async function guard(req: Request, ctx: Ctx, write: boolean) {
   }
   // Écriture : échec fermé si Firebase Auth ne répond pas ; lecture : servie quand même (lib/auth.ts).
   const user = await (write ? getCurrentUserStrict() : getCurrentUser());
-  if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
+  if (!user) return { refused: write ? await strictRefusal() : NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
   if (!rateLimit(`notes:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { workId } = await ctx.params;
   if (!WORK_ID.test(workId)) return { refused: NextResponse.json({ error: "Identifiant invalide." }, { status: 400 }) };

@@ -124,4 +124,34 @@ export const readSessionWithReason = cache((): Promise<SessionRead> => readSessi
  * contrôle, mais échec fermé si Firebase Auth ne répond pas. Sans quoi un cookie resté sur un autre appareil pourrait
  * recréer des données sous users/{uid} après la suppression du compte.
  */
-export const getCurrentUserStrict = cache(async (): Promise<SessionUser | null> => (await readSession(true)).user);
+export const getCurrentUserStrict = cache(async (): Promise<SessionUser | null> => (await readSessionStrictWithReason()).user);
+
+/** Lecture stricte avec la raison d'une absence d'utilisateur (même lecture que `getCurrentUserStrict`, mémorisée). */
+export const readSessionStrictWithReason = cache((): Promise<SessionRead> => readSession(true));
+
+/**
+ * Réponse d'une écriture sans utilisateur strict : 503 si la vérification de la session est en panne (Firebase Auth
+ * injoignable, clés publiques indisponibles), 401 sinon. Une panne ne doit pas se présenter comme « Non connecté » :
+ * le client ouvrirait la fenêtre de connexion, et la victime d'un vol qui veut tout couper lirait un faux diagnostic.
+ */
+export async function strictRefusal(message = "Non connecté."): Promise<NextResponse> {
+  const { failure } = await readSessionStrictWithReason();
+  if (failure === "unavailable") {
+    return NextResponse.json(
+      { error: "Vérification de session momentanément impossible, réessayez." },
+      { status: 503, headers: { "cache-control": "private, no-store", "retry-after": "5" } },
+    );
+  }
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+/**
+ * Relit l'état du compte sans le cache de l'instance, pour une opération qui crée un accès durable (clé MCP) : une
+ * révocation faite sur une autre instance il y a moins de 5 minutes compte déjà. Vrai si la session reste valable.
+ * Lève une erreur si Firebase Auth ne répond pas (échec fermé, à traduire en 503 par l'appelant).
+ */
+export async function recheckSession(user: Pick<SessionUser, "uid" | "authTime">): Promise<boolean> {
+  forgetAccountState(user.uid);
+  const account = await accountState(user.uid);
+  return account.active && user.authTime * 1000 >= account.validAfter;
+}

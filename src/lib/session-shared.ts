@@ -5,19 +5,17 @@
  * - `sextant_signed_in` : simple indice, lisible par le navigateur, qui suit la session. Il ne
  *   donne aucun droit (toute route vérifie le vrai cookie) ; il permet seulement aux pages mises en cache au bord, donc
  *   identiques pour tous, de savoir sans requête qu'un visiteur est anonyme, et d'afficher la bonne place dans l'en-tête
- *   avant l'hydratation (PERF-01). Valeurs : `1` = session ouverte ; `0` = cookie de session présent mais refusé
- *   (révoqué, expiré), pour une heure : le proxy ne le remet pas à `1` à chaque page, ce qui ferait clignoter l'en-tête
- *   et coûterait une requête par page ; passé ce délai, une nouvelle vérification a lieu. Une panne de la vérification
- *   (SDK Admin, réseau) ne pose pas cette marque : GET /api/favorites répond alors 503 et l'indice reste tel quel.
+ *   avant l'hydratation (PERF-01). Valeur : `1` = session ouverte. Un cookie de session refusé (révoqué, expiré, compte
+ *   supprimé) est effacé avec l'indice par GET /api/favorites, pour que le proxy n'ait plus rien à rétablir. Une
+ *   panne de la vérification (SDK Admin, réseau) ne touche à rien : la route répond 503 et l'indice reste tel quel.
+ *   La marque `0` (« session refusée », posée une heure par les versions précédentes) est encore respectée par le proxy
+ *   jusqu'à son expiration, mais n'est plus posée.
  */
 export const SESSION_COOKIE = "sextant_session";
 export const SESSION_HINT_COOKIE = "sextant_signed_in";
 /** Durée de la session : 14 jours (maximum autorisé par Firebase). */
 export const SESSION_MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
-/** Durée de la marque « session refusée » (`0`). */
-const REJECTED_MAX_AGE_S = 60 * 60;
-
-export type SessionHint = "on" | "off" | "rejected";
+export type SessionHint = "on" | "off";
 
 /** Options de l'indice : lisible par le script de la page (pas HttpOnly), même portée que la session. */
 export function sessionHintOptions(hint: SessionHint) {
@@ -26,13 +24,13 @@ export function sessionHintOptions(hint: SessionHint) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
-    maxAge: hint === "on" ? SESSION_MAX_AGE_MS / 1000 : hint === "rejected" ? REJECTED_MAX_AGE_S : 0,
+    maxAge: hint === "on" ? SESSION_MAX_AGE_MS / 1000 : 0,
   };
 }
 
-/** Pose, marque refusée ou efface l'indice sur une réponse (NextResponse, ou tout objet exposant `cookies.set`). */
+/** Pose ou efface l'indice sur une réponse (NextResponse, ou tout objet exposant `cookies.set`). */
 export function setSessionHint(res: { cookies: { set: (name: string, value: string, options: ReturnType<typeof sessionHintOptions>) => unknown } }, hint: SessionHint): void {
-  res.cookies.set(SESSION_HINT_COOKIE, hint === "on" ? "1" : hint === "rejected" ? "0" : "", sessionHintOptions(hint));
+  res.cookies.set(SESSION_HINT_COOKIE, hint === "on" ? "1" : "", sessionHintOptions(hint));
 }
 
 /** Valeur d'un cookie dans une chaîne `document.cookie` ou un en-tête Cookie ; undefined s'il est absent. */

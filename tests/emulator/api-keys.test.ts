@@ -41,4 +41,21 @@ describe("verifyKey et l'état du compte (émulateurs)", () => {
     expect(await verifyKey(before)).toBeNull();
     expect(await verifyKey(after)).toMatchObject({ uid });
   });
+
+  it("une clé écrite après la révocation par une session antérieure (cookie volé, cache périmé) est refusée", async () => {
+    const uid = newUid();
+    const auth = await adminAuth();
+    await auth.createUser({ uid });
+    // Session ouverte avant la révocation : son auth_time précède tokensValidAfterTime.
+    const stolenAuthTime = Math.floor(Date.now() / 1000) - 60;
+    await auth.revokeRefreshTokens(uid);
+    await new Promise((r) => setTimeout(r, 1_100));
+    // Clé écrite après la révocation (createdAt postérieur), mais rattachée à la session volée.
+    const { key: stolen } = await createKey(uid, "Volée", stolenAuthTime);
+    // Session ouverte après la révocation : sa clé reste valable.
+    const { key: fresh } = await createKey(uid, "Légitime", Math.floor(Date.now() / 1000));
+    forgetAccountState(uid);
+    expect(await verifyKey(stolen)).toBeNull();
+    expect(await verifyKey(fresh)).toMatchObject({ uid });
+  });
 });

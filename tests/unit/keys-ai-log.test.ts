@@ -131,5 +131,12 @@ describe("journal d'erreurs", () => {
     expect(isExpectedAuthError({ code: "auth/internal-error" })).toBe(false);
     expect(isExpectedAuthError(new Error("réseau"))).toBe(false);
     expect(isExpectedAuthError(null)).toBe(false);
+    // `auth/argument-error` : refus seulement si le message vient du vérificateur de jetons de firebase-admin.
+    expect(isExpectedAuthError({ code: "auth/argument-error", message: "Firebase session cookie has invalid signature." })).toBe(true);
+    expect(isExpectedAuthError({ code: "auth/argument-error", message: "Decoding Firebase ID token failed. Make sure…" })).toBe(true);
+    expect(isExpectedAuthError({ code: "auth/argument-error", message: "verifySessionCookie() expects a session cookie, but was given a custom token." })).toBe(true);
+    expect(isExpectedAuthError({ code: "auth/argument-error", message: "network timeout" })).toBe(false);
+    expect(isExpectedAuthError({ code: "auth/argument-error", message: "Error fetching public keys for Google certs: …" })).toBe(false);
+    expect(isExpectedAuthError({ code: "auth/argument-error" })).toBe(false);
   });
 });
