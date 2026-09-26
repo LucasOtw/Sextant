@@ -102,10 +102,10 @@ export function ForYou() {
   return (
     <section id="pour-vous" className="py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5">
-        <h2 ref={headingRef} tabIndex={-1} className="title-display flex items-center gap-2 text-3xl outline-none sm:text-4xl">
+        <h2 ref={headingRef} tabIndex={-1} className="title-display type-h2 flex items-center gap-2 outline-none">
           <SparklesIcon className="size-7 text-brand" aria-hidden /> Pour vous
         </h2>
-        <p className="mt-1.5 text-base text-muted-foreground">
+        <p className="mt-1.5 max-w-measure-text text-muted-foreground">
           {state.fromFavorites
             ? "À partir de vos favoris et de ce que vous avez consulté : des articles apparentés, et les plus cités de vos sujets. Rien n'est gardé côté serveur."
             : "À partir de ce que vous avez consulté sur cet appareil : des articles apparentés, et les plus cités de vos sujets. Rien n'est gardé côté serveur."}
@@ -116,7 +116,7 @@ export function ForYou() {
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
       ) : state.items.length === 0 ? (
-        <p className="text-[0.9375rem] text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
+        <p className="text-meta text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
       ) : (
         <ul ref={listRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {state.items.map((item, i) => {
@@ -129,7 +129,7 @@ export function ForYou() {
                   <p className="min-w-0 wrap-break-word">
                     {seeds.length > 0 ? (
                       <>
-                        {kind === "related" ? "Proche de " : topic ? `Récent et cité sur « ${topic} », comme ` : "Même sujet que "}
+                        {kind === "related" ? "Proche de " : topic ? `Récent et cité sur «\u00A0${topic}\u00A0», comme ` : "Même sujet que "}
                         {seeds.map((seed, j) => (
                           <Fragment key={seed.id}>
                             {j > 0 && (j === seeds.length - 1 ? " et " : ", ")}
@@ -138,7 +138,7 @@ export function ForYou() {
                               aria-label={`« ${seed.title} »`}
                               className="underline underline-offset-2 hover:text-foreground"
                             >
-                              « {shortTitle(seed.title)} »
+                              «&nbsp;{shortTitle(seed.title)}&nbsp;»
                             </Link>
                           </Fragment>
                         ))}

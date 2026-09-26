@@ -21,6 +21,7 @@ import { voteLabel } from "@/lib/labels";
 import { REPORT_SECTION, reportHref } from "@/lib/report";
 import { cn } from "cn";
 import { DATE_SHORT } from "@/lib/dates";
+import { frSpaces } from "@/lib/text";
 
 const SORTS = [
   { value: "votes", label: "Les plus votés" },
@@ -158,9 +159,9 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
         </ul>
       )}
 
-      <p className="text-sm text-muted-foreground">
+      <p className="max-w-measure-text text-sm text-muted-foreground">
         Les sujets sont publics et sans nom d'auteur ; n'y mettez pas d'informations personnelles. Les votes sont anonymes. Un sujet
-        illicite ou hors sujet se signale par son lien « Signaler » (<Link href={REPORT_SECTION} className="underline underline-offset-3 hover:text-foreground">procédure</Link>).
+        illicite ou hors sujet se signale par son lien «&nbsp;Signaler&nbsp;» (<Link href={REPORT_SECTION} className="underline underline-offset-3 hover:text-foreground">procédure</Link>).
       </p>
 
       <Composer
@@ -214,10 +215,10 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
             Signaler
           </a>
         </div>
-        <h2 className="mt-1.5 text-[1.0625rem] font-semibold leading-snug">{item.title}</h2>
+        <h2 className="title-display mt-1.5 text-lg leading-snug">{item.title}</h2>
         {item.description && (
           <>
-            <p id={descriptionId} className={cn("mt-1 whitespace-pre-line text-[0.9375rem] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
+            <p id={descriptionId} className={cn("mt-1 max-w-measure-text whitespace-pre-line text-meta leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
             {long && (
               <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded} aria-controls={descriptionId}>
                 {expanded ? "Réduire" : "Lire la suite"}
@@ -234,8 +235,8 @@ function Composer({ open, onOpenChange, onCreated }: { open: boolean; onOpenChan
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogTitle className="title-display text-2xl">Nouveau sujet</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
+        <DialogTitle className="title-display">Nouveau sujet</DialogTitle>
+        <DialogDescription className="text-meta text-muted-foreground">
           Un sujet par bug ou par idée. Vérifiez d'abord qu'il n'existe pas déjà : un vote suffit alors.
         </DialogDescription>
         {open && <ComposerForm onClose={() => onOpenChange(false)} onCreated={onCreated} />}
@@ -273,7 +274,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
       const { item } = await api<{ item?: FeedbackItem }>("/api/feedback", { method: "POST", json: { kind, title, description }, fallback: "La publication a échoué." });
       if (!item) throw new Error();
       onCreated(item);
-      toast.success(kind === "bug" ? "Bug signalé, merci !" : "Idée publiée, merci !");
+      toast.success(frSpaces(kind === "bug" ? "Bug signalé, merci !" : "Idée publiée, merci !"));
       onClose();
     } catch (err) {
       toast.error(errorMessage(err, "La publication a échoué."));
@@ -329,7 +330,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             maxLength={MAX_FEEDBACK_DESCRIPTION}
             rows={4}
             placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil" : "À quoi ça vous servirait"}
-            className="text-base md:text-[0.9375rem]"
+            className="text-base md:text-meta"
           />
         )}
       </Field>

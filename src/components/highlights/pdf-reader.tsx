@@ -540,7 +540,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
     })();
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-dashed p-5 text-[0.9375rem]">
+        <div className="rounded-xl border border-dashed p-5 text-meta">
           <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
           <p className="mt-1 text-muted-foreground">
             {embedUrl
@@ -602,7 +602,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
             </Button>
           </div>
           {interrupted && (
-            <div role="alert" className="rounded-xl border border-dashed p-4 text-[0.9375rem]">
+            <div role="alert" className="rounded-xl border border-dashed p-4 text-meta">
               <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
               <p className="mt-1 text-muted-foreground">
                 Rechargez la page pour réessayer, ou{" "}
@@ -635,7 +635,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
             setPicker(null);
           }}
           title="Surligner des phrases"
-          description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans « Mes citations », avec leur page."
+          description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans «&nbsp;Mes citations&nbsp;», avec leur page."
           sentences={picker?.sentences ?? null}
           error={picker?.error}
           lang={lang}

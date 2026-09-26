@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
+import { fontVariables } from "./fonts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -11,8 +11,6 @@ import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
 import { ANNOUNCER_ID } from "@/lib/announce";
 import { SkipLink } from "@/components/skip-link";
 import { SITE } from "@/lib/site";
-
-const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   // Base des adresses relatives (canoniques, image de partage) : l'adresse de production, y compris sur un déploiement de
@@ -49,7 +47,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`${sans.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="fr" className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
       <head>
         {/* Thème et indice de connexion appliqués avant le premier rendu (lib/pre-hydration.ts), autorisé par la CSP via son empreinte. */}
         <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_SCRIPT }} />

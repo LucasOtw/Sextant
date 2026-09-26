@@ -42,8 +42,8 @@ export default async function CitationsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-4xl">
-        <h1 className="title-display text-4xl sm:text-5xl">Mes citations</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
+        <h1 className="title-display type-h1">Mes citations</h1>
+        <p className="lead mt-3">
           Tout ce que vous avez surligné, avec l'article d'origine et la page. Copiez un passage avec sa référence, prêt à coller.
         </p>
         <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <CitationsList initial={highlights} collections={collections} loadError={loadError} retracted={retracted} />) : (

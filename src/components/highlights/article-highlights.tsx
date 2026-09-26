@@ -37,9 +37,9 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   const sentences = useMemo(() => (abstract && !compact ? splitSentences(abstract, lang ?? "fr") : []), [abstract, compact, lang]);
   const where = compact ? "du PDF" : hasAbstract && hasPdf ? "du résumé, ou du PDF dans le lecteur" : hasAbstract ? "du résumé" : hasPdf ? "du PDF dans le lecteur" : null;
   // Au clavier (ou quand la sélection est malaisée) : le bouton « Surligner des phrases » ouvre la liste des phrases.
-  const keyboard = compact ? " Au clavier : « Surligner des phrases », au-dessus du PDF." : sentences.length > 0 ? " Au clavier : « Surligner des phrases du résumé »." : "";
+  const keyboard = compact ? " Au clavier : «\u00A0Surligner des phrases\u00A0», au-dessus du PDF." : sentences.length > 0 ? " Au clavier : «\u00A0Surligner des phrases du résumé\u00A0»." : "";
   const howTo = where
-    ? `Sélectionnez une phrase ${where} : un bouton « Surligner » apparaît.${keyboard}`
+    ? `Sélectionnez une phrase ${where} : un bouton «\u00A0Surligner\u00A0» apparaît.${keyboard}`
     : "Le résumé et le texte intégral ne sont pas disponibles ici : notez vos citations à la main en lisant l'article ailleurs.";
 
   const abstractHighlights = highlights.filter((h) => h.source === "abstract").map((h) => h.text);
@@ -65,9 +65,9 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   return (
     <section id="mes-surlignages" aria-labelledby="mes-surlignages-titre" className={compact ? "" : "mt-8"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 ref={headingRef} id="mes-surlignages-titre" tabIndex={-1} className="flex items-center gap-2 text-sm outline-none font-semibold uppercase tracking-wide text-muted-foreground">
-          <HighlighterIcon className="size-4 text-highlight-foreground" aria-hidden /> Mes surlignages
-          {highlights.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium normal-case tracking-normal text-secondary-foreground">{highlights.length}</span>}
+        <h2 ref={headingRef} id="mes-surlignages-titre" tabIndex={-1} className="section-title flex items-center gap-2 outline-none">
+          <HighlighterIcon className="size-5 text-highlight-foreground" aria-hidden /> Mes surlignages
+          {highlights.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 font-sans text-xs font-semibold text-secondary-foreground">{highlights.length}</span>}
         </h2>
         {enabled && highlights.length > 0 && (
           <Link href="/citations" className="text-sm text-accent-brand underline underline-offset-3">Toutes mes citations</Link>
@@ -75,7 +75,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
       </div>
 
       {!enabled ? (
-        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
+        <p className="mt-2 max-w-measure-text text-meta text-muted-foreground">
           {where ? `Sélectionnez un passage ${where} pour le surligner, ou notez une citation à la main.` : "Notez vos citations à la main : le résumé et le texte intégral ne sont pas disponibles ici."} Elles sont gardées avec leur source, sur tous vos appareils.{" "}
           <button type="button" onClick={requestSignIn} className="text-accent-brand underline underline-offset-3">Se connecter</button>
         </p>
@@ -90,7 +90,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
           )}
           {/* Même élément, à la même place, avec ou sans passage : au premier surlignage, les boutons ne sont pas
               remplacés et la fenêtre qui se ferme leur rend le focus (sinon il tomberait sur <body>). */}
-          <div className={cn("mt-3", highlights.length === 0 && "flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] text-muted-foreground")}>
+          <div className={cn("mt-3", highlights.length === 0 && "flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-meta text-muted-foreground")}>
             {highlights.length === 0 && <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. {howTo}</p>}
             {addButton}
           </div>
@@ -102,7 +102,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
           open={picker}
           onOpenChange={setPicker}
           title="Surligner des phrases"
-          description="Cochez les phrases du résumé à garder : elles seront marquées dans le résumé et rangées dans « Mes citations », avec leur source."
+          description="Cochez les phrases du résumé à garder : elles seront marquées dans le résumé et rangées dans «&nbsp;Mes citations&nbsp;», avec leur source."
           sentences={sentences}
           lang={lang}
           isHighlighted={(s) => isAlreadyHighlighted(s.text, abstractHighlights)}

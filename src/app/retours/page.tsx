@@ -44,8 +44,8 @@ export default async function FeedbackPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-3xl">
-        <h1 className="title-display text-4xl sm:text-5xl">Bugs et idées</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
+        <h1 className="title-display type-h1">Bugs et idées</h1>
+        <p className="lead mt-3">
           Signalez un problème ou proposez une amélioration. Votez pour ce qui compte pour vous : les sujets les plus demandés passent en premier.
         </p>
         <div className="mt-8">

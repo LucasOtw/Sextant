@@ -37,7 +37,7 @@ export default async function SearchPage({ searchParams }: Props) {
             key={`${params.topic ?? ""}|${params.author ?? ""}|${params.cites ?? ""}`}
             fallback={Array.from({ length: contextLines }, (_, i) => (
               // Hauteur d'une ligne de contexte réservée : la liste de résultats ne saute pas à l'arrivée du texte.
-              <Skeleton key={i} className="h-[1.5em] w-72 max-w-full text-[0.9375rem]" />
+              <Skeleton key={i} className="h-[1.5em] w-72 max-w-full text-meta" />
             ))}
           >
             <SearchContext topic={params.topic} author={params.author} cites={params.cites} q={params.q} />
@@ -68,7 +68,7 @@ async function SearchContext({ topic: topicId, author: authorId, cites, q }: { t
 
 function ContextLine({ label, value, clearHref }: { label: string; value: string; clearHref: string }) {
   return (
-    <p className="text-[0.9375rem] text-muted-foreground">
+    <p className="text-meta text-muted-foreground">
       {label} : <span className="text-foreground">{value}</span>{" "}
       <Link href={clearHref} className="underline underline-offset-2 hover:text-foreground">
         (retirer)

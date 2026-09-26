@@ -25,6 +25,7 @@ import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type Page
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 import { cn } from "cn";
 import { DATE_SHORT } from "@/lib/dates";
+import { frSpaces } from "@/lib/text";
 
 const SORTS = [
   { value: "added", label: "Ajout récent" },
@@ -223,7 +224,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         open={creating}
         onOpenChange={setCreating}
         title="Nouvelle liste"
-        description="Par exemple « Mémoire 2026 », « Santé », « À lire »."
+        description="Par exemple «&nbsp;Mémoire 2026&nbsp;», «&nbsp;Santé&nbsp;», «&nbsp;À lire&nbsp;»."
         submitLabel="Créer"
         onSubmit={async (name, description) => {
           const created = await favorites.createCollection(name, { description });
@@ -253,8 +254,8 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             return deleted && countRef.current?.isConnected ? countRef.current : true;
           }}
         >
-          <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces(`Supprimer « ${collection?.name ?? ""} » ?`)}</DialogTitle>
+          <DialogDescription className="text-meta text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
           </DialogDescription>
           <div className="mt-2 flex justify-end gap-2">
@@ -303,7 +304,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
               <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="min-w-0 line-clamp-2 wrap-break-word">{collection.name}</span>
             </h2>
-            {collection.description && <p className="mt-1 text-[0.9375rem] text-muted-foreground">{collection.description}</p>}
+            {collection.description && <p className="mt-1 text-meta text-muted-foreground">{collection.description}</p>}
             {collection.shareToken && (
               <button type="button" onClick={() => setSharing(true)} className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-accent-brand underline underline-offset-3">
                 <Link2Icon className="size-3.5" aria-hidden /> Partagée par lien
@@ -350,8 +351,8 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         />
       </div>
 
-      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
-        {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour « {q} »</>}
+      <p ref={countRef} tabIndex={-1} className="text-meta text-muted-foreground outline-none" aria-live="polite">
+        {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour «&nbsp;{q}&nbsp;»</>}
         {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
       </p>
 
@@ -359,7 +360,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         <EmptyState
           className="p-8"
           title="Cette liste est vide."
-          hint={<>Depuis « Tous » ou une fiche article, l'icône dossier range un article dans « {collection.name} ».</>}
+          hint={<>Depuis «&nbsp;Tous&nbsp;» ou une fiche article, l'icône dossier range un article dans «&nbsp;{collection.name}&nbsp;».</>}
         />
       )}
 

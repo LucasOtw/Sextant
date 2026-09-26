@@ -9,6 +9,7 @@ import { ForYou } from "@/components/for-you";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getFeaturedWorks } from "@/lib/openalex";
 import { logError } from "@/lib/log";
+import { frSpaces } from "@/lib/text";
 
 // Liens d'exemple non préchargés : /search est dynamique, le préchargement coûtait une invocation sans rien apporter (PERF-18).
 const EXAMPLES = ["télétravail et bien-être", "transition énergétique villes", "réseaux sociaux santé mentale adolescents", "fast fashion supply chain"];
@@ -24,10 +25,10 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
       <section className="flex flex-col items-center gap-6 py-16 text-center sm:py-24">
-        <h1 className="title-display max-w-3xl text-5xl leading-[1.05] sm:text-6xl lg:text-7xl">
+        <h1 className="title-display type-hero max-w-3xl">
           Trouvez votre cap dans la littérature scientifique<span className="text-brand">.</span>
         </h1>
-        <p className="max-w-2xl text-balance text-lg text-muted-foreground">
+        <p className="lead">
           Des articles évalués par les pairs, des thèses et des ouvrages universitaires. Cherchez par
           mots-clés, filtrez, et laissez chaque lecture vous mener à la suivante.
         </p>
@@ -102,8 +103,8 @@ function FeaturedSkeleton() {
 function SectionHeading({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="mb-5">
-      <h2 className="title-display text-3xl sm:text-4xl">{title}</h2>
-      {subtitle && <p className="mt-1.5 text-base text-muted-foreground">{subtitle}</p>}
+      <h2 className="title-display type-h2">{frSpaces(title)}</h2>
+      {subtitle && <p className="mt-1.5 max-w-measure-text text-muted-foreground">{frSpaces(subtitle)}</p>}
     </div>
   );
 }

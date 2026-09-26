@@ -28,7 +28,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
         onOpenChange={(o) => {
           if (!o) onClose();
         }}
-        intro="Connectez-vous, puis créez une clé dans « Mon compte » → Assistants IA pour brancher Sextant à Claude ou ChatGPT."
+        intro="Connectez-vous, puis créez une clé dans «&nbsp;Mon compte&nbsp;» → Assistants IA pour brancher Sextant à Claude ou ChatGPT."
       />
     );
   }
@@ -42,8 +42,8 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
             <span className="inline-flex w-fit items-center gap-1 rounded-full bg-tint px-2.5 py-0.5 text-xs font-semibold text-accent-brand">
               <SparklesIcon className="size-3" aria-hidden /> Nouveau
             </span>
-            <DialogTitle className="title-display text-2xl leading-tight">Sextant, dans votre assistant IA</DialogTitle>
-            <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+            <DialogTitle className="title-display">Sextant, dans votre assistant IA</DialogTitle>
+            <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
               Branchez Sextant à Claude, ChatGPT ou tout assistant compatible MCP. Il peut alors chercher des articles vérifiés et lire
               vos favoris, listes, citations et notes, sans rien pouvoir modifier.
             </DialogDescription>
@@ -58,7 +58,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
                   className="w-fit max-w-full rounded-2xl rounded-bl-sm bg-secondary px-3.5 py-2 text-sm leading-snug text-secondary-foreground animate-in fade-in slide-in-from-bottom-1 fill-mode-backwards duration-300 motion-reduce:animate-none"
                   style={{ animationDelay: `${150 + i * 90}ms` }}
                 >
-                  « {e} »
+                  «&nbsp;{e}&nbsp;»
                 </li>
               ))}
             </ul>
@@ -66,7 +66,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
 
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <KeyRoundIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            La connexion passe par une clé personnelle, que vous créez et révoquez à tout moment depuis « Mon compte ».
+            La connexion passe par une clé personnelle, que vous créez et révoquez à tout moment depuis «&nbsp;Mon compte&nbsp;».
           </p>
 
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

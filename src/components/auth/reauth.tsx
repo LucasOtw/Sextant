@@ -67,8 +67,8 @@ export function ReauthDialog({ open, onOpenChange, description, onConfirmed }: P
   return (
     <Dialog open={open} onOpenChange={(o) => !busy && onOpenChange(o)}>
       <DialogContent className="sm:max-w-sm">
-        <DialogTitle className="title-display text-2xl">Confirmez votre identité</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">{description}</DialogDescription>
+        <DialogTitle className="title-display">Confirmez votre identité</DialogTitle>
+        <DialogDescription className="text-meta leading-relaxed text-muted-foreground">{description}</DialogDescription>
         <GoogleButton className="mt-2" onClick={() => void confirm()} busy={busy || !ready} aria-describedby={error ? errorId : undefined}>
           Confirmer avec Google
         </GoogleButton>

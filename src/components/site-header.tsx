@@ -17,7 +17,7 @@ export function SiteHeader() {
         <Link href="/" prefetch={false} className="group flex items-center gap-2.5" aria-label="Sextant, accueil">
           <LogoMark className="size-9 text-foreground transition-transform duration-300 group-hover:-rotate-6" />
           {/* Le nom s'efface sous sm pour que l'en-tête tienne dans 320 px ; le lien garde son aria-label. */}
-          <span className="hidden text-lg font-semibold tracking-tight sm:inline">Sextant</span>
+          <span className="title-display hidden text-xl sm:inline">Sextant</span>
         </Link>
         <div className="hidden flex-1 justify-center md:flex">
           <HeaderSearch />

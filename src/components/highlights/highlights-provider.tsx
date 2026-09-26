@@ -116,7 +116,7 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       }
       if (!options?.silent) {
         toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
-          description: "Retrouvez-le dans « Mes citations », avec sa source.",
+          description: "Retrouvez-le dans «\u00A0Mes citations\u00A0», avec sa source.",
         });
       }
       return result.created;

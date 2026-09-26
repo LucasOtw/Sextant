@@ -1,13 +1,14 @@
 "use client";
 
 import "./globals.css";
+import { fontVariables } from "./fonts";
 import { ServerError } from "@/components/server-error";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
 
 /** Erreur dans la mise en page racine elle-même : document complet, sans en-tête ni pied de page. */
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" className={fontVariables} suppressHydrationWarning>
       <head>
         <title>Erreur · Sextant</title>
         <meta name="robots" content="noindex" />

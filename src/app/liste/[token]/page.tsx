@@ -67,8 +67,8 @@ export default async function SharedListPage({ params }: Props) {
   if (list === "unavailable") {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-        <h1 className="title-display text-3xl">Liste indisponible</h1>
-        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
+        <h1 className="title-display type-h2">Liste indisponible</h1>
+        <p className="mt-3 text-meta text-muted-foreground">
           Les listes partagées ne sont pas disponibles sur cette instance. En local, lancez <code>npm run dev:emu</code> ou
           définissez <code>ALLOW_PROD_DB=1</code>.
         </p>
@@ -86,10 +86,10 @@ export default async function SharedListPage({ params }: Props) {
         <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
           <FolderIcon className="size-4 text-accent-brand" aria-hidden /> Liste partagée
         </p>
-        <h1 className="title-display mt-2 text-4xl sm:text-5xl">{list.name}</h1>
-        {list.description && <p className="mt-3 text-lg text-muted-foreground">{list.description}</p>}
+        <h1 className="title-display type-h1 mt-2">{list.name}</h1>
+        {list.description && <p className="lead mt-3">{list.description}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[0.9375rem] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
+          <p className="text-meta text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
           <BibtexActions articles={list.articles} filename={`sextant-${fileSlug(list.name)}.bib`} retracted={[...retracted]} />
         </div>
 

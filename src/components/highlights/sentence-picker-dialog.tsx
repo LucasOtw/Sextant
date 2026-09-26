@@ -38,8 +38,8 @@ export function SentencePickerDialog({ open, onOpenChange, title, description, .
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent container={container} className="max-h-[92dvh] min-w-0 overflow-y-auto sm:max-w-xl">
-        <DialogTitle className="title-display text-2xl">{title}</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] text-muted-foreground">{description}</DialogDescription>
+        <DialogTitle className="title-display">{title}</DialogTitle>
+        <DialogDescription className="text-meta text-muted-foreground">{description}</DialogDescription>
         {/* Monté à l'ouverture seulement : les cases repartent décochées à chaque fois. */}
         {open && <Picker {...rest} onClose={() => onOpenChange(false)} />}
       </DialogContent>
@@ -110,7 +110,7 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
               const done = isHighlighted(s);
               return (
                 <li key={`${s.start}-${s.end}`}>
-                  <label className="flex cursor-pointer items-start gap-2.5 rounded-lg px-2 py-1.5 text-[0.9375rem] leading-relaxed hover:bg-muted has-disabled:cursor-default has-disabled:hover:bg-transparent">
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-lg px-2 py-1.5 text-meta leading-relaxed hover:bg-muted has-disabled:cursor-default has-disabled:hover:bg-transparent">
                     <input
                       type="checkbox"
                       className="mt-1.5 size-4 shrink-0 accent-accent-brand"

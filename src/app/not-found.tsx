@@ -14,8 +14,8 @@ export default function NotFound() {
       <ErrorScene variant="lost" code="404" />
       <div className="flex flex-col items-center gap-3 text-center">
         <p className="text-sm font-semibold uppercase tracking-wide text-accent-brand">Erreur 404</p>
-        <h1 className="title-display text-4xl leading-tight sm:text-5xl">Cette page a pris le large</h1>
-        <p className="max-w-lg text-balance text-lg text-muted-foreground">
+        <h1 className="title-display type-h1">Cette page a pris le large</h1>
+        <p className="lead">
           L'adresse ne mène nulle part : la page a été déplacée, l'identifiant est incorrect ou le lien de partage a été désactivé.
           Faites le point et repartez d'ici.
         </p>

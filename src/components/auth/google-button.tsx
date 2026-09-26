@@ -18,7 +18,7 @@ export function GoogleButton({ busy, className, children, ...props }: Props) {
       {...props}
       disabled={busy || props.disabled}
       className={cn(
-        "inline-flex h-10 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-[0.9375rem] font-medium text-[#1F1F1F] transition-colors",
+        "inline-flex h-10 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-meta font-medium text-[#1F1F1F] transition-colors",
         "hover:bg-[#F2F2F2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4285F4] disabled:opacity-60",
         "dark:border-[#8E918F] dark:bg-[#131314] dark:text-[#E3E3E3] dark:hover:bg-[#1E1F20]",
         className,

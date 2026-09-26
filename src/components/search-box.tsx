@@ -220,7 +220,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
                 <span className="min-w-0 flex-1">
                   {item.kind === "search" && (
                     <span className="block">
-                      Rechercher « <span className="font-medium">{item.label}</span> »
+                      Rechercher «&nbsp;<span className="font-medium">{item.label}</span>&nbsp;»
                     </span>
                   )}
                   {item.kind === "theme" && (

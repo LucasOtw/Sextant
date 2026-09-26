@@ -12,6 +12,7 @@ import { useSession } from "@/components/auth/session-provider";
 import * as remote from "@/components/favorites/favorites-api";
 import { EMPTY_FAVORITES, favoritesReducer, listsContaining, membershipIndex, placementOf, type FavoritesAction, type FavoritesState } from "@/components/favorites/favorites-state";
 import { readPendingFavorite } from "@/components/favorites/pending-favorite";
+import { frSpaces } from "@/lib/text";
 
 /** Rechargement au retour sur l'onglet, au plus une fois par minute. */
 const FOCUS_REFRESH_MIN_MS = 60 * 1000;
@@ -338,10 +339,10 @@ export function FavoritesProvider({ children }: Props) {
         if (inList) {
           const favorite = await remote.addToList(id, snapshot);
           if (favorite) dispatch({ type: "favoriteSaved", favorite });
-          if (!options?.silent) toast.success(`Ajouté à « ${target.name} ».`, { action: { label: "Voir", onClick: () => router.push(`/favoris?liste=${id}`) } });
+          if (!options?.silent) toast.success(frSpaces(`Ajouté à « ${target.name} ».`), { action: { label: "Voir", onClick: () => router.push(`/favoris?liste=${id}`) } });
         } else {
           await remote.removeFromList(id, snapshot.id);
-          if (!options?.silent) toast(`Retiré de « ${target.name} ».`);
+          if (!options?.silent) toast(frSpaces(`Retiré de « ${target.name} ».`));
         }
         return true;
       } catch (e) {

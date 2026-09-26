@@ -17,7 +17,7 @@ export function ThemeGrid({ limit, className }: { limit?: number; className?: st
             className="group flex h-full flex-col gap-2 rounded-xl bg-card p-4 border border-border transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/25"
           >
             <span className={cn("size-3 rounded-full", t.tone)} aria-hidden />
-            <span className="text-[1.0625rem] font-semibold leading-tight">{t.name}</span>
+            <span className="title-display text-lg leading-tight">{t.name}</span>
             <span className="text-sm leading-snug text-muted-foreground">{t.description}</span>
             <ArrowRightIcon className="mt-auto size-4 self-end text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
           </Link>

@@ -62,6 +62,19 @@ export function fold(s: string): string {
 }
 
 /**
+ * Espaces insécables de la typographie française (Y14) : espace fine (U+202F) avant « ; ! ? », espace normale (U+00A0)
+ * avant « : » et à l'intérieur des guillemets. Seules les espaces déjà présentes changent : un signe ou un guillemet ne se
+ * retrouve plus seul en début ou en fin de ligne. Forme échappée : les caractères littéraux seraient invisibles.
+ */
+export function frSpaces(s: string): string {
+  return s
+    .replace(/ ([;!?])/g, "\u202F$1")
+    .replace(/ :/g, "\u00A0:")
+    .replace(/« /g, "«\u00A0")
+    .replace(/ »/g, "\u00A0»");
+}
+
+/**
  * Adresse externe affichable en lien : http(s) seulement, sans identifiants (`https://user:pass@…`), sinon null.
  * Les adresses d'OpenAlex (PDF, pages d'éditeur, sites d'institution) sont moissonnées chez des milliers de sources :
  * React bloque `javascript:`, mais pas `data:`, `blob:` ni les autres schémas (SEC-16).

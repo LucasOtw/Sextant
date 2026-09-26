@@ -22,9 +22,9 @@ export function ManualCitationDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent container={container} className="sm:max-w-lg">
-        <DialogTitle className="title-display text-2xl">Ajouter une citation</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
-          Recopiez le passage et indiquez la page : vous le retrouverez dans « Mes citations », avec sa référence.
+        <DialogTitle className="title-display">Ajouter une citation</DialogTitle>
+        <DialogDescription className="text-meta text-muted-foreground">
+          Recopiez le passage et indiquez la page : vous le retrouverez dans «&nbsp;Mes citations&nbsp;», avec sa référence.
         </DialogDescription>
         <Form onClose={() => onOpenChange(false)} />
       </DialogContent>

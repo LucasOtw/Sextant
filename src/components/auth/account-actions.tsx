@@ -10,6 +10,7 @@ import { useLogout } from "@/components/auth/use-logout";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 import { useSession } from "@/components/auth/session-provider";
+import { frSpaces } from "@/lib/text";
 
 /** Déconnexion (cet appareil ou tous), et suppression du compte, depuis la page « Mon compte ». */
 export function AccountActions() {
@@ -117,8 +118,8 @@ export function AccountActions() {
 
       <Dialog open={confirmAll} onOpenChange={(o) => !busyAll && setConfirmAll(o)}>
         <DialogContent className="sm:max-w-sm">
-          <DialogTitle className="title-display text-2xl">Se déconnecter partout ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces("Se déconnecter partout ?")}</DialogTitle>
+          <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Toutes vos sessions seront fermées, sur cet appareil aussitôt et sur les autres dans les 5 minutes, et vos clés d'assistant IA seront révoquées :
             il faudra en créer de nouvelles. À utiliser si un appareil a été perdu ou si une session vous semble suspecte.
           </DialogDescription>
@@ -138,8 +139,8 @@ export function AccountActions() {
 
       <Dialog open={confirm} onOpenChange={(o) => !busy && setConfirm(o)}>
         <DialogContent className="sm:max-w-sm">
-          <DialogTitle className="title-display text-2xl">Supprimer votre compte ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces("Supprimer votre compte ?")}</DialogTitle>
+          <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Votre compte et toutes les données qui lui sont liées seront effacés immédiatement. Cette action est définitive.
           </DialogDescription>
           {error && (

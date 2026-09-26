@@ -163,11 +163,11 @@ export default async function ArticlePage({ params }: Props) {
         </div>
 
         {/* Titre et résumé dans la langue de l'article : lus avec la bonne voix par les lecteurs d'écran (A11Y-04). */}
-        <h1 lang={titleLang(work)} className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
+        <h1 lang={titleLang(work)} className="title-display type-h1-article mt-4">{workTitle(work)}</h1>
 
         <Authors work={work} />
 
-        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
+        <p className="mt-3 text-meta text-muted-foreground">
           {venue && <span className="italic text-foreground">{venue}</span>}
           {venue && (work.publication_date || work.publication_year) && " · "}
           {formatDate(work.publication_date) ?? work.publication_year}
@@ -179,7 +179,7 @@ export default async function ArticlePage({ params }: Props) {
           {work.language && <> · {work.language.toUpperCase()}</>}
         </p>
 
-        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem]">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-meta">
           <Stat icon={<QuoteIcon />} label="Citations">
             <Link href={`/search?cites=${shortId(work.id)}`} className="underline underline-offset-2 hover:text-accent-brand">
               {formatCount(work.cited_by_count)}
@@ -190,7 +190,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {doiUrl && (
             <Stat label="DOI">
-              <ExternalLink href={doiUrl} className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
+              <ExternalLink href={doiUrl} className="wrap-anywhere tabular-nums underline underline-offset-2 hover:text-accent-brand">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
                 {doiPath(work.doi ?? doiUrl)}
               </ExternalLink>
@@ -221,10 +221,10 @@ export default async function ArticlePage({ params }: Props) {
           {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
-          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
+          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-meta sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
             <div className="flex items-start gap-2.5">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <p className="text-muted-foreground">
+              <p className="max-w-measure-text text-muted-foreground">
                 <span className="font-medium text-foreground">Texte intégral non accessible ici.</span> Aucune version libre n'est connue : la page de l'éditeur demande en général un abonnement, souvent couvert par votre bibliothèque universitaire. Vous pouvez tout de même l'enregistrer, le citer et noter vos citations à la main.
               </p>
             </div>
@@ -240,14 +240,14 @@ export default async function ArticlePage({ params }: Props) {
         <Separator className="my-8" />
 
         <section aria-labelledby="abstract">
-          <h2 id="abstract" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 id="abstract" className="section-title">
             Résumé
             {work.language && work.language !== "fr" && (
-              <span className="ml-2 font-normal normal-case tracking-normal">· en {languageName(work.language)}</span>
+              <span className="ml-2 font-sans text-base font-normal text-muted-foreground">· en {languageName(work.language)}</span>
             )}
           </h2>
           {abstract ? (
-            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 text-[1.0625rem] leading-relaxed" />
+            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 max-w-measure-read text-read" />
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -267,7 +267,7 @@ export default async function ArticlePage({ params }: Props) {
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
-            <h2 id="topics" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Sujets</h2>
+            <h2 id="topics" className="section-title">Sujets</h2>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {work.topics?.slice(0, 3).map((t) => (
                 <Link key={t.id} href={`/search?topic=${shortId(t.id)}`}>
@@ -286,8 +286,8 @@ export default async function ArticlePage({ params }: Props) {
       </article>
 
       <section className="mt-14" aria-labelledby="similar">
-        <h2 id="similar" className="title-display text-3xl sm:text-4xl">Pour aller plus loin</h2>
-        <p className="mt-1.5 text-base text-muted-foreground">Articles proches par le contenu, selon OpenAlex.</p>
+        <h2 id="similar" className="title-display type-h2">Pour aller plus loin</h2>
+        <p className="mt-1.5 max-w-measure-text text-muted-foreground">Articles proches par le contenu, selon OpenAlex.</p>
         <Suspense fallback={<SimilarSkeleton />}>
           <Similar work={work} />
         </Suspense>
@@ -303,7 +303,7 @@ function Authors({ work }: { work: Work }) {
   const rest = list.length - shown.length;
   if (list.length === 0) return null;
   return (
-    <p className="mt-4 text-[0.9375rem] leading-relaxed">
+    <p className="mt-4 text-meta leading-relaxed">
       {shown.map((a, i) => {
         const inst = a.institutions[0]?.display_name;
         return (

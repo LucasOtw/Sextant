@@ -89,7 +89,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
 
   return (
     <li className={cn("rounded-xl bg-card border border-border transition-shadow hover:shadow-sm", compact ? "p-3.5" : "p-4 sm:p-5", deferPaint && "[contain-intrinsic-size:auto_160px] [content-visibility:auto]")}>
-      <blockquote lang={h.source === "manual" ? undefined : lang} className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-[0.9375rem]")}>
+      <blockquote lang={h.source === "manual" ? undefined : lang} className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-meta")}>
         <QuoteIcon className="absolute left-0 top-[0.35em] size-3.5 text-highlight-foreground" aria-hidden />
         {/* Le repli porte sur un bloc ; le trait de surligneur reste sur le texte en ligne, fragment par fragment. */}
         <div id={passageId} className={cn("whitespace-pre-line", long && !expanded && "line-clamp-6")}>

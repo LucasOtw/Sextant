@@ -46,8 +46,8 @@ export default async function FavoritesPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-4xl">
-        <h1 className="title-display text-4xl sm:text-5xl">Mes favoris</h1>
-        <p className="mt-3 text-lg text-muted-foreground">
+        <h1 className="title-display type-h1">Mes favoris</h1>
+        <p className="lead mt-3">
           Les articles que vous avez enregistrés, sur tous vos appareils. Classez-les en listes, exportez-les en BibTeX.
         </p>
         <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <FavoritesList initial={favorites} initialCollections={collections} collectionsFresh={collectionsFresh} loadError={loadError} retracted={retracted} />) : <SignInPrompt />}</div>

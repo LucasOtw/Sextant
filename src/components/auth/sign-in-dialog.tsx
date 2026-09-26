@@ -74,8 +74,8 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
-        <DialogTitle className="title-display text-2xl">Se connecter</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+        <DialogTitle className="title-display">Se connecter</DialogTitle>
+        <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
           {intro ?? "Un compte sert à retrouver vos favoris et vos listes d'un appareil à l'autre. La recherche reste libre sans compte."}
         </DialogDescription>
         <GoogleButton className="mt-2" onClick={signInWithGoogle} busy={busy || !ready} aria-describedby={error ? errorId : undefined} />

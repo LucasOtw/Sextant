@@ -13,6 +13,7 @@ import { useClientValue } from "@/hooks/use-client-value";
 import { useCopy } from "@/hooks/use-copy";
 import { neighbourEquivalent } from "@/lib/focus";
 import { DATE_SHORT } from "@/lib/dates";
+import { frSpaces } from "@/lib/text";
 
 const COPY_FAILURE = "Presse-papiers indisponible : sélectionnez le texte pour le copier.";
 
@@ -38,7 +39,7 @@ function ConnectorUrl({ url }: { url: string }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-tint p-4 ring-1 ring-accent-brand/25">
       <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
-      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[0.8125rem] leading-relaxed border border-border">{url}</p>
+      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 text-sm tabular-nums leading-relaxed border border-border">{url}</p>
       <Button size="lg" className="w-full" onClick={() => void copy(url, { message: "Adresse copiée.", failure: COPY_FAILURE })}>
         {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Adresse copiée" : "Copier l'adresse"}
       </Button>
@@ -104,7 +105,7 @@ export function McpKeys() {
     try {
       const res = await fetch(`/api/account/keys/${k.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      toast("Clé révoquée.", { description: `« ${k.name} » ne donne plus accès à votre bibliothèque.` });
+      toast("Clé révoquée.", { description: frSpaces(`« ${k.name} » ne donne plus accès à votre bibliothèque.`) });
     } catch {
       setKeys(previous);
       toast.error("La révocation a échoué, réessayez.");
@@ -124,7 +125,7 @@ export function McpKeys() {
 
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-card p-5 border border-border">
-      <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+      <p className="max-w-measure-text text-meta leading-relaxed text-muted-foreground">
         Donnez à Claude, ChatGPT ou un autre assistant compatible MCP l'accès, en lecture seule, à votre bibliothèque Sextant (favoris,
         listes, citations, notes) et à la recherche d'articles. Chaque assistant reçoit sa propre clé, révocable à tout moment.
       </p>
@@ -138,7 +139,7 @@ export function McpKeys() {
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-medium"><KeyRoundIcon className="size-4 text-accent-brand" aria-hidden /> {k.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  <code>{k.prefix}…</code>
+                  <span className="tabular-nums">{k.prefix}…</span>
                   {k.createdAt && <> · créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
                   {" · "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
@@ -185,7 +186,7 @@ export function McpKeys() {
         <summary className="font-medium">Comment brancher Sextant à mon assistant ?</summary>
         <div className="mt-3 flex flex-col gap-2 text-muted-foreground">
           <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages → Connecteurs → Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
-          <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans « Autres méthodes ».</p>
+          <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans «&nbsp;Autres méthodes&nbsp;».</p>
         </div>
       </details>
 
@@ -205,8 +206,8 @@ export function McpKeys() {
             return target?.isConnected ? target : true;
           }}
         >
-          <DialogTitle className="title-display text-2xl">Révoquer « {revoking?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces(`Révoquer « ${revoking?.name ?? ""} » ?`)}</DialogTitle>
+          <DialogDescription className="text-meta text-muted-foreground">
             L'assistant qui utilise cette clé perdra immédiatement l'accès à votre bibliothèque. Il faudra créer une nouvelle clé et
             reconfigurer le connecteur.
           </DialogDescription>
@@ -221,15 +222,15 @@ export function McpKeys() {
 
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
         <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
-          <DialogTitle className="title-display text-2xl">Votre clé est prête</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+          <DialogTitle className="title-display">Votre clé est prête</DialogTitle>
+          <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Copiez l'adresse ci-dessous maintenant : elle contient votre clé et ne sera plus jamais affichée.
           </DialogDescription>
           {created && (
             <div className="mt-1 flex min-w-0 flex-col gap-5">
               <ConnectorUrl url={`${endpoint}?key=${created.key}`} />
 
-              <ol className="flex flex-col gap-2.5 text-[0.9375rem]">
+              <ol className="flex flex-col gap-2.5 text-meta">
                 {[
                   <>Dans Claude, ouvrez <strong>Réglages</strong>, puis <strong>Connecteurs</strong>.</>,
                   <>Cliquez sur <strong>Ajouter un connecteur personnalisé</strong>.</>,
@@ -257,7 +258,7 @@ export function McpKeys() {
                     value={`printf 'Clé Sextant : '; read -rs SEXTANT_KEY; echo; claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer $SEXTANT_KEY"; unset SEXTANT_KEY`}
                   />
                   <p className="-mt-2 text-muted-foreground">
-                    Quand le terminal demande la clé, collez celle du bloc « Clé seule » : elle ne s'affiche pas et ne reste pas dans l'historique. Claude Code la garde ensuite dans sa configuration (~/.claude.json) : en cas de doute, révoquez-la.
+                    Quand le terminal demande la clé, collez celle du bloc «&nbsp;Clé seule&nbsp;» : elle ne s'affiche pas et ne reste pas dans l'historique. Claude Code la garde ensuite dans sa configuration (~/.claude.json) : en cas de doute, révoquez-la.
                   </p>
                   <CopyBlock
                     label="Claude Desktop, fichier claude_desktop_config.json"

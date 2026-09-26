@@ -7,9 +7,27 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Nunito pour le texte et l'interface, Fredoka pour les titres et les accroches (app/fonts.ts). Chaque pile finit sans
+     serif : un glyphe absent (grec, indices) ou une variable manquante ne retombe jamais en Times (Y2, Y4). */
+  --font-sans: var(--font-nunito, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-fredoka, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  /* Monospace réservé au JSON de configuration des assistants IA (Y12). */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-  --font-heading: var(--font-sans);
+  /* Échelle du texte (§ 3.3) : petits textes à 13 px au moins (la hauteur d'x de Nunito est plus petite que celle de
+     Geist, Y11), métadonnées à 15 px, lecture à 17 px. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.45;
+  --text-meta: 0.9375rem;
+  --text-meta--line-height: 1.5;
+  --text-read: 1.0625rem;
+  --text-read--line-height: 1.65;
+  /* Mesures de ligne (Y6), en ch de la police de l'élément : en Nunito, 1ch vaut environ 1,36 caractère, d'où des
+     valeurs qui paraissent basses. 52ch ≈ 70 caractères (prose), 54ch ≈ 73 (résumé, condensé), 56ch ≈ 76 (textes
+     d'interface, aides), 48ch pour les accroches en Fredoka. Utilitaires max-w-measure-*. */
+  --container-measure-prose: 52ch;
+  --container-measure-read: 54ch;
+  --container-measure-text: 56ch;
+  --container-measure-lead: 48ch;
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -194,12 +212,83 @@
     scroll-behavior: auto !important;
   }
 }
-/* Titres : sans, graisse marquée, interlettrage resserré ; un mot trop long (sigles, URL) se coupe au lieu de déborder à 320 px */
-.title-display {
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-  overflow-wrap: break-word;
+/* Rôles typographiques (§ 3.3), en couche components : un utilitaire posé sur l'élément (taille, graisse, marge) les
+   remplace sans !important (Y3). Tailles mobiles d'abord, puis à partir de sm (40rem). */
+@layer components {
+  /* Titres : Fredoka 600, interlettrage à peine resserré ; un mot trop long (sigles, URL) se coupe au lieu de déborder à 320 px. */
+  .title-display {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  /* Titre de l'accueil : 40 / 56 / 64 px, interligne 1,1 (les accents de Fredoka ne se touchent pas, Y9). */
+  .type-hero {
+    font-size: 2.5rem;
+    line-height: 1.1;
+  }
+  /* h1 de page : 36 / 48 px. */
+  .type-h1 {
+    font-size: 2.25rem;
+    line-height: 1.1;
+  }
+  /* h1 d'une fiche d'article, souvent long : 28 / 40 px. */
+  .type-h1-article {
+    font-size: 1.75rem;
+    line-height: 1.2;
+  }
+  /* h2 de section : 26 / 32 px. */
+  .type-h2 {
+    font-size: 1.625rem;
+    line-height: 1.2;
+  }
+  /* Titre de bloc, intertitre, titre de dialogue : 20 / 22 px. */
+  .type-h3 {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+  /* Titre de carte : 18 / 20 px. */
+  .type-card {
+    font-size: 1.125rem;
+    line-height: 1.3;
+  }
+  @media (width >= 40rem) {
+    .type-hero { font-size: 3.5rem; }
+    .type-h1 { font-size: 3rem; }
+    .type-h1-article { font-size: 2.5rem; }
+    .type-h2 { font-size: 2rem; }
+    .type-h3 { font-size: 1.375rem; }
+    .type-card { font-size: 1.25rem; }
+  }
+  @media (width >= 64rem) {
+    .type-hero { font-size: 4rem; }
+  }
+  /* Intertitre d'une page (Résumé, Sujets, Ma note, sections du compte) : en casse normale et en Fredoka, à la place des
+     petites majuscules espacées (Y5). */
+  .section-title {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 1.25rem;
+    line-height: 1.25;
+    color: var(--foreground);
+  }
+  @media (width >= 40rem) {
+    .section-title { font-size: 1.375rem; }
+  }
+  /* Accroche sous un titre : Fredoka 500, 18 / 20 px, texte secondaire, 48ch (Y7). */
+  .lead {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    font-size: 1.125rem;
+    line-height: 1.45;
+    color: var(--muted-foreground);
+    max-width: 48ch;
+    text-wrap: balance;
+  }
+  @media (width >= 40rem) {
+    .lead { font-size: 1.25rem; }
+  }
 }
 
 /* Barres de chargement animées (synthèse IA) */
@@ -221,17 +310,24 @@
   .shimmer { animation: none; }
 }
 
-/* Pages de texte */
+/* Pages de texte : lecture en 17 px, 52ch par ligne (≈ 70 caractères, Y6) ; intertitres en Fredoka 21 / 24 px (Y10). */
 .prose-sextant {
   font-size: 1.0625rem;
-  line-height: 1.7;
+  line-height: 1.65;
+  max-width: 52ch;
 }
 .prose-sextant h2 {
   margin-top: 2.25rem;
   margin-bottom: 0.75rem;
-  font-size: 1.375rem;
+  font-family: var(--font-heading);
+  font-size: 1.3125rem;
   font-weight: 600;
-  letter-spacing: -0.015em;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+@media (width >= 40rem) {
+  .prose-sextant h2 { font-size: 1.5rem; }
 }
 .prose-sextant h2:first-child { margin-top: 0; }
 .prose-sextant p { margin-bottom: 1rem; }
@@ -370,7 +466,7 @@ mark[data-highlight] {
   bottom: 0;
   transform: translateY(100%);
   padding-top: 0.125rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--muted-foreground);
   pointer-events: none;
 }

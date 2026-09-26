@@ -39,9 +39,9 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
   it("état vide : titre focalisable sur demande, icône, action, marges ajustables", () => {
     const out = html(createElement(EmptyState, { title: "Rien.", hint: "Explication.", titleRef: createRef<HTMLParagraphElement>(), focusableTitle: true, action: createElement("button", null, "Agir"), className: "p-8" }));
     expect(out).toContain('class="rounded-xl border border-dashed text-center p-8"');
-    expect(out).toContain('<p tabindex="-1" class="text-lg font-medium outline-none">Rien.</p>');
-    expect(out).toContain('<p class="mt-1 text-base text-muted-foreground">Explication.</p><button>Agir</button>');
+    expect(out).toContain('<p tabindex="-1" class="title-display text-xl outline-none">Rien.</p>');
+    expect(out).toContain('<p class="mx-auto mt-1 max-w-measure-text text-base text-muted-foreground">Explication.</p><button>Agir</button>');
     const withIcon = html(createElement(EmptyState, { title: "T", icon: createElement("svg") }));
-    expect(withIcon).toContain('<svg></svg><p class="text-lg font-medium mt-3">T</p>');
+    expect(withIcon).toContain('<svg></svg><p class="title-display text-xl mt-3">T</p>');
   });
 });

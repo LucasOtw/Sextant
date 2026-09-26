@@ -83,11 +83,11 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       <p className="sr-only" aria-live="polite">{status}</p>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="flex items-center gap-2 text-base font-semibold">
+          <h3 className="title-display flex items-center gap-2 text-lg">
             <SparklesIcon className={loading ? "size-4 animate-pulse text-accent-brand" : "size-4 text-accent-brand"} aria-hidden />
             {title}
           </h3>
-          <p className="mt-1 text-[0.9375rem] text-muted-foreground">{intro}</p>
+          <p className="mt-1 max-w-measure-text text-meta text-muted-foreground">{intro}</p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground" title={model}>
           <span className="size-1.5 rounded-full bg-accent-brand" aria-hidden />
@@ -118,7 +118,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       )}
 
       {state.status === "done" && (
-        <div ref={resultRef} tabIndex={-1} className="mt-4 space-y-2.5 text-[0.9375rem] leading-relaxed outline-none animate-in fade-in slide-in-from-bottom-1 duration-400 motion-reduce:animate-none">
+        <div ref={resultRef} tabIndex={-1} className="mt-4 max-w-measure-read space-y-2.5 text-meta leading-relaxed outline-none animate-in fade-in slide-in-from-bottom-1 duration-400 motion-reduce:animate-none">
           {state.text.split(/\n+/).map((line, i) => (
             <p key={i} className="animate-in fade-in fill-mode-backwards duration-500 motion-reduce:animate-none" style={{ animationDelay: `${i * 120}ms` }}>
               {line}

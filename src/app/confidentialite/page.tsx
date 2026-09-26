@@ -33,17 +33,17 @@ export default function PrivacyPage() {
         Contact pour toute question ou demande relative à vos données : {contact}.
       </p>
 
-      <h2>Sans compte : ce qui reste dans votre navigateur</h2>
+      <h2>Sans compte&nbsp;: ce qui reste dans votre navigateur</h2>
       <p>Ces informations sont enregistrées localement, sur votre appareil, et ne sont pas conservées par Sextant :</p>
       <ul>
         <li>votre préférence d'affichage clair ou sombre, et le fait d'avoir lu le message d'accueil et l'annonce des assistants IA ;</li>
-        <li>la liste des derniers articles consultés (« Consultés récemment ») ;</li>
-        <li>les suggestions que vous avez écartées dans « Pour vous » (leurs identifiants servent aussi au calcul, voir ci-dessous) ;</li>
+        <li>la liste des derniers articles consultés («&nbsp;Consultés récemment&nbsp;») ;</li>
+        <li>les suggestions que vous avez écartées dans «&nbsp;Pour vous&nbsp;» (leurs identifiants servent aussi au calcul, voir ci-dessous) ;</li>
         <li>brièvement, l'article que vous vouliez enregistrer au moment de vous connecter, pour l'ajouter une fois connecté (10 minutes au plus) ;</li>
         <li>le temps de l'onglet seulement, les condensés IA que vous avez déjà demandés, pour ne pas les redemander (ils disparaissent à la fermeture de l'onglet).</li>
       </ul>
       <p>
-        Pour calculer « Pour vous », votre navigateur envoie au serveur de Sextant, dans l'adresse de la requête, les identifiants
+        Pour calculer «&nbsp;Pour vous&nbsp;», votre navigateur envoie au serveur de Sextant, dans l'adresse de la requête, les identifiants
         publics des articles consultés, des suggestions écartées et de vos favoris si vous êtes connecté. Ils servent à la réponse et
         ne sont pas enregistrés par Sextant ; comme toute adresse demandée, ils peuvent figurer dans les journaux techniques de
         l'hébergeur (voir Vercel ci-dessous). La réponse n'est gardée en cache que dans votre navigateur, cinq minutes. Vous pouvez tout
@@ -62,9 +62,9 @@ export default function PrivacyPage() {
         <li><strong>citations</strong> : les passages surlignés, leur page, leur date et vos notes éventuelles ;</li>
         <li><strong>notes</strong> : ce que vous écrivez sur un article ;</li>
         <li>
-          le <strong>dernier favori retiré</strong>, pour que « Annuler » puisse le rétablir ; il est remplacé au retrait suivant. Pour chaque
-          favori retiré, nous gardons aussi son identifiant, sa date d'ajout et celle du retrait, pour que « Annuler » lui rende sa date
-          d'ajout : ces informations sont effacées dès que « Annuler » le rétablit dans les 10 minutes, sinon au premier retrait de favori
+          le <strong>dernier favori retiré</strong>, pour que «&nbsp;Annuler&nbsp;» puisse le rétablir ; il est remplacé au retrait suivant. Pour chaque
+          favori retiré, nous gardons aussi son identifiant, sa date d'ajout et celle du retrait, pour que «&nbsp;Annuler&nbsp;» lui rende sa date
+          d'ajout : ces informations sont effacées dès que «&nbsp;Annuler&nbsp;» le rétablit dans les 10 minutes, sinon au premier retrait de favori
           qui suit ces 10 minutes.
         </li>
       </ul>
@@ -84,11 +84,11 @@ export default function PrivacyPage() {
               passé ce délai, le compte est supprimé automatiquement avec toutes ses données
             </>
           )}
-          . Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.
+          . Sa suppression, depuis «&nbsp;Mon compte&nbsp;», efface immédiatement le profil et toutes les données rattachées.
         </li>
         <li>
-          <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours,
-          accompagné d'un cookie <code>sextant_signed_in</code> sans donnée personnelle, qui indique seulement aux pages si une session est ouverte
+          <strong>Session</strong> : un cookie technique <code className="font-sans font-semibold">sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours,
+          accompagné d'un cookie <code className="font-sans font-semibold">sextant_signed_in</code> sans donnée personnelle, qui indique seulement aux pages si une session est ouverte
           (pour afficher votre compte sans attendre) ; il suit la durée de la session (une heure au plus quand une session expirée ou révoquée
           est refusée) et disparaît à la déconnexion. Le module de connexion de Google n'est chargé qu'au moment de la connexion, et l'état qu'il laisse dans le stockage du navigateur est
           effacé dès la session ouverte.
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
 
       <h2>Assistants IA branchés à votre compte (MCP)</h2>
       <p>
-        Depuis « Mon compte », vous pouvez créer des clés personnelles pour donner à un assistant IA de votre choix (Claude, ChatGPT…)
+        Depuis «&nbsp;Mon compte&nbsp;», vous pouvez créer des clés personnelles pour donner à un assistant IA de votre choix (Claude, ChatGPT…)
         un accès en lecture seule à votre bibliothèque : favoris, listes, citations et notes. Sextant ne conserve que l'empreinte de chaque
         clé (jamais la clé entière), ses dix premiers caractères pour que vous la reconnaissiez, son nom, ses dates de création et de
         dernière utilisation, et la date de la connexion Google depuis laquelle elle a été créée (la clé est révoquée avec cette session),
@@ -111,7 +111,7 @@ export default function PrivacyPage() {
 
       <h2>Bugs et idées</h2>
       <p>
-        Les sujets publiés sur la page « Bugs et idées » sont publics et n'affichent pas leur auteur ; Sextant garde l'identifiant technique
+        Les sujets publiés sur la page «&nbsp;Bugs et idées&nbsp;» sont publics et n'affichent pas leur auteur ; Sextant garde l'identifiant technique
         du compte qui les a publiés, pour limiter les abus, ainsi que vos votes et leur date. Les votes sont anonymes pour les autres
         visiteurs. À la suppression du compte, ses votes sont effacés et ses sujets restent en ligne, détachés de lui. Un sujet ou une
         liste partagée qui enfreint la loi peut nous être signalé : voir <Link href="/mentions-legales#signaler">Signaler un contenu</Link>.
@@ -119,7 +119,7 @@ export default function PrivacyPage() {
 
       <h2>Signalements et messages</h2>
       <p>
-        Quand vous nous écrivez, pour signaler un contenu (lien « Signaler ») ou pour toute autre demande, nous recevons ce que contient
+        Quand vous nous écrivez, pour signaler un contenu (lien «&nbsp;Signaler&nbsp;») ou pour toute autre demande, nous recevons ce que contient
         votre courriel : votre adresse e-mail, le nom que vous indiquez, votre message et, pour un signalement, l'adresse du contenu
         signalé. Ces données servent uniquement à traiter votre signalement ou votre demande et à vous répondre.
       </p>
@@ -166,7 +166,7 @@ export default function PrivacyPage() {
           ce relais, le PDF s'affiche directement depuis son site, qui voit alors votre adresse IP comme pour tout lien.
         </li>
         <li>
-          Les liens « Voir chez l'éditeur », « Chercher une version libre » (Google Scholar), ORCID, Wikipédia et sites d'universités vous
+          Les liens «&nbsp;Voir chez l'éditeur&nbsp;», «&nbsp;Chercher une version libre&nbsp;» (Google Scholar), ORCID, Wikipédia et sites d'universités vous
           emmènent sur des sites tiers soumis à leurs propres politiques.
         </li>
       </ul>
@@ -185,14 +185,14 @@ export default function PrivacyPage() {
       <p>Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité (RGPD, art. 15 à 21).</p>
       <ul>
         <li>
-          <strong>Accès et portabilité</strong> : « Télécharger mes données », sur la page « Mon compte », fournit un fichier JSON avec tout ce que
+          <strong>Accès et portabilité</strong> : «&nbsp;Télécharger mes données&nbsp;», sur la page «&nbsp;Mon compte&nbsp;», fournit un fichier JSON avec tout ce que
           Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA,
           favoris, dernier favori retiré et dates des favoris retirés récemment, listes et liens de partage, citations, notes, clés
-          d'assistant IA (sans leur empreinte, avec leurs premiers caractères et la date de la connexion depuis laquelle elles ont été créées), sujets publiés et votes sur « Bugs et idées ». Les
+          d'assistant IA (sans leur empreinte, avec leurs premiers caractères et la date de la connexion depuis laquelle elles ont été créées), sujets publiés et votes sur «&nbsp;Bugs et idées&nbsp;». Les
           messages que vous nous avez envoyés n'y figurent pas : ils sont dans notre messagerie, pas dans Sextant.
         </li>
         <li><strong>Rectification</strong> : vos favoris, listes, citations et notes se modifient directement dans Sextant ; votre nom et votre photo viennent de votre compte Google.</li>
-        <li><strong>Effacement</strong> : « Supprimer mon compte » efface tout, immédiatement et sans nous solliciter.</li>
+        <li><strong>Effacement</strong> : «&nbsp;Supprimer mon compte&nbsp;» efface tout, immédiatement et sans nous solliciter.</li>
         <li>Pour toute autre demande : {contact}. Nous répondons dans un délai d'un mois.</li>
       </ul>
       <p>

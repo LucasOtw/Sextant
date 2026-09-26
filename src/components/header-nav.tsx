@@ -14,7 +14,7 @@ export function HeaderNav() {
         prefetch={false}
         aria-current={active ? "page" : undefined}
         className={cn(
-          "rounded-full px-3.5 py-1.5 text-[0.9375rem] transition-colors duration-200",
+          "rounded-full px-3.5 py-1.5 text-meta font-semibold transition-colors duration-200",
           active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
         )}
       >

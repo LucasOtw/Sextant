@@ -145,10 +145,10 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
   if (!enabled) {
     return (
       <section className="mt-8" aria-labelledby="ma-note-titre">
-        <h2 id="ma-note-titre" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          <NotebookPenIcon className="size-4" aria-hidden /> Ma note
+        <h2 id="ma-note-titre" className="section-title flex items-center gap-2">
+          <NotebookPenIcon className="size-5 text-muted-foreground" aria-hidden /> Ma note
         </h2>
-        <p className="mt-2 text-[0.9375rem] text-muted-foreground">
+        <p className="mt-2 max-w-measure-text text-meta text-muted-foreground">
           Ce que vous retenez de cet article, pour vous : une idée, une réserve, où il se place dans votre travail.{" "}
           <button type="button" onClick={() => setSignIn(true)} className="text-accent-brand underline underline-offset-3">Se connecter</button>
         </p>
@@ -160,8 +160,8 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
   return (
     <section className="mt-8" aria-labelledby="ma-note-titre">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="ma-note-titre" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          <NotebookPenIcon className="size-4" aria-hidden /> Ma note
+        <h2 id="ma-note-titre" className="section-title flex items-center gap-2">
+          <NotebookPenIcon className="size-5 text-muted-foreground" aria-hidden /> Ma note
         </h2>
         <p className="text-xs text-muted-foreground" aria-live="polite">
           {status === "saving" && <span className="flex items-center gap-1"><Loader2Icon className="size-3 animate-spin" aria-hidden /> Enregistrement…</span>}
@@ -178,7 +178,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         rows={text ? Math.min(12, Math.max(3, text.split("\n").length + 1)) : 3}
         placeholder="Ce que vous retenez de cet article, pour vous : une idée, une réserve, où il se place dans votre travail…"
         aria-label="Ma note sur cet article"
-        className="mt-3 bg-card text-base leading-relaxed md:text-[0.9375rem]"
+        className="mt-3 bg-card text-base leading-relaxed md:text-meta"
       />
       {signIn && <SignInDialog open={signIn} onOpenChange={setSignIn} intro="Connectez-vous pour garder vos notes sur les articles, sur tous vos appareils." />}
     </section>

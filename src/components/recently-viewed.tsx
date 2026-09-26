@@ -47,8 +47,8 @@ export function RecentlyViewed() {
     <section id="recents" className="py-8 pb-16 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 ref={headingRef} tabIndex={-1} className="title-display text-3xl outline-none sm:text-4xl">Consultés récemment</h2>
-          <p className="mt-1.5 text-base text-muted-foreground">
+          <h2 ref={headingRef} tabIndex={-1} className="title-display type-h2 outline-none">Consultés récemment</h2>
+          <p className="mt-1.5 max-w-measure-text text-muted-foreground">
             Gardé sur cet appareil uniquement, pour reprendre où vous en étiez.
           </p>
         </div>
@@ -59,7 +59,7 @@ export function RecentlyViewed() {
         )}
       </div>
       {items.length === 0 ? (
-        <p className="text-[0.9375rem] text-muted-foreground">Historique effacé. Les prochains articles consultés apparaîtront ici.</p>
+        <p className="text-meta text-muted-foreground">Historique effacé. Les prochains articles consultés apparaîtront ici.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {items.slice(0, 6).map((w, i) => (
@@ -77,7 +77,7 @@ export function RecentlyViewed() {
                   {w.year && <span>{w.year}</span>}
                 </span>
                 <span className="title-display line-clamp-2 text-lg leading-snug">{w.title}</span>
-                <span className="line-clamp-1 text-[0.9375rem] text-muted-foreground">
+                <span className="line-clamp-1 text-meta text-muted-foreground">
                   {w.authors}
                   {w.venue && <> · <span className="italic">{w.venue}</span></>}
                 </span>

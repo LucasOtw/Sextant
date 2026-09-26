@@ -43,7 +43,7 @@ export function ArticleTitle({ href, as: Tag = "h3", lang, className, children }
 /** « Auteurs · Revue · Année », et la langue quand elle n'est pas l'anglais. */
 export function ArticleMeta({ authors, venue, year, language, className }: { authors: ReactNode; venue: string | null; year: number | null; language?: string | null; className?: string }) {
   return (
-    <p className={cn("text-[0.9375rem] text-muted-foreground", className)}>
+    <p className={cn("max-w-measure-text text-meta text-muted-foreground", className)}>
       {authors}
       {venue && <> · <span className="italic">{venue}</span></>}
       {year && <> · {year}</>}

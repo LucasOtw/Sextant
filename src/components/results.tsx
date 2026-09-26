@@ -83,9 +83,9 @@ async function List({ base, sp, params }: Props) {
     <div className="flex flex-col gap-3">
       <ResultsStatus message={resultsMessage(total, current, perPage, params.q)} />
       {/* Titre de la liste, focalisable : cible du focus après un changement de page (sinon renvoyé sur la page, A11Y-12). */}
-      <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-[0.9375rem] font-normal text-muted-foreground outline-none">
+      <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-meta font-normal text-muted-foreground outline-none">
         {formatInteger(total)} résultat{total > 1 ? "s" : ""}
-        {params.q && <> pour « {params.q} »</>}
+        {params.q && <> pour «&nbsp;{params.q}&nbsp;»</>}
         {/* Lu quand le titre prend le focus après la pagination, à la place d'une annonce qui répéterait le nombre. */}
         {last > 1 && <span className="sr-only">, page {current} sur {formatInteger(last)}</span>}
       </h2>

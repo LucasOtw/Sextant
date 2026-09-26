@@ -133,7 +133,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
         titleRef={countRef}
         focusableTitle
         title="Aucune citation pour l'instant."
-        hint="Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton « Surligner » apparaît. Le passage est gardé ici, avec l'article, la page et la date."
+        hint="Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton «&nbsp;Surligner&nbsp;» apparaît. Le passage est gardé ici, avec l'article, la page et la date."
         action={
           <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
             <SearchIcon className="size-4" /> Lancer une recherche
@@ -159,8 +159,8 @@ export function CitationsList({ initial, collections, loadError = false, retract
         <Button variant="outline" className="h-10" onClick={copyAll} disabled={shown.length === 0}><CopyIcon /> Tout copier</Button>
       </div>
 
-      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
-        {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour « {q} »</>}
+      <p ref={countRef} tabIndex={-1} className="text-meta text-muted-foreground outline-none" aria-live="polite">
+        {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour «&nbsp;{q}&nbsp;»</>}
       </p>
 
       <div ref={containerRef} className="flex flex-col gap-8">

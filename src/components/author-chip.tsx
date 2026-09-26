@@ -162,7 +162,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <span className="rounded-lg bg-muted px-2 py-1.5">
-      <span className="block text-[0.9375rem] font-semibold">{value}</span>
+      <span className="block text-meta font-semibold">{value}</span>
       <span className="block text-xs text-muted-foreground">{label}</span>
     </span>
   );
