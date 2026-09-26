@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { activeProvider, AiError, completeOpenAiCompatible, modelFor } from "@/lib/ai";
+import { activeProvider, AiError, completeOpenAiCompatible, modelFor, type AiCompletion } from "@/lib/ai";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { abstractFromInvertedIndex, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { logError } from "@/lib/log";
@@ -108,10 +108,12 @@ export async function POST(req: Request) {
     .join("\n");
 
   try {
-    const raw = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
+    const { text: raw, complete } = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
     const text = stripMarkdown(raw);
-    // Seuls les succès sont gardés, jamais les erreurs : une panne passagère ne se fige pas.
-    if (text) {
+    // Seuls les succès complets sont gardés, jamais les erreurs : une panne passagère ne se fige pas, et un condensé
+    // coupé par la limite de jetons, montré tel quel à ce visiteur, n'est servi ni aux autres ni aux déploiements suivants.
+    if (!complete) logError("summary.truncated", new Error("Condensé coupé par la limite de jetons."), { work: id, model });
+    if (text && complete) {
       remember(cacheKey, text);
       storeSummary(model, PROMPT_VERSION, id, text);
     }
@@ -137,7 +139,7 @@ function stripMarkdown(text: string): string {
  * alourdir chaque démarrage à froid de la route (PERF-20). Ses erreurs sont traduites en `AiError`, comme celles
  * des fournisseurs compatibles OpenAI.
  */
-async function completeAnthropic(model: string, userContent: string): Promise<string> {
+async function completeAnthropic(model: string, userContent: string): Promise<AiCompletion> {
   const { default: Anthropic } = await import("@anthropic-ai/sdk");
   // Même borne que les fournisseurs compatibles OpenAI : le SDK attendrait sinon 10 min, avec deux relances.
   const client = new Anthropic({ timeout: 20_000, maxRetries: 0 });
@@ -176,5 +178,5 @@ async function completeAnthropic(model: string, userContent: string): Promise<st
     .join("\n")
     .trim();
   if (!text) throw new AiError("Réponse vide.", 502);
-  return text;
+  return { text, complete: response.stop_reason !== "max_tokens" && response.stop_reason !== "model_context_window_exceeded" };
 }

@@ -34,7 +34,7 @@ describe("POST /api/summary", () => {
     id = `W42000000${10 + ++n}`;
     ai.activeProvider.mockReturnValue("mistral");
     ai.modelFor.mockReturnValue("ministral-8b-latest");
-    ai.completeOpenAiCompatible.mockResolvedValue("**Question** posée\n- Méthode");
+    ai.completeOpenAiCompatible.mockResolvedValue({ text: "**Question** posée\n- Méthode", complete: true });
     summaries.readStoredSummary.mockResolvedValue(null);
     openalex.getWork.mockResolvedValue(makeWork({ abstract_inverted_index: { Un: [0], résumé: [1], original: [2] } }));
   });
@@ -63,6 +63,19 @@ describe("POST /api/summary", () => {
     expect(ai.completeOpenAiCompatible).toHaveBeenCalledTimes(1);
   });
 
+  it("condensé coupé par la limite de jetons : montré à ce visiteur, mais ni enregistré ni gardé en mémoire", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    ai.completeOpenAiCompatible.mockResolvedValue({ text: "Question posée, méthode, résul", complete: false });
+    const res = await post(id);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ summary: "Question posée, méthode, résul" });
+    expect(summaries.storeSummary).not.toHaveBeenCalled();
+    // Pas en mémoire non plus : la demande suivante régénère.
+    ai.completeOpenAiCompatible.mockResolvedValue({ text: "Condensé complet.", complete: true });
+    expect(await (await post(id)).json()).toMatchObject({ summary: "Condensé complet." });
+    expect(ai.completeOpenAiCompatible).toHaveBeenCalledTimes(2);
+  });
+
   it("n'enregistre jamais une erreur du modèle", async () => {
     ai.completeOpenAiCompatible.mockRejectedValue(new AiError("Trop de demandes, réessayez dans un instant.", 429));
     const res = await post(id);
@@ -73,5 +86,19 @@ describe("POST /api/summary", () => {
   it("refuse un identifiant invalide avant toute lecture", async () => {
     expect((await post("../W1")).status).toBe(400);
     expect(summaries.readStoredSummary).not.toHaveBeenCalled();
+  });
+});
+
+describe("completeOpenAiCompatible : réponse coupée par la limite de jetons", () => {
+  it.each([
+    ["stop", true],
+    ["length", false],
+    ["model_length", false],
+    [undefined, true],
+  ])("finish_reason %s → complet : %s", async (finish, complete) => {
+    const { completeOpenAiCompatible } = await vi.importActual<typeof import("@/lib/ai")>("@/lib/ai");
+    vi.stubEnv("MISTRAL_API_KEY", "cle-de-test");
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ choices: [{ message: { content: " Texte " }, finish_reason: finish }] })));
+    await expect(completeOpenAiCompatible("mistral", "consigne", "résumé")).resolves.toEqual({ text: "Texte", complete });
   });
 });

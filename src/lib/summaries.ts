@@ -32,6 +32,9 @@ export async function readStoredSummary(model: string, promptVersion: number, wo
     });
     const snap = await Promise.race([db.doc(`aiSummaries/${summaryDocId(model, promptVersion, workId)}`).get(), late]);
     const text = snap?.get("summary");
+    // Expiré mais pas encore supprimé (la suppression TTL peut prendre jusqu'à un jour) : régénéré.
+    const expiresAt = (snap?.get("expiresAt") as { toMillis?: () => number } | undefined)?.toMillis?.();
+    if (expiresAt !== undefined && expiresAt < Date.now()) return null;
     return typeof text === "string" && text.trim() ? text : null;
   } catch (e) {
     logError("summary.read", e, { work: workId });
@@ -42,6 +45,12 @@ export async function readStoredSummary(model: string, promptVersion: number, wo
 }
 
 /**
+ * Durée de vie d'un condensé : `expiresAt`, champ de la politique TTL de Firestore (firestore.indexes.json). Un
+ * mauvais condensé (réponse incohérente d'un petit modèle) finit ainsi par être régénéré, sans intervention.
+ */
+export const SUMMARY_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+
+/**
  * Enregistre un condensé réussi, après l'envoi de la réponse (`after`) : l'utilisateur n'attend pas l'écriture, et
  * Vercel garde la fonction en vie jusqu'à sa fin. Un échec est journalisé, sans effet sur la réponse.
  */
@@ -50,8 +59,15 @@ export function storeSummary(model: string, promptVersion: number, workId: strin
   after(async () => {
     try {
       const db = await adminDb();
-      const { FieldValue } = await import("firebase-admin/firestore");
-      await db.doc(`aiSummaries/${summaryDocId(model, promptVersion, workId)}`).set({ summary, model, promptVersion, workId, createdAt: FieldValue.serverTimestamp() });
+      const { FieldValue, Timestamp } = await import("firebase-admin/firestore");
+      await db.doc(`aiSummaries/${summaryDocId(model, promptVersion, workId)}`).set({
+        summary,
+        model,
+        promptVersion,
+        workId,
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + SUMMARY_TTL_MS),
+      });
     } catch (e) {
       logError("summary.store", e, { work: workId });
     }

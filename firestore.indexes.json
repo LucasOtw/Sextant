@@ -50,6 +50,17 @@
       "collectionGroup": "aiSummaries",
       "fieldPath": "summary",
       "indexes": []
+    },
+    {
+      "collectionGroup": "aiSummaries",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "users",
+      "fieldPath": "lastRemovedFavorite",
+      "indexes": []
     }
   ]
 }
