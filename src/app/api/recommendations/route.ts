@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getQualityWorksByIds, getRecentByTopic, getSeedMeta, type Work } from "@/lib/openalex";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { interleaveRecommendations, parseIds, planRecommendations, seedWeights, topSeedIds } from "@/lib/recommendations-rank";
 import { logError, recover } from "@/lib/log";
 
@@ -44,7 +45,7 @@ function slim(w: Work): Work {
  * bord ne servirait de toute façon à personne d'autre : chaque combinaison seen/fav/hide est propre à un visiteur.
  */
 export async function GET(req: Request) {
-  if (!rateLimit(`reco:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
+  if (overLimit("reco", clientIp(req))) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
   const params = new URL(req.url).searchParams;
   const seen = parseIds(params.get("seen"), 12);
   const fav = parseIds(params.get("fav"), 30);

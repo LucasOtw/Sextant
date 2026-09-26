@@ -3,7 +3,8 @@ import { WORK_ID } from "@/lib/favorites-shared";
 import { isPublicPdfUrl, openAccessPdfUrls } from "@/lib/format";
 import { fetchPublic } from "@/lib/public-fetch";
 import { getWork } from "@/lib/openalex";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { recover } from "@/lib/log";
 import { boundedRangeBody, isExpectedRange, parseContentRange, parseRange } from "@/lib/pdf-range";
 
@@ -33,7 +34,7 @@ export async function GET(req: Request) {
   // Adresse canonique : un paramètre ajouté ne doit pas relancer la fonction en contournant le cache CDN.
   if (url.search !== canonicalSearch(id, candidate)) return NextResponse.redirect(new URL(`/api/pdf${canonicalSearch(id, candidate)}`, url), 308);
   if (candidate !== null) return rangeResponse(req, id, Number(candidate));
-  if (!rateLimit(`pdf:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (overLimit("pdf", clientIp(req))) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
   // `undefined` = OpenAlex en panne : ce n'est pas un article absent, et la réponse ne doit pas rester en cache.
   const work = await getWork(id).catch(recover("pdf.getWork", undefined, { work: id }));
@@ -99,7 +100,7 @@ async function rangeResponse(req: Request, id: string, index: number): Promise<R
   const noStore = { "cache-control": "private, no-store" };
   const range = parseRange(req.headers.get("range"));
   if (!range) return NextResponse.json({ error: "Plage invalide." }, { status: 416, headers: noStore });
-  if (!rateLimit(`pdfr:${clientIp(req)}`, 300, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429, headers: noStore });
+  if (overLimit("pdfr", clientIp(req))) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429, headers: noStore });
   const work = await getWork(id).catch(recover("pdf.range.getWork", undefined, { work: id }));
   const target = work ? openAccessPdfUrls(work).slice(0, 5)[index] : undefined;
   if (!target) return NextResponse.json({ error: "Copie introuvable." }, { status: 404, headers: noStore });
@@ -163,7 +164,7 @@ export async function HEAD(req: Request) {
   if (!WORK_ID.test(id)) return new Response(null, { status: 400 });
   if (url.search !== canonicalSearch(id)) return new Response(null, { status: 308, headers: { location: `/api/pdf${canonicalSearch(id)}` } });
   // Seau distinct du GET : une rafale de sondes ne doit pas bloquer la lecture.
-  if (!rateLimit(`pdf-head:${clientIp(req)}`, 60, 60_000)) return new Response(null, { status: 429, headers: { "retry-after": "60" } });
+  if (overLimit("pdf-head", clientIp(req))) return new Response(null, { status: 429, headers: { "retry-after": "60" } });
   // `undefined` = OpenAlex en panne : on ne sait rien du PDF, et la réponse ne doit surtout pas rester un jour en cache.
   const work = await getWork(id).catch(recover("pdf.head.getWork", undefined, { work: id }));
   if (work === undefined) return new Response(null, { status: 503, headers: { "cache-control": "no-store", "retry-after": "60" } });

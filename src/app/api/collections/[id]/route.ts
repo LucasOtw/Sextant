@@ -1,25 +1,18 @@
 import { NextResponse } from "next/server";
-import { requireStrictUser } from "@/lib/auth";
+import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { type CollectionPatch, CollectionNotFoundError, CollectionOrderError, deleteCollection, updateCollection } from "@/lib/collections";
 import { MAX_FAVORITES, WORK_ID } from "@/lib/favorites-shared";
 import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
-import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
-const PRIVATE = { "cache-control": "private, no-store" };
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Même seau que /api/collections : la gestion des listes est plafonnée à 60 par minute. */
 async function guard(req: Request, ctx: Ctx) {
-  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
+  const { user, refused } = await requireUser(req, { bucket: "collections", maxBody: 16_384 });
   if (refused) return { refused };
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return { refused: denied };
-  if (!rateLimit(`collections:${user.uid}`, 60, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
   if (!ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
   return { user, id };
@@ -57,8 +50,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof CollectionOrderError) return NextResponse.json({ error: e.message }, { status: 409 });
-    logError("collections.id.PATCH", e);
-    return NextResponse.json({ error: "La modification a échoué." }, { status: 502 });
+    return serverError("collections.id.PATCH", e, "La modification a échoué.");
   }
 }
 
@@ -70,7 +62,6 @@ export async function DELETE(req: Request, ctx: Ctx) {
     await deleteCollection(g.user.uid, g.id);
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
   } catch (e) {
-    logError("collections.id.DELETE", e);
-    return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
+    return serverError("collections.id.DELETE", e, "La suppression a échoué.");
   }
 }

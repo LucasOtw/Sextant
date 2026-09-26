@@ -1,13 +1,13 @@
 import "server-only";
 
-type Context = Record<string, string | number | boolean | null | undefined>;
+export type LogContext = Record<string, string | number | boolean | null | undefined>;
 
 /**
  * Journal d'erreur serveur, une ligne JSON par erreur (lue dans les journaux d'exécution Vercel).
  * On n'écrit que la nature de l'erreur : jamais de corps de requête, de jeton, de clé, de cookie ni d'adresse e-mail.
  * Le contexte ne doit porter que des identifiants publics (article W…, route, statut).
  */
-export function logError(scope: string, err: unknown, ctx?: Context): void {
+export function logError(scope: string, err: unknown, ctx?: LogContext): void {
   const e = err as { name?: unknown; message?: unknown; code?: unknown; status?: unknown; cause?: unknown } | null;
   const cause = e?.cause as { name?: unknown; code?: unknown } | undefined;
   const entry = {
@@ -73,7 +73,7 @@ export function isExpectedAuthError(err: unknown): boolean {
  * Gestionnaire de `.catch` qui journalise puis renvoie une valeur de repli :
  * `getTopic(id).catch(recover("search.topic", null))`. Le repli reste affiché, mais la panne laisse une trace.
  */
-export function recover<T>(scope: string, fallback: T, ctx?: Context): (err: unknown) => T {
+export function recover<T>(scope: string, fallback: T, ctx?: LogContext): (err: unknown) => T {
   return (err) => {
     logError(scope, err, ctx);
     return fallback;

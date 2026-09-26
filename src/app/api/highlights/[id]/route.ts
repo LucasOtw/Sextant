@@ -1,23 +1,16 @@
 import { NextResponse } from "next/server";
-import { requireStrictUser } from "@/lib/auth";
+import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { deleteHighlight, HighlightNotFoundError, updateHighlightNote } from "@/lib/highlights";
 import { cleanText, MAX_NOTE } from "@/lib/highlights-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
-import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
-const PRIVATE = { "cache-control": "private, no-store" };
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
 async function guard(req: Request, ctx: Ctx) {
-  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
+  const { user, refused } = await requireUser(req, { bucket: "highlights", maxBody: 16_384 });
   if (refused) return { refused };
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return { refused: denied };
-  if (!rateLimit(`highlights:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
   if (!ID.test(id)) return { refused: NextResponse.json({ error: "Surlignage invalide." }, { status: 400 }) };
   return { user, id };
@@ -42,8 +35,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ ok: true, note }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof HighlightNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
-    logError("highlights.id.PATCH", e);
-    return NextResponse.json({ error: "La modification a échoué." }, { status: 502 });
+    return serverError("highlights.id.PATCH", e, "La modification a échoué.");
   }
 }
 
@@ -54,7 +46,6 @@ export async function DELETE(req: Request, ctx: Ctx) {
     await deleteHighlight(g.user.uid, g.id);
     return NextResponse.json({ ok: true }, { headers: PRIVATE });
   } catch (e) {
-    logError("highlights.id.DELETE", e);
-    return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
+    return serverError("highlights.id.DELETE", e, "La suppression a échoué.");
   }
 }

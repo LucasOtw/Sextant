@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireStrictUser } from "@/lib/auth";
+import { overLimit, PRIVATE, serverError, tooMany } from "@/lib/api/guard";
 import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
@@ -9,7 +10,6 @@ import { listKeysForExport } from "@/lib/api-keys";
 import { listFeedbackByAuthor, listFeedbackVotesForExport } from "@/lib/feedback";
 import { listAllNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
-import { rateLimit } from "@/lib/rate-limit";
 import { listSharesForExport } from "@/lib/shares";
 
 export const runtime = "nodejs";
@@ -24,7 +24,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const { ok, user, refused: denied } = await requireStrictUser();
   if (!ok) return denied;
-  if (!rateLimit(`export:${user.uid}`, 5, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (overLimit("export", user.uid)) return tooMany();
   try {
     const db = await adminDb();
     const [profileSnap, favorites, lists, highlights, notes, keys, published, votes, shares] = await Promise.all([
@@ -81,11 +81,10 @@ export async function GET() {
       headers: {
         "content-type": "application/json; charset=utf-8",
         "content-disposition": `attachment; filename="sextant-mes-donnees-${stamp}.json"`,
-        "cache-control": "private, no-store",
+        ...PRIVATE,
       },
     });
   } catch (e) {
-    logError("export.GET", e);
-    return NextResponse.json({ error: "L'export a échoué, réessayez." }, { status: 502 });
+    return serverError("export.GET", e, "L'export a échoué, réessayez.");
   }
 }

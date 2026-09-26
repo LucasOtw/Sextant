@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { SHARE_TOKEN } from "@/lib/collections-shared";
 import { isAdminConfigured } from "@/lib/firebase/admin";
 import { formatCount, typeLabel } from "@/lib/format";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { reportHref } from "@/lib/report";
 import { retractedWithin } from "@/lib/retracted";
 import { getSharedList, type SharedList } from "@/lib/shares";
@@ -33,7 +34,7 @@ const load = cache(async (token: string): Promise<SharedList | "limited" | "unav
   if (!SHARE_TOKEN.test(token)) return null;
   // Base non configurée : en local, `npm run dev` sans émulateur ni ALLOW_PROD_DB=1 (garde-fou NEW-4).
   if (!isAdminConfigured()) return "unavailable";
-  if (!rateLimit(`share-view:${clientIp(await headers())}`, 120, 60_000)) return "limited";
+  if (overLimit("share-view", clientIp(await headers()))) return "limited";
   // Pas de catch : getSharedList renvoie déjà null pour un lien inconnu ou désactivé. Une panne Firestore remonte
   // jusqu'à la page d'erreur (journalisée par Next) au lieu de passer pour un lien « introuvable ».
   return getSharedList(token);

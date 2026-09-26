@@ -4,7 +4,8 @@ import { WORK_ID } from "@/lib/favorites-shared";
 import { abstractFromInvertedIndex, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { logError } from "@/lib/log";
 import { getWork, type Work } from "@/lib/openalex";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 import { readStoredSummary, storeSummary } from "@/lib/summaries";
 
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
   // Condensé déjà enregistré par une autre instance ou un déploiement précédent (PERF-15). Une lecture par demande :
   // bornée par sa propre limite, large, pour ne pas ouvrir la base à des lectures sans fin.
   const ip = clientIp(req);
-  if (!rateLimit(`summary-read:${ip}`, 60, 60_000)) {
+  if (overLimit("summary-read", ip)) {
     return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
   }
   const stored = await readStoredSummary(model, PROMPT_VERSION, id);
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
   }
 
   // Les caches ne coûtent rien au modèle ; la limite ne compte que les synthèses à générer (limite par instance, comme /api/pdf).
-  if (!rateLimit(`summary:${ip}`, 10, 60_000)) {
+  if (overLimit("summary", ip)) {
     return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
   }
 

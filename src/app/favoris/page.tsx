@@ -6,7 +6,7 @@ import { TooManyRequests } from "@/components/too-many-requests";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { listCollections } from "@/lib/collections";
 import type { Collection } from "@/lib/collections-shared";
-import { rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
 import { listFavorites } from "@/lib/favorites";
 import { logError } from "@/lib/log";
 import { retractedWithin } from "@/lib/retracted";
@@ -26,7 +26,7 @@ export default async function FavoritesPage() {
   let loadError = false;
   let retracted: string[] = [];
   // Jusqu'à un millier de lectures par rendu pour une bibliothèque pleine : limite par compte (par instance).
-  const limited = user ? !rateLimit(`page-lib:${user.uid}`, 30, 60_000) : false;
+  const limited = user ? overLimit("page-lib", user.uid) : false;
   if (user && !limited) {
     const [f, c] = await Promise.allSettled([listFavorites(user.uid), listCollections(user.uid)]);
     if (f.status === "fulfilled") favorites = f.value;

@@ -1,7 +1,8 @@
 import { createMcpHandler, withMcpAuth } from "mcp-handler";
 import { verifyKey } from "@/lib/api-keys";
 import { registerSextantTools } from "@/lib/mcp-tools";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
@@ -75,7 +76,7 @@ async function entry(req: Request): Promise<Response> {
   const key = keyOf(req);
   if (!key) return missingKey();
   // Avant toute lecture Firestore : chaque clé bien formée, même fausse, coûte une lecture (limite par instance).
-  if (!rateLimit(`mcp-ip:${clientIp(req)}`, 300, 60_000)) return jsonRpcError(429, "Trop de requêtes, réessayez dans une minute.", 60);
+  if (overLimit("mcp-ip", clientIp(req))) return jsonRpcError(429, "Trop de requêtes, réessayez dans une minute.", 60);
   let found: { uid: string; keyId: string } | null;
   try {
     found = await verifyKey(key);
@@ -85,7 +86,7 @@ async function entry(req: Request): Promise<Response> {
   }
   if (!found) return missingKey();
   // Par compte et non par clé : les cinq clés possibles d'un compte partagent le même compteur.
-  if (!rateLimit(`mcp:${found.uid}`, 90, 60_000)) return jsonRpcError(429, "Trop de requêtes, réessayez dans une minute.", 60);
+  if (overLimit("mcp", found.uid)) return jsonRpcError(429, "Trop de requêtes, réessayez dans une minute.", 60);
   verified.set(req, found);
   return authed(req);
 }

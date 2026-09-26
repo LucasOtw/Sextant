@@ -5,7 +5,8 @@ import { TooManyRequests } from "@/components/too-many-requests";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { listFeedbackCached, userFeedbackVotes } from "@/lib/feedback";
 import type { FeedbackItem, FeedbackTotals } from "@/lib/feedback-shared";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -20,7 +21,7 @@ export const dynamic = "force-dynamic";
 
 export default async function FeedbackPage() {
   // Page publique : limite par IP avant Firestore (par instance), assez large pour un campus derrière un NAT.
-  const limited = !rateLimit(`feedback-view:${clientIp(await headers())}`, 120, 60_000);
+  const limited = overLimit("feedback-view", clientIp(await headers()));
   let items: FeedbackItem[] = [];
   let totals: FeedbackTotals | null = null;
   let voted: string[] = [];
