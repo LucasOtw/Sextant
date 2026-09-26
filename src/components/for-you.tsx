@@ -8,7 +8,7 @@ import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shortId } from "@/lib/ids";
 import { readRecent } from "@/lib/recent";
-import { clearHidden, hideRecommendation, readHidden, reasonText, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
+import { clearHidden, hideRecommendation, readHidden, reasonText, RECO_LIMITS, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
 import { undoToast } from "@/lib/undo-toast";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
@@ -33,7 +33,7 @@ export function ForYou() {
   // qu'on vient d'enregistrer en sortirait). Les nouveaux favoris comptent au prochain affichage de l'accueil.
   const [seed, setSeed] = useState<{ enabled: boolean; key: string } | null>(null);
   if (!waiting && (seed === null || seed.enabled !== favorites.enabled)) {
-    setSeed({ enabled: favorites.enabled, key: favorites.favoriteIds.slice(0, 30).join(",") });
+    setSeed({ enabled: favorites.enabled, key: favorites.favoriteIds.slice(0, RECO_LIMITS.fav).join(",") });
   }
   const favKey = seed?.key ?? null;
   /** Suggestions écartées sur cet appareil : un bouton permet de les réafficher (le toast « Annuler » n'est pas le seul recours). */
@@ -49,7 +49,7 @@ export function ForYou() {
   useEffect(() => {
     // Connecté : on attend les favoris pour ne faire qu'une requête.
     if (favKey === null) return;
-    const seen = readRecent().map((r) => r.id).slice(0, 12);
+    const seen = readRecent().map((r) => r.id).slice(0, RECO_LIMITS.seen);
     const fav = favKey ? favKey.split(",") : [];
     if (seen.length === 0 && fav.length === 0) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- dépend du stockage local, lisible seulement après hydratation
@@ -58,7 +58,7 @@ export function ForYou() {
     }
     const ctrl = new AbortController();
     setState((s) => ({ ...s, status: s.items.length ? s.status : "loading" }));
-    const q = new URLSearchParams({ seen: seen.join(","), fav: fav.join(","), hide: readHidden().slice(0, 200).join(",") });
+    const q = new URLSearchParams({ seen: seen.join(","), fav: fav.join(","), hide: readHidden().slice(0, RECO_LIMITS.hide).join(",") });
     fetch(`/api/recommendations?${q}`, { signal: ctrl.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((data: { items: Recommendation[] }) => {

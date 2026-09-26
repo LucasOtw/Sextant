@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { adminAuth, isAdminConfigured } from "@/lib/firebase/admin";
+import { hasFirebasePublicConfig } from "@/lib/firebase/config";
 import { accountState, forgetAccountState, type AccountState } from "@/lib/account-state";
 import { NextResponse } from "next/server";
 import { isExpectedAuthError, logError } from "@/lib/log";
@@ -37,10 +38,7 @@ export function reauthRequired(): NextResponse {
 
 /** Les comptes sont actifs si le client et le serveur sont configurés. */
 export function isAuthEnabled(): boolean {
-  return (
-    isAdminConfigured() &&
-    Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && process.env.NEXT_PUBLIC_FIREBASE_APP_ID)
-  );
+  return isAdminConfigured() && hasFirebasePublicConfig();
 }
 
 /**

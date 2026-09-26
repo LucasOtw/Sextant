@@ -12,8 +12,13 @@ export interface Recommendation {
   reason: { kind: "related" | "topic"; topic?: string; seeds: RecommendationSeed[] };
 }
 
+/**
+ * Identifiants envoyés à /api/recommendations, au plus : consultés, favoris, écartés. Le client coupe ses listes à ces
+ * bornes et la route n'en lit pas davantage : une seule valeur à changer pour les deux (QUAL-24).
+ */
+export const RECO_LIMITS = { seen: 12, fav: 30, hide: 200 } as const;
+
 export const HIDDEN_KEY = "sextant:reco-hidden";
-const MAX_HIDDEN = 200;
 
 export function readHidden(): string[] {
   try {
@@ -27,7 +32,7 @@ export function readHidden(): string[] {
 
 export function hideRecommendation(id: string) {
   try {
-    const list = [id, ...readHidden().filter((x) => x !== id)].slice(0, MAX_HIDDEN);
+    const list = [id, ...readHidden().filter((x) => x !== id)].slice(0, RECO_LIMITS.hide);
     localStorage.setItem(HIDDEN_KEY, JSON.stringify(list));
   } catch {
     /* stockage indisponible */

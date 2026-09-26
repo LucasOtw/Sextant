@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { markSpans } from "@/lib/pdf-marks";
 import { clearRecent, pushRecent, readRecent, RECENT_KEY, restoreRecent } from "@/lib/recent";
-import { clearHidden, hideRecommendation, HIDDEN_KEY, readHidden, unhideRecommendation } from "@/lib/recommendations-shared";
+import { clearHidden, hideRecommendation, HIDDEN_KEY, readHidden, RECO_LIMITS, unhideRecommendation } from "@/lib/recommendations-shared";
 
 /** Couche texte PDF.js simplifiée : un <span> par fragment de ligne. */
 function textLayer(fragments: string[]): HTMLElement {
@@ -97,5 +97,12 @@ describe("stockage local : historique et suggestions écartées", () => {
     expect(readHidden()).toEqual([]);
     localStorage.setItem(HIDDEN_KEY, JSON.stringify(["W1", 2, null]));
     expect(readHidden()).toEqual(["W1"]);
+  });
+
+  it("suggestions écartées : plafonnées à la borne lue par /api/recommendations (RECO_LIMITS, QUAL-24)", () => {
+    expect(RECO_LIMITS).toEqual({ seen: 12, fav: 30, hide: 200 });
+    for (let i = 0; i < RECO_LIMITS.hide + 5; i++) hideRecommendation(`W${1000 + i}`);
+    expect(readHidden()).toHaveLength(RECO_LIMITS.hide);
+    expect(readHidden()[0]).toBe(`W${1000 + RECO_LIMITS.hide + 4}`);
   });
 });
