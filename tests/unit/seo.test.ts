@@ -4,7 +4,8 @@ import { HTML_LIMITED_BOTS, NEXT_HTML_LIMITED_BOTS } from "@/lib/html-bots";
 import { articleMetaDescription, metaDescription } from "@/lib/format";
 import { sitemapEntries } from "@/lib/sitemap";
 import { SITE } from "@/lib/site";
-import { THEMES, themeMetaDescription } from "@/lib/themes";
+import { THEMES, themeCanonical, themeMetaDescription } from "@/lib/themes";
+import { parseSearchParams } from "@/lib/search-params";
 import robots from "@/app/robots";
 import { makeWork } from "../fixtures";
 
@@ -72,6 +73,17 @@ describe("pages de thème (QUAL-18)", () => {
     const all = THEMES.map(themeMetaDescription);
     expect(new Set(all).size).toBe(THEMES.length);
     for (const d of all) expect(d.length).toBeLessThanOrEqual(160);
+  });
+
+  it("canonique : sans ?q, ?sort ni ?from, mais avec le numéro de page au-delà de la première", () => {
+    const canonical = (sp: Record<string, string>) => themeCanonical("informatique", parseSearchParams(sp).page);
+    expect(canonical({})).toBe("/theme/informatique");
+    expect(canonical({ page: "1", sort: "recent" })).toBe("/theme/informatique");
+    expect(canonical({ q: "réseaux", sort: "cited", from: "2020" })).toBe("/theme/informatique");
+    expect(canonical({ page: "2" })).toBe("/theme/informatique?page=2");
+    expect(canonical({ page: "3", q: "réseaux", sort: "cited" })).toBe("/theme/informatique?page=3");
+    expect(canonical({ page: "0" })).toBe("/theme/informatique");
+    expect(canonical({ page: "abc" })).toBe("/theme/informatique");
   });
 });
 
