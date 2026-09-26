@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ArrowRightIcon } from "lucide-react";
 import { THEMES } from "@/lib/themes";
 import { cn } from "cn";
 
@@ -14,12 +13,11 @@ export function ThemeGrid({ limit, className }: { limit?: number; className?: st
           <Link
             href={`/theme/${t.slug}`}
             prefetch={false}
-            className="group flex h-full flex-col gap-2 rounded-xl bg-card p-4 border border-border transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/25"
+            className="surface-tint card-link flex h-full flex-col gap-2 rounded-2xl p-4"
           >
             <span className={cn("size-3 rounded-full", t.tone)} aria-hidden />
-            <span className="title-display text-lg leading-tight">{t.name}</span>
+            <span className="card-title title-display text-lg leading-tight">{t.name}</span>
             <span className="text-sm leading-snug text-muted-foreground">{t.description}</span>
-            <ArrowRightIcon className="mt-auto size-4 self-end text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
           </Link>
         </li>
       ))}

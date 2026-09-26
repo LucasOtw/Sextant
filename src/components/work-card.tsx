@@ -21,7 +21,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-2 rounded-xl wrap-break-word bg-card p-4 border border-border transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:border-foreground/25",
+        "surface-card card-link relative flex flex-col gap-2 wrap-break-word p-4",
         compact ? "h-full" : "sm:p-5",
       )}
     >

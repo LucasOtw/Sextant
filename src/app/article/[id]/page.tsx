@@ -221,7 +221,7 @@ export default async function ArticlePage({ params }: Props) {
           {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" />}
         </div>
         {!oa && (
-          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-meta sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
+          <aside className="surface-tint mt-4 flex flex-col gap-3 rounded-2xl p-4 text-meta sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
             <div className="flex items-start gap-2.5">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="max-w-measure-text text-muted-foreground">
@@ -269,15 +269,16 @@ export default async function ArticlePage({ params }: Props) {
           <section className="mt-8" aria-labelledby="topics">
             <h2 id="topics" className="section-title">Sujets</h2>
             <div className="mt-2 flex flex-wrap gap-1.5">
+              {/* La puce est le lien (C17) : survol propre, focus qui épouse la pilule. */}
               {work.topics?.slice(0, 3).map((t) => (
-                <Link key={t.id} href={`/search?topic=${shortId(t.id)}`}>
-                  <Badge variant="secondary" className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">{t.display_name}</Badge>
-                </Link>
+                <Badge key={t.id} variant="secondary" render={<Link href={`/search?topic=${shortId(t.id)}`} />} className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm">
+                  {t.display_name}
+                </Badge>
               ))}
               {work.keywords?.slice(0, 6).map((k) => (
-                <Link key={k.id} href={`/search?q=${encodeURIComponent(k.display_name)}`}>
-                  <Badge variant="outline" className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">{k.display_name}</Badge>
-                </Link>
+                <Badge key={k.id} variant="outline" render={<Link href={`/search?q=${encodeURIComponent(k.display_name)}`} />} className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm">
+                  {k.display_name}
+                </Badge>
               ))}
             </div>
           </section>

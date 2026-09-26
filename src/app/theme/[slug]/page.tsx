@@ -76,12 +76,15 @@ export default async function ThemePage({ params, searchParams }: Props) {
               const id = shortId(t.id);
               const active = search.topic === id;
               return (
-                <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined}>
-                  <Badge variant={active ? "default" : "secondary"} className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">
-                    {t.display_name}
-                    {active && <span className="sr-only"> (filtre actif, activer pour le retirer)</span>}
-                  </Badge>
-                </Link>
+                <Badge
+                  key={t.id}
+                  variant={active ? "default" : "secondary"}
+                  render={<Link href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined} />}
+                  className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm"
+                >
+                  {t.display_name}
+                  {active && <span className="sr-only"> (filtre actif, activer pour le retirer)</span>}
+                </Badge>
               );
             })}
           </div>

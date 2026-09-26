@@ -79,7 +79,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
   const status = loading ? `${providerLabel} lit le résumé…` : state.status === "done" ? "Synthèse prête." : state.status === "error" ? state.message : "";
 
   return (
-    <div ref={boxRef} className="mt-5 rounded-xl bg-card p-4 border border-border sm:p-5">
+    <div ref={boxRef} className="surface-tint mt-5 rounded-2xl p-4 sm:p-5">
       <p className="sr-only" aria-live="polite">{status}</p>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -89,7 +89,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
           </h3>
           <p className="mt-1 max-w-measure-text text-meta text-muted-foreground">{intro}</p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground" title={model}>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-xs font-medium text-card-foreground" title={model}>
           <span className="size-1.5 rounded-full bg-accent-brand" aria-hidden />
           Par {providerLabel}
           <span className="hidden font-normal text-muted-foreground sm:inline">· {model}</span>
@@ -97,7 +97,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       </div>
 
       {state.status === "idle" && (
-        <Button size="sm" variant="secondary" onClick={run} className="mt-4">
+        <Button size="sm" variant="outline" onClick={run} className="mt-4">
           <SparklesIcon /> {cta}
         </Button>
       )}

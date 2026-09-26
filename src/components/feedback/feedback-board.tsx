@@ -137,7 +137,7 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
       )}
 
       {loadError && items.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
+        <div className="surface-tint rounded-2xl p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
       ) : shown.length === 0 ? (
         <EmptyState
           title={items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}
@@ -186,7 +186,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
   const status = STATUS_LABEL[item.status];
   return (
     // Ancre du sujet : l'adresse exacte d'un signalement (DSA art. 16) mène à lui.
-    <li id={`sujet-${item.id}`} className="flex scroll-mt-24 gap-4 rounded-xl bg-card p-4 border border-border sm:p-5">
+    <li id={`sujet-${item.id}`} className="surface-card flex scroll-mt-24 gap-4 p-4 sm:p-5">
       <button
         type="button"
         onClick={onVote}

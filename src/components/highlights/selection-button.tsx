@@ -20,14 +20,21 @@ export function SelectionButton({ rect, onClick, busy = false }: Props) {
   if (!rect) return null;
   // Au doigt, le menu natif (Copier, Rechercher…) occupe la zone au-dessus de la sélection : on se pose en bas de l'écran.
   const coarse = window.matchMedia("(pointer: coarse)").matches;
-  const top = Math.max(8, rect.top - 44);
-  const left = Math.min(Math.max(8, rect.left + rect.width / 2 - 56), window.innerWidth - 120);
-  const style = coarse ? { bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", left: "50%", transform: "translateX(-50%)" } : { top, left };
+  // Centré sur la sélection et posé 8 px au-dessus, quelle que soit sa largeur (police, pilule) : c'est la translation qui
+  // le décale de sa propre taille. Le centre reste à une demi-largeur (≈ 60 px) des bords, le haut à 16 px de l'écran.
+  const top = Math.max(52, rect.top - 8);
+  const left = Math.min(Math.max(68, rect.left + rect.width / 2), window.innerWidth - 68);
+  const style = coarse
+    ? { bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", left: "50%", transform: "translateX(-50%)" }
+    : { top, left, transform: "translate(-50%, -100%)" };
   return (
-    <div className="fixed z-50 animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none" style={style}>
-      <Button size={coarse ? "lg" : "sm"} onPointerDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-float">
-        <HighlighterIcon /> Surligner
-      </Button>
+    // La translation est sur le conteneur, l'animation d'apparition sur l'élément intérieur : l'une n'écrase pas l'autre.
+    <div className="fixed z-50" style={style}>
+      <div className="animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none">
+        <Button size={coarse ? "lg" : "sm"} onPointerDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-float">
+          <HighlighterIcon /> Surligner
+        </Button>
+      </div>
     </div>
   );
 }

@@ -90,7 +90,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
           )}
           {/* Même élément, à la même place, avec ou sans passage : au premier surlignage, les boutons ne sont pas
               remplacés et la fenêtre qui se ferme leur rend le focus (sinon il tomberait sur <body>). */}
-          <div className={cn("mt-3", highlights.length === 0 && "flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-meta text-muted-foreground")}>
+          <div className={cn("mt-3", highlights.length === 0 && "flex flex-col items-start gap-3 surface-tint rounded-2xl p-4 text-meta text-muted-foreground")}>
             {highlights.length === 0 && <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. {howTo}</p>}
             {addButton}
           </div>

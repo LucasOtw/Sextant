@@ -33,7 +33,7 @@ export function ArticleBadges({ type, isOa, retracted = false, topic, className 
 export function ArticleTitle({ href, as: Tag = "h3", lang, className, children }: { href: string; as?: "h2" | "h3"; lang?: string; className?: string; children: ReactNode }) {
   return (
     <Tag lang={lang} className={cn("title-display leading-snug", className)}>
-      <Link href={href} className="after:absolute after:inset-0 hover:text-accent-brand">
+      <Link href={href} className="card-title after:absolute after:inset-0 hover:text-link">
         {children}
       </Link>
     </Tag>

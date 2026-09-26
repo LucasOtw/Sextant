@@ -540,7 +540,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
     })();
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-dashed p-5 text-meta">
+        <div className="surface-tint rounded-2xl p-5 text-meta">
           <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
           <p className="mt-1 text-muted-foreground">
             {embedUrl
@@ -552,7 +552,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
         {/* Repli embarqué seulement pour une adresse vérifiée (https, hôte public) : jamais l'adresse brute d'OpenAlex (SEC-16). */}
         {embedUrl && (
           <object data={embedUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-border" aria-label="PDF original">
-            <div className="rounded-xl border border-dashed p-8 text-center">
+            <div className="surface-tint rounded-2xl p-8 text-center">
               <p className="text-base text-muted-foreground">
                 Votre navigateur n'affiche pas ce PDF ici. <a href={embedUrl} target="_blank" rel="noreferrer" className="link">Ouvrez-le dans un nouvel onglet</a>.
               </p>
@@ -602,7 +602,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
             </Button>
           </div>
           {interrupted && (
-            <div role="alert" className="rounded-xl border border-dashed p-4 text-meta">
+            <div role="alert" className="surface-tint rounded-2xl p-4 text-meta">
               <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
               <p className="mt-1 text-muted-foreground">
                 Rechargez la page pour réessayer, ou{" "}
@@ -778,7 +778,7 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
       <canvas ref={canvasRef} aria-hidden />
       <div ref={textRef} className="textLayer" />
       {!rendered && visible && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500" aria-live="polite">
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-[#4A5160]" aria-live="polite">
           {failed ? (
             <span className="flex items-center gap-2 px-4 text-center"><AlertTriangleIcon className="size-4 shrink-0" aria-hidden /> Cette page n'a pas pu être affichée.</span>
           ) : (

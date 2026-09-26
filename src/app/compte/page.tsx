@@ -59,7 +59,7 @@ export default async function AccountPage() {
       <div className="max-w-3xl">
         <h1 className="title-display type-h1">Mon compte</h1>
 
-        <section className="mt-8 flex items-center gap-4 rounded-xl bg-card p-5 border border-border">
+        <section className="surface-card mt-8 flex items-center gap-4 rounded-2xl p-5">
           <Avatar className="size-16">
             {user.picture && <AvatarImage src={user.picture} alt="" referrerPolicy="no-referrer" />}
             <AvatarFallback className="text-lg">{initials}</AvatarFallback>
@@ -91,7 +91,7 @@ export default async function AccountPage() {
 
         <section className="mt-10" aria-labelledby="donnees">
           <h2 id="donnees" className="section-title">Données et confidentialité</h2>
-          <div className="mt-3 flex flex-col gap-4 rounded-xl bg-card p-5 border border-border">
+          <div className="surface-card mt-3 flex flex-col gap-4 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
               <p className="max-w-measure-text text-meta leading-relaxed text-muted-foreground">
@@ -133,11 +133,11 @@ function Tile({ icon, label, value, hint, href }: { icon: React.ReactNode; label
     </>
   );
   return (
-    <li className="rounded-xl bg-card border border-border">
+    <li>
       {href ? (
-        <Link href={href} className="flex h-full flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-accent">{body}</Link>
+        <Link href={href} className="surface-tint card-link flex h-full flex-col gap-1 rounded-xl p-4">{body}</Link>
       ) : (
-        <div className="flex h-full flex-col gap-1 p-4">{body}</div>
+        <div className="surface-tint flex h-full flex-col gap-1 rounded-xl p-4">{body}</div>
       )}
     </li>
   );

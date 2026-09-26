@@ -20,7 +20,7 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
   it("titre : lien étiré, niveau demandé, interligne gardé quand on le redonne après la taille", () => {
     /* eslint-disable react/no-children-prop -- createElement typé : `children` est une prop requise d'ArticleTitle. */
     const h2 = html(createElement(ArticleTitle, { href: "/article/W1", as: "h2", className: "text-xl leading-snug", children: "Titre" }));
-    expect(h2).toMatch(/^<h2 class="title-display text-xl leading-snug"><a class="after:absolute after:inset-0 hover:text-accent-brand" href="\/article\/W1">Titre<\/a><\/h2>$/);
+    expect(h2).toMatch(/^<h2 class="title-display text-xl leading-snug"><a class="card-title after:absolute after:inset-0 hover:text-link" href="\/article\/W1">Titre<\/a><\/h2>$/);
     expect(html(createElement(ArticleTitle, { href: "/article/W1", children: "T" }))).toMatch(/^<h3 /);
     /* eslint-enable react/no-children-prop */
   });
@@ -38,7 +38,7 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
 
   it("état vide : titre focalisable sur demande, icône, action, marges ajustables", () => {
     const out = html(createElement(EmptyState, { title: "Rien.", hint: "Explication.", titleRef: createRef<HTMLParagraphElement>(), focusableTitle: true, action: createElement("button", null, "Agir"), className: "p-8" }));
-    expect(out).toContain('class="rounded-xl border border-dashed text-center p-8"');
+    expect(out).toContain('class="surface-tint rounded-2xl text-center p-8"');
     expect(out).toContain('<p tabindex="-1" class="title-display text-xl outline-none">Rien.</p>');
     expect(out).toContain('<p class="mx-auto mt-1 max-w-measure-text text-base text-muted-foreground">Explication.</p><button>Agir</button>');
     const withIcon = html(createElement(EmptyState, { title: "T", icon: createElement("svg") }));

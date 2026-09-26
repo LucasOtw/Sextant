@@ -23,12 +23,12 @@ interface Props {
   className?: string;
 }
 
-/** État vide ou indisponible d'une liste : cadre en pointillés, titre, explication, action éventuelle (QUAL-13). */
+/** État vide ou indisponible d'une liste : zone teintée, titre, explication, action éventuelle (QUAL-13). */
 export function EmptyState({ title, hint, icon, action, retryHref, inResults = false, titleRef, focusableTitle = false, className }: Props) {
   const Retry = inResults ? ResultsLink : Link;
   const titleClass = cn("title-display text-xl", Boolean(icon) && "mt-3", focusableTitle && "outline-none");
   return (
-    <div className={cn("rounded-xl border border-dashed p-10 text-center", className)}>
+    <div className={cn("surface-tint rounded-2xl p-10 text-center", className)}>
       {icon}
       {/* Dans une liste de résultats, le message tient la place du titre de la liste (h2) : la page garde sa hiérarchie (A11Y-14). */}
       {inResults ? (

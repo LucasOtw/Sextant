@@ -37,7 +37,7 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
 function ConnectorUrl({ url }: { url: string }) {
   const { copied, copy } = useCopy();
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-tint p-4 ring-1 ring-accent-brand/25">
+    <div className="surface-tint flex flex-col gap-3 rounded-xl p-4">
       <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
       <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 text-sm tabular-nums leading-relaxed border border-border">{url}</p>
       <Button size="lg" className="w-full" onClick={() => void copy(url, { message: "Adresse copiée.", failure: COPY_FAILURE })}>
@@ -124,7 +124,7 @@ export function McpKeys() {
   const full = keys !== null && keys.length >= MAX_API_KEYS;
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-card p-5 border border-border">
+    <div className="surface-card flex flex-col gap-4 rounded-2xl p-5">
       <p className="max-w-measure-text text-meta leading-relaxed text-muted-foreground">
         Donnez à Claude, ChatGPT ou un autre assistant compatible MCP l'accès, en lecture seule, à votre bibliothèque Sextant (favoris,
         listes, citations, notes) et à la recherche d'articles. Chaque assistant reçoit sa propre clé, révocable à tout moment.

@@ -7,7 +7,7 @@ import { cn } from "cn";
  */
 export function TooManyRequests({ className }: { className?: string }) {
   return (
-    <div role="status" className={cn("rounded-xl border border-dashed p-10 text-center", className)}>
+    <div role="status" className={cn("surface-tint rounded-2xl p-10 text-center", className)}>
       <HourglassIcon className="mx-auto size-8 text-brand" aria-hidden />
       <p className="title-display mt-3 text-xl">Beaucoup de visites en peu de temps</p>
       <p className="mx-auto mt-1 max-w-md text-balance text-muted-foreground">

@@ -321,6 +321,30 @@
     color: var(--link);
     text-decoration-color: currentColor;
   }
+  /* Carte (C8) : fond carte, filet, 20 px, ni ombre ni soulèvement. Résultats, favoris, listes, articles consultés,
+     citations, sujets des retours. Un bloc de section reprend la classe avec rounded-2xl (24 px, C11). */
+  .surface-card {
+    background-color: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+  }
+  /* Zone teintée (tuiles de thématiques, condensé IA, états vides, encarts) : aucun filet visible, mais une bordure
+     transparente, que les couleurs forcées dessinent quand le fond disparaît. Rayon posé par l'élément. */
+  .surface-tint {
+    background-color: var(--tint);
+    border: 1px solid transparent;
+  }
+  /* Carte ou tuile cliquable : au survol, bordure bleue (40 % du bleu de marque) et titre (.card-title) en bleu des liens. */
+  .card-link {
+    transition: border-color 150ms, color 150ms;
+  }
+  .card-link:hover {
+    border-color: color-mix(in oklch, var(--brand) 40%, var(--border));
+  }
+  .card-link:hover .card-title {
+    color: var(--link);
+  }
 }
 
 /* Notifications (Sonner, feuille injectée hors couche) : ombre flottante, bouton « Annuler » en pilule aux couleurs du
@@ -470,6 +494,13 @@ mark[data-highlight] {
   /* Marge intérieure seulement : une marge négative serait rognée par le repli du texte (line-clamp). */
   padding: 0 0.18em;
   border-radius: 2px;
+}
+/* Couleurs forcées : l'image de fond disparaît, le passage cité reprend le surlignage système (C28). */
+@media (forced-colors: active) {
+  .hl-text {
+    background: Mark;
+    color: MarkText;
+  }
 }
 
 /* Lecteur en plein écran : fond, défilement et marges gérés ici (Fullscreen API), ou par le repli fixe sur les navigateurs sans API. */
