@@ -103,4 +103,31 @@ describe("GET /api/cron/retention", () => {
     expect(account.purgeInactive).toHaveBeenCalledWith(expect.objectContaining({ dryRun: true }));
     expect(feedback.refreshFeedbackList).not.toHaveBeenCalled();
   });
+
+  it("?dryRun=1 avec des durées candidates : essai à blanc avant de publier les durées", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret-de-test");
+    account.purgeInactive.mockResolvedValue({ dryRun: true, keys: 1, accounts: 4, truncated: false, failed: 0 });
+    const res = await call("?dryRun=1&accountMonths=36&keyMonths=12", "Bearer s3cret-de-test");
+    expect(await res.json()).toMatchObject({ enabled: false, accountMonths: 36, keyMonths: 12, dryRun: true, accounts: 4 });
+    expect(account.purgeInactive).toHaveBeenCalledWith(expect.objectContaining({ accountMonths: 36, keyMonths: 12, dryRun: true }));
+    // Une seule durée candidate : l'autre reste celle publiée (ici aucune).
+    await call("?dryRun=1&keyMonths=24", "Bearer s3cret-de-test");
+    expect(account.purgeInactive).toHaveBeenLastCalledWith(expect.objectContaining({ accountMonths: null, keyMonths: 24, dryRun: true }));
+  });
+
+  it("durées candidates ignorées hors mode à blanc : seules les durées publiées suppriment", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret-de-test");
+    expect(await (await call("?accountMonths=1&keyMonths=1", "Bearer s3cret-de-test")).json()).toEqual({ enabled: false });
+    retention.RETENTION.inactiveAccountMonths = 36;
+    await call("?dryRun=0&accountMonths=1", "Bearer s3cret-de-test");
+    expect(account.purgeInactive).toHaveBeenCalledWith(expect.objectContaining({ accountMonths: 36, keyMonths: null, dryRun: false }));
+  });
+
+  it("durée candidate illisible : 400, rien n'est lancé", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret-de-test");
+    for (const q of ["accountMonths=0", "keyMonths=-3", "keyMonths=1.5", "accountMonths=abc", "accountMonths="]) {
+      expect((await call(`?dryRun=1&${q}`, "Bearer s3cret-de-test")).status, q).toBe(400);
+    }
+    expect(account.purgeInactive).not.toHaveBeenCalled();
+  });
 });

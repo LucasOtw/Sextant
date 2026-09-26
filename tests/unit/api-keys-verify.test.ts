@@ -9,17 +9,25 @@ const state = vi.hoisted(() => ({
   doc: null as null | Record<string, unknown>,
   getUser: vi.fn(),
   update: vi.fn(async () => undefined),
+  writes: [] as unknown[][],
+  commit: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/firebase/admin", () => ({
   isAdminConfigured: () => true,
   adminDb: async () => ({
-    doc: () => ({
+    doc: (path: string) => ({
+      path,
       get: async () => ({
         exists: state.doc !== null,
         get: (field: string) => state.doc?.[field],
-        ref: { update: state.update },
+        ref: { path, update: state.update },
       }),
+    }),
+    batch: () => ({
+      update: (ref: { path: string }, data: unknown) => state.writes.push(["update", ref.path, data]),
+      set: (ref: { path: string }, data: unknown, opts: unknown) => state.writes.push(["set", ref.path, data, opts]),
+      commit: state.commit,
     }),
   }),
   adminAuth: async () => ({ getUser: state.getUser }),
@@ -35,6 +43,7 @@ describe("verifyKey : état du compte Firebase", () => {
   beforeEach(() => {
     forgetAccountState();
     state.getUser.mockReset();
+    state.writes = [];
     state.doc = { uid: "u1", createdAt: ts(created), lastUsedAt: ts(Date.now()) };
   });
 
@@ -94,5 +103,18 @@ describe("verifyKey : état du compte Firebase", () => {
     state.getUser.mockResolvedValue({ disabled: false });
     for (let i = 0; i < 5; i++) await verifyKey(KEY);
     expect(state.getUser).toHaveBeenCalledTimes(1);
+  });
+
+  it("usage noté au plus une fois par heure, sur la clé et dans le profil (trace gardée après la purge de la clé, NEW-14)", async () => {
+    state.getUser.mockResolvedValue({ disabled: false });
+    await verifyKey(KEY);
+    expect(state.writes).toEqual([]);
+    state.doc = { uid: "u1", createdAt: ts(created), lastUsedAt: ts(Date.now() - 2 * 3600 * 1000) };
+    await verifyKey(KEY);
+    expect(state.writes).toEqual([
+      ["update", `apiKeys/${hashKey(KEY)}`, { lastUsedAt: "maintenant" }],
+      ["set", "users/u1", { lastKeyUsedAt: "maintenant" }, { merge: true }],
+    ]);
+    expect(state.commit).toHaveBeenCalledOnce();
   });
 });

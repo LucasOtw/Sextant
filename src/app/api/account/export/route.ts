@@ -66,6 +66,8 @@ export async function GET() {
         provider: "Google (Firebase Authentication)",
         createdAt,
         lastLoginAt: iso(profileSnap.get("lastLoginAt")),
+        // Dernier usage d'une clé d'assistant IA, gardé dans le profil pour la purge des comptes inactifs (NEW-14).
+        lastKeyUsedAt: iso(profileSnap.get("lastKeyUsedAt")),
       },
       favorites,
       lastRemovedFavorite: removed?.snapshot ? { article: removed.snapshot, removedAt: iso(removed.at) } : null,

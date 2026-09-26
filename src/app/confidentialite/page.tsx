@@ -15,7 +15,8 @@ const UPDATED = "26 septembre 2026";
 
 export default function PrivacyPage() {
   const contact = SITE.contactEmail ? <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a> : <strong>[adresse de contact à compléter]</strong>;
-  // Durées décidées par l'éditeur (lib/retention.ts, NEW-14) : la même constante règle la purge automatique.
+  // Durées décidées par l'éditeur (lib/retention.ts, NEW-14) : la même constante règle la purge automatique. Tant
+  // qu'une durée vaut null, le texte s'en tient à « tant que le compte existe » (aucun emplacement à compléter en ligne).
   const accountMonths = validMonths(RETENTION.inactiveAccountMonths);
   const keyMonths = validMonths(RETENTION.unusedKeyMonths);
 
@@ -70,13 +71,11 @@ export default function PrivacyPage() {
         <li><strong>Finalité et base légale</strong> : fournir le service que vous demandez en créant un compte (exécution du contrat, RGPD art. 6.1.b).</li>
         <li>
           <strong>Durée</strong> : tant que le compte existe
-          {accountMonths ? (
+          {accountMonths && (
             <>
               , et au plus {retentionLabel(accountMonths)} après votre dernière connexion ou le dernier usage d'une de vos clés d'assistant IA :
               passé ce délai, le compte est supprimé automatiquement avec toutes ses données
             </>
-          ) : (
-            <> <strong>[durée maximale de conservation d'un compte inactif : à compléter]</strong></>
           )}
           . Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.
         </li>
@@ -93,13 +92,12 @@ export default function PrivacyPage() {
       <p>
         Depuis « Mon compte », vous pouvez créer des clés personnelles pour donner à un assistant IA de votre choix (Claude, ChatGPT…)
         un accès en lecture seule à votre bibliothèque : favoris, listes, citations et notes. Sextant ne conserve que l'empreinte de chaque
-        clé (jamais la clé elle-même), son nom et ses dates de création et de dernière utilisation. Ce que vous consultez ainsi est
+        clé (jamais la clé elle-même), son nom et ses dates de création et de dernière utilisation, ainsi que, dans votre profil, la date
+        du dernier usage d'une de vos clés, qui reste connue après la révocation de la clé. Ce que vous consultez ainsi est
         transmis à l'assistant que vous avez branché et relève alors de sa propre politique de confidentialité. Une clé se révoque à tout
-        moment ; toutes sont supprimées avec le compte.{" "}
-        {keyMonths ? (
-          <>Une clé inutilisée pendant {retentionLabel(keyMonths)} (depuis sa création si elle n'a jamais servi) est supprimée automatiquement.</>
-        ) : (
-          <strong>[Durée de conservation d'une clé inutilisée : à compléter.]</strong>
+        moment ; toutes sont supprimées avec le compte.
+        {keyMonths && (
+          <> Une clé inutilisée pendant {retentionLabel(keyMonths)} (depuis sa création si elle n'a jamais servi) est supprimée automatiquement.</>
         )}
       </p>
 
@@ -156,7 +154,7 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Accès et portabilité</strong> : « Télécharger mes données », sur la page « Mon compte », fournit un fichier JSON avec tout ce que
-          Sextant conserve pour vous : profil et dates de création et de dernière connexion, favoris, listes et liens de partage, citations,
+          Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA, favoris, listes et liens de partage, citations,
           notes, clés d'assistant IA (sans leur empreinte), sujets publiés et votes sur « Bugs et idées ».
         </li>
         <li><strong>Rectification</strong> : vos favoris, listes, citations et notes se modifient directement dans Sextant ; votre nom et votre photo viennent de votre compte Google.</li>

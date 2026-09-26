@@ -92,8 +92,8 @@ export default function LegalNoticePage() {
 
       <h2>Données personnelles</h2>
       <p>
-        Sans compte, Sextant ne conserve aucune donnée personnelle ; avec un compte, il ne conserve que votre profil Google, les dates de création du compte
-        et de dernière connexion, et ce que vous y enregistrez, que vous pouvez télécharger ou effacer à tout moment. Ni cookie de suivi ni mesure d'audience. Le détail se trouve dans la{" "}
+        Sans compte, Sextant ne conserve aucune donnée personnelle ; avec un compte, il ne conserve que votre profil Google, les dates de création du compte,
+        de dernière connexion et de dernier usage d'une clé d'assistant IA, et ce que vous y enregistrez, que vous pouvez télécharger ou effacer à tout moment. Ni cookie de suivi ni mesure d'audience. Le détail se trouve dans la{" "}
         <Link href="/confidentialite">politique de confidentialité</Link>. Les règles d'usage du service sont décrites dans les{" "}
         <Link href="/conditions">conditions d'utilisation</Link>.
       </p>

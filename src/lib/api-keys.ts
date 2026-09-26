@@ -117,7 +117,13 @@ export async function verifyKey(key: string): Promise<{ uid: string; keyId: stri
     // Attendue (quelques dizaines de ms, une fois par heure et par clé) : une écriture lancée sans attente peut être
     // coupée quand la fonction serverless est gelée après la réponse. Un échec n'empêche pas l'accès, mais laisse une trace :
     // « Utilisée le … » est l'indice qui permet de repérer une clé exposée.
-    await snap.ref.update({ lastUsedAt: FieldValue.serverTimestamp() }).catch((e) => logError("mcp.lastUsedAt", e));
+    // Même date dans le profil (`lastKeyUsedAt`) : l'usage du compte par un assistant IA reste connu après la purge
+    // de la clé (lib/account.ts, NEW-14). Dans un même lot : si la clé a disparu entre-temps (compte supprimé), la mise
+    // à jour échoue et le profil n'est pas recréé.
+    const batch = db.batch();
+    batch.update(snap.ref, { lastUsedAt: FieldValue.serverTimestamp() });
+    batch.set(db.doc(`users/${uid}`), { lastKeyUsedAt: FieldValue.serverTimestamp() }, { merge: true });
+    await batch.commit().catch((e) => logError("mcp.lastUsedAt", e));
   }
   return { uid, keyId: id };
 }

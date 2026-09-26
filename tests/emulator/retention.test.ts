@@ -101,6 +101,37 @@ describe("purgeInactive (émulateurs Firestore et Auth)", () => {
     expect(await exists(`apiKeys/${freshKey}`)).toBe(true);
   });
 
+  it("clé purgée à 12 mois : son dernier usage reste dans le profil, et le compte est gardé à 36 mois", async () => {
+    const auth = await adminAuth();
+    const db = await adminDb();
+    // Jamais connecté depuis 2000 ; sa seule clé a servi il y a 18 mois : inutilisée pour les clés (12 mois), mais
+    // le compte est actif pour la durée des comptes (36 mois).
+    const used = new Date(NOW - 18 * 30 * 24 * 3600 * 1000);
+    const uid = newUid();
+    await oldUser(uid);
+    const k = await key(uid, OLD, used);
+
+    await purgeInactive({ now: NOW, accountMonths: 36, keyMonths: 12, dryRun: false });
+    expect(await exists(`apiKeys/${k}`)).toBe(false);
+    expect(((await db.doc(`users/${uid}`).get()).get("lastKeyUsedAt") as Timestamp).toMillis()).toBe(used.getTime());
+    await expect(auth.getUser(uid)).resolves.toMatchObject({ uid });
+
+    // Passage suivant, la clé n'existe plus : seule la trace du profil protège le compte.
+    expect((await purgeInactive({ now: NOW, accountMonths: 36, keyMonths: 12, dryRun: false })).failed).toBe(0);
+    await expect(auth.getUser(uid)).resolves.toMatchObject({ uid });
+
+    // Trace jamais reculée : une clé plus ancienne purgée ensuite ne la remplace pas.
+    const older = await key(uid, OLD, OLD);
+    await purgeInactive({ now: NOW, accountMonths: null, keyMonths: 12, dryRun: false });
+    expect(await exists(`apiKeys/${older}`)).toBe(false);
+    expect(((await db.doc(`users/${uid}`).get()).get("lastKeyUsedAt") as Timestamp).toMillis()).toBe(used.getTime());
+
+    // Au-delà de la durée des comptes (usage vieux de 40 mois), le compte est bien supprimé.
+    await db.doc(`users/${uid}`).set({ lastKeyUsedAt: Timestamp.fromMillis(NOW - 40 * 31 * 24 * 3600 * 1000) }, { merge: true });
+    await purgeInactive({ now: NOW, accountMonths: 36, keyMonths: 12, dryRun: false });
+    await expect(auth.getUser(uid)).rejects.toMatchObject({ code: "auth/user-not-found" });
+  });
+
   it("borne le nombre de comptes supprimés par passage", async () => {
     const auth = await adminAuth();
     const a = newUid();

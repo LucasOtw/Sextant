@@ -45,6 +45,7 @@ describe("GET /api/account/export", () => {
     profile.fields = {
       createdAt: ts("2025-06-01T00:00:00Z"),
       lastLoginAt: ts("2026-09-20T08:00:00Z"),
+      lastKeyUsedAt: ts("2026-09-22T09:00:00Z"),
       lastRemovedFavorite: { snapshot: makeSnapshot({ id: "W9" }), at: ts("2026-09-21T00:00:00Z") },
       favoriteIds: ["W4200000001"],
     };
@@ -53,7 +54,7 @@ describe("GET /api/account/export", () => {
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(res.headers.get("content-disposition")).toMatch(/^attachment; filename="sextant-mes-donnees-\d{4}-\d{2}-\d{2}\.json"$/);
     const data = await res.json();
-    expect(data.profile).toMatchObject({ uid: `u${n}`, email: "ada@exemple.org", createdAt: "2025-06-01T00:00:00.000Z", lastLoginAt: "2026-09-20T08:00:00.000Z" });
+    expect(data.profile).toMatchObject({ uid: `u${n}`, email: "ada@exemple.org", createdAt: "2025-06-01T00:00:00.000Z", lastLoginAt: "2026-09-20T08:00:00.000Z", lastKeyUsedAt: "2026-09-22T09:00:00.000Z" });
     expect(data.favorites).toHaveLength(1);
     expect(data.lastRemovedFavorite).toMatchObject({ article: { id: "W9" }, removedAt: "2026-09-21T00:00:00.000Z" });
     expect(data.lists[0]).toMatchObject({ name: "Mémoire", shareToken: "tok" });

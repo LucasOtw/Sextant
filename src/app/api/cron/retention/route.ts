@@ -4,7 +4,7 @@ import { purgeInactive } from "@/lib/account";
 import { refreshFeedbackList } from "@/lib/feedback";
 import { isAdminConfigured } from "@/lib/firebase/admin";
 import { logError } from "@/lib/log";
-import { RETENTION } from "@/lib/retention";
+import { RETENTION, validMonths } from "@/lib/retention";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,10 +18,23 @@ function sameSecret(given: string, expected: string): boolean {
 }
 
 /**
+ * Durée passée en paramètre d'un essai à blanc : absente → undefined (la durée de lib/retention.ts s'applique),
+ * illisible → null (requête refusée), sinon le nombre de mois.
+ */
+function monthsParam(sp: URLSearchParams, name: string): number | null | undefined {
+  const raw = sp.get(name);
+  if (raw === null) return undefined;
+  return /^\d+$/.test(raw) ? validMonths(Number(raw)) : null;
+}
+
+/**
  * Purge des comptes inactifs et des clés d'assistant IA inutilisées (NEW-14), selon les durées de lib/retention.ts.
  * Appelée par une tâche planifiée Vercel (Cron Jobs), qui envoie `Authorization: Bearer <CRON_SECRET>`. Sans secret
  * configuré, la route refuse tout ; sans durée décidée, elle ne fait rien. `?dryRun=1` compte sans rien supprimer :
- * à lancer à la main avant la première vraie purge, qui est irréversible.
+ * à lancer à la main avant la première vraie purge, qui est irréversible. En mode à blanc seulement, des durées
+ * candidates peuvent être passées (`&accountMonths=36&keyMonths=12`) : l'essai se fait avant de les publier dans
+ * lib/retention.ts, donc avant que la politique de confidentialité ne promette la purge. Hors mode à blanc, ces
+ * paramètres sont ignorés : seules les durées publiées suppriment.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -30,21 +43,28 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
   const headers = { "cache-control": "private, no-store" };
-  if (RETENTION.inactiveAccountMonths === null && RETENTION.unusedKeyMonths === null) {
-    return NextResponse.json({ enabled: false }, { headers });
+  const sp = new URL(req.url).searchParams;
+  const dryRun = sp.get("dryRun") === "1";
+  // Purge activée = au moins une durée publiée dans lib/retention.ts (celle que lit la politique de confidentialité).
+  const enabled = validMonths(RETENTION.inactiveAccountMonths) !== null || validMonths(RETENTION.unusedKeyMonths) !== null;
+  let accountMonths = validMonths(RETENTION.inactiveAccountMonths);
+  let keyMonths = validMonths(RETENTION.unusedKeyMonths);
+  if (dryRun) {
+    const account = monthsParam(sp, "accountMonths");
+    const key = monthsParam(sp, "keyMonths");
+    if (account === null || key === null) {
+      return NextResponse.json({ error: "Durée invalide : un nombre entier de mois, au moins 1." }, { status: 400, headers });
+    }
+    if (account !== undefined) accountMonths = account;
+    if (key !== undefined) keyMonths = key;
   }
+  if (accountMonths === null && keyMonths === null) return NextResponse.json({ enabled }, { headers });
   if (!isAdminConfigured()) return NextResponse.json({ error: "Base non configurée." }, { status: 503 });
-  const dryRun = new URL(req.url).searchParams.get("dryRun") === "1";
   try {
-    const report = await purgeInactive({
-      now: Date.now(),
-      accountMonths: RETENTION.inactiveAccountMonths,
-      keyMonths: RETENTION.unusedKeyMonths,
-      dryRun,
-    });
+    const report = await purgeInactive({ now: Date.now(), accountMonths, keyMonths, dryRun });
     // Des votes ont été retirés avec les comptes : la liste publique de /retours est relue.
     if (!dryRun && report.accounts + report.failed > 0) refreshFeedbackList("retention.invalidate");
-    return NextResponse.json({ enabled: true, ...report }, { headers });
+    return NextResponse.json({ enabled, accountMonths, keyMonths, ...report }, { headers });
   } catch (e) {
     logError("retention.GET", e);
     return NextResponse.json({ error: "La purge a échoué." }, { status: 500 });

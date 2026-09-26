@@ -1,9 +1,12 @@
 /**
  * Durées de conservation des comptes inactifs et des clés d'assistant IA inutilisées (NEW-14). C'est une décision de
- * l'éditeur : tant qu'une durée vaut `null`, rien n'est effacé automatiquement, et la politique de confidentialité le
- * dit (avec un emplacement « à compléter »). Renseigner une durée, en mois, active la purge correspondante
- * (src/app/api/cron/retention/route.ts, appelée par une tâche planifiée) ET met à jour la politique : les deux lisent
- * cette seule constante, le texte publié ne peut pas diverger du comportement.
+ * l'éditeur : tant qu'une durée vaut `null`, rien n'est effacé automatiquement, et la politique de confidentialité s'en
+ * tient à « tant que le compte existe ». La politique et la purge (src/app/api/cron/retention/route.ts) lisent cette
+ * même constante, mais la purge ne tourne que si deux réglages de déploiement sont aussi en place : `CRON_SECRET`
+ * défini dans Vercel, et la tâche déclarée dans vercel.json (`crons`). Une durée renseignée sans eux ferait promettre
+ * à la politique une suppression qui n'a jamais lieu. Ordre à suivre (note docs/handoffs/2026-09-26-lot-9-conformite.md) :
+ * `CRON_SECRET`, essai à blanc avec les durées candidates en paramètre (`?dryRun=1&accountMonths=…&keyMonths=…`),
+ * puis un seul commit qui renseigne les durées ici ET déclare la tâche dans vercel.json.
  */
 export interface Retention {
   /** Compte supprimé, avec toutes ses données, après ce nombre de mois sans connexion Google ni usage d'une de ses clés. */
