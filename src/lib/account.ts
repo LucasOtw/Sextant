@@ -17,7 +17,7 @@ import { deleteAllShares } from "@/lib/shares";
  * Données rattachées à un compte, à tenir à jour ici (suppression), dans l'export (api/account/export) et dans la
  * politique de confidentialité :
  * - `users/{uid}` : profil (email, name, picture, createdAt, lastLoginAt, lastKeyUsedAt), `favoriteIds`,
- *   `favoritesCount`, `lastRemovedFavorite` ;
+ *   `favoritesCount`, `lastRemovedFavorite`, `recentRemovals` ;
  * - ses sous-collections : `favorites`, `collections`, `highlights`, `notes`, `feedbackVotes` ;
  * - hors de `users/{uid}` : `shares` (champ `uid`), `apiKeys` (champ `uid`), `feedback` (champ `authorUid`) ;
  * - le compte Firebase Authentication.

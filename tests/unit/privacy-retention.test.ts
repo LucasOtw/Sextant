@@ -57,6 +57,7 @@ describe("/confidentialite : durées de conservation", () => {
     expect(text).toContain("l'annonce des assistants IA");
     expect(text).toContain("les condensés IA que vous avez déjà demandés");
     expect(text).not.toContain("quelques minutes");
-    expect(text).toContain("favoris et dernier favori retiré");
+    expect(text).toContain("favoris, dernier favori retiré et dates des favoris retirés récemment");
+    expect(text).toContain("sa date d'ajout et celle du retrait");
   });
 });

@@ -96,8 +96,8 @@ export default async function AccountPage() {
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
               <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
                 Votre compte contient votre nom, votre e-mail et votre photo Google, les dates de création du compte, de dernière
-                connexion et de dernier usage d'une clé d'assistant IA, et ce que vous enregistrez dans Sextant : favoris et le dernier
-                favori retiré (pour « Annuler »), listes et leurs liens de partage, citations, notes, clés d'assistants IA, vos sujets et
+                connexion et de dernier usage d'une clé d'assistant IA, et ce que vous enregistrez dans Sextant : favoris, le dernier
+                favori retiré et les dates des favoris retirés récemment (pour « Annuler »), listes et leurs liens de partage, citations, notes, clés d'assistants IA, vos sujets et
                 vos votes sur « Bugs et idées ». Aucun suivi. Détails dans la{" "}
                 <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
               </p>

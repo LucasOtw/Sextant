@@ -68,8 +68,45 @@ export async function storedCheck(uid: string, id: string): Promise<{ snapshot: 
   return snapshot ? { snapshot, verified: false } : null;
 }
 
-/** Délai pendant lequel « Annuler » peut rétablir un favori retiré dont l'article a disparu d'OpenAlex. */
+/**
+ * Délai pendant lequel « Annuler » peut rétablir un favori retiré avec sa date d'ajout d'origine, ou dont l'article a
+ * disparu d'OpenAlex.
+ */
 export const RESTORE_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Retraits récents, gardés pour « Annuler » dans `users/{uid}.recentRemovals` : `{ [workId]: { addedAt, at } }`, la date
+ * d'ajout d'origine (Timestamp, ou `null` si elle manquait) et celle du retrait. Un par article retiré, et non plus le
+ * seul dernier : avec plusieurs toasts affichés, « Annuler » sur un retrait plus ancien reprend aussi sa date d'origine.
+ * Une entrée est effacée au rétablissement, ou au premier retrait qui la trouve plus vieille que `RESTORE_WINDOW_MS`.
+ */
+type RecentRemoval = { addedAt?: unknown; at?: unknown };
+
+function removalsMap(v: unknown): Record<string, RecentRemoval> {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, RecentRemoval>) : {};
+}
+
+/** Entrée encore dans le délai d'« Annuler » ? Une date de retrait illisible compte comme expirée. */
+function isRecent(entry: RecentRemoval | undefined, now: number): boolean {
+  const at = millisFromTimestamp(entry?.at);
+  return at !== null && now - at <= RESTORE_WINDOW_MS;
+}
+
+/** Identifiants des retraits expirés (ou illisibles) de `recentRemovals`, à effacer au passage. */
+export function staleRemovals(v: unknown, now = Date.now()): string[] {
+  return Object.entries(removalsMap(v)).flatMap(([id, entry]) => (isRecent(entry, now) ? [] : [id]));
+}
+
+/**
+ * Retrait récent de l'article `id` : `found` s'il est encore dans le délai, avec sa date d'ajout d'origine (`null` si
+ * elle était inconnue). Hors délai ou absent : `found: false`, le serveur pose la date du jour.
+ */
+export function recentRemoval(v: unknown, id: string, now = Date.now()): { found: boolean; addedAt: Date | null } {
+  const map = removalsMap(v);
+  const entry = Object.hasOwn(map, id) ? map[id] : undefined;
+  if (!entry || !isRecent(entry, now)) return { found: false, addedAt: null };
+  return { found: true, addedAt: dateFromTimestamp(entry.addedAt) };
+}
 
 /**
  * Instantané déjà connu pour un article qu'OpenAlex ne connaît plus (404) : celui du favori stocké, ou celui du
@@ -199,8 +236,10 @@ export async function addFavorite(uid: string, s: FavoriteSnapshot, verified = t
 /**
  * Retire le favori et le sort de toutes les listes qui le contenaient, en une seule transaction. Son instantané est
  * gardé dans `users/{uid}.lastRemovedFavorite` (un seul, le dernier) : « Annuler » peut le rétablir même si l'article a
- * disparu d'OpenAlex entre-temps (voir `storedSnapshot`). Renvoie sa place (date d'ajout, rangs dans l'index et dans
- * chaque liste) : « Annuler » la rend à `restoreFavorite` (NEW-8).
+ * disparu d'OpenAlex entre-temps (voir `storedSnapshot`). Sa date d'ajout est gardée dans `recentRemovals` (une entrée
+ * par article retiré, les expirées effacées au passage) : c'est elle, et non celle du client, que `restoreFavorite`
+ * reprend. Renvoie sa place (date d'ajout, rangs dans l'index et dans chaque liste) : « Annuler » la rend à
+ * `restoreFavorite` (NEW-8).
  */
 export async function removeFavorite(uid: string, id: string): Promise<FavoritePlacement> {
   const db = await adminDb();
@@ -216,8 +255,20 @@ export async function removeFavorite(uid: string, id: string): Promise<FavoriteP
     const ids = knownFavoriteIds(user) ?? (await favoriteIdsFromDocs(tx, userRef));
     const next = ids.filter((x) => x !== id);
     const removed = existing.exists ? sanitizeSnapshot({ ...existing.data(), id }) : null;
+    // Retraits récents : celui-ci (date d'ajout d'origine telle que stockée), et les entrées expirées effacées.
+    const removals: Record<string, unknown> = Object.fromEntries(staleRemovals(user.get("recentRemovals")).map((k) => [k, FieldValue.delete()]));
+    if (existing.exists) removals[id] = { addedAt: existing.get("addedAt") ?? null, at: FieldValue.serverTimestamp() };
     // L'instantané nettoyé porte toujours tous ses champs : la fusion remplace entièrement celui du retrait précédent.
-    tx.set(userRef, { favoriteIds: next, favoritesCount: next.length, ...(removed ? { lastRemovedFavorite: { snapshot: snapshotForStorage(removed), at: FieldValue.serverTimestamp() } } : {}) }, { merge: true });
+    tx.set(
+      userRef,
+      {
+        favoriteIds: next,
+        favoritesCount: next.length,
+        ...(removed ? { lastRemovedFavorite: { snapshot: snapshotForStorage(removed), at: FieldValue.serverTimestamp() } } : {}),
+        ...(Object.keys(removals).length > 0 ? { recentRemovals: removals } : {}),
+      },
+      { merge: true },
+    );
     if (existing.exists) tx.delete(favRef);
     lists.docs.forEach((d) => tx.update(d.ref, { articleIds: FieldValue.arrayRemove(id) }));
     const index = ids.indexOf(id);
@@ -235,10 +286,11 @@ export async function removeFavorite(uid: string, id: string): Promise<FavoriteP
 const stringArray = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
 /**
- * « Annuler » après un retrait (NEW-8), en une transaction : le favori revient avec sa date d'ajout (s'il vient d'être
- * retiré, sinon celle du serveur) et son rang dans l'index, puis à son rang dans chacune de ses listes qui existe encore. Le tableau `articleIds` est réécrit : un
- * `arrayUnion` le remettrait en dernier. Une liste qui le contient déjà (rangé entre-temps) ou pleine n'est pas touchée.
- * Renvoie le favori et les listes modifiées, avec leur nouvel ordre.
+ * « Annuler » après un retrait (NEW-8), en une transaction : le favori revient avec sa date d'ajout d'origine (celle
+ * gardée par le serveur dans `recentRemovals` s'il a été retiré il y a moins de `RESTORE_WINDOW_MS`, sinon celle du
+ * serveur ; jamais celle du client) et son rang dans l'index, puis à son rang dans chacune de ses listes qui existe
+ * encore. Le tableau `articleIds` est réécrit : un `arrayUnion` le remettrait en dernier. Une liste qui le contient déjà
+ * (rangé entre-temps) ou pleine n'est pas touchée. Renvoie le favori et les listes modifiées, avec leur nouvel ordre.
  */
 export async function restoreFavorite(
   uid: string,
@@ -252,12 +304,16 @@ export async function restoreFavorite(
   return db.runTransaction(async (tx) => {
     // Toutes les lectures avant la première écriture (celles d'addFavoriteIn comprises).
     const [user, ...lists] = await tx.getAll(userRef, ...refs);
-    // La date d'ajout d'origine n'est reprise que pour l'article retiré à l'instant (même identifiant, moins de
-    // RESTORE_WINDOW_MS) : la route ne sert pas d'ajout à date choisie pour un article qui n'a jamais été retiré.
-    const removed = user.get("lastRemovedFavorite") as { snapshot?: { id?: unknown }; at?: unknown } | undefined;
-    const removedAt = millisFromTimestamp(removed?.at);
-    const justRemoved = removed?.snapshot?.id === s.id && removedAt !== null && Date.now() - removedAt <= RESTORE_WINDOW_MS;
-    const addedAt = await addFavoriteIn(tx, userRef, s, verified, { addedAt: justRemoved && placement.addedAt ? new Date(placement.addedAt) : null, index: placement.index });
+    // Date d'ajout d'origine : celle que le serveur a gardée au retrait de CET article (moins de RESTORE_WINDOW_MS),
+    // même si d'autres ont été retirés depuis (plusieurs toasts « Annuler »). Celle du client n'est jamais reprise : la
+    // route ne sert pas d'ajout à date choisie.
+    const removal = recentRemoval(user.get("recentRemovals"), s.id);
+    const addedAt = await addFavoriteIn(tx, userRef, s, verified, { addedAt: removal.addedAt, index: placement.index });
+    // Entrée consommée : un second « Annuler » (ou un rétablissement après un nouvel ajout) ne la reprend plus.
+    if (removal.found) {
+      const { FieldPath, FieldValue } = await import("firebase-admin/firestore");
+      tx.update(userRef, new FieldPath("recentRemovals", s.id), FieldValue.delete());
+    }
     const collections = lists.flatMap((list, i) => {
       const current = stringArray(list.get("articleIds"));
       if (!list.exists || current.includes(s.id) || current.length >= MAX_FAVORITES) return [];

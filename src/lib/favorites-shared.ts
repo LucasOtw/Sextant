@@ -176,7 +176,10 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
  * liste partagée, export BibTeX).
  */
 export interface FavoritePlacement {
-  /** Date d'ajout d'origine, ISO 8601 ; `null` : inconnue, le serveur pose la date du jour. */
+  /**
+   * Date d'ajout d'origine, ISO 8601, pour l'affichage immédiat ; `null` : inconnue. Le serveur ne la reprend pas : il
+   * rétablit celle qu'il a gardée au retrait (`recentRemovals`, lib/favorites.ts), sinon il pose la date du jour.
+   */
   addedAt: string | null;
   /** Rang dans `favoriteIds` (ordre d'ajout) ; `null` : en dernier. */
   index: number | null;

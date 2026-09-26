@@ -41,6 +41,9 @@ export async function GET() {
     const createdAt = (await accountCreatedAt(user.uid, profileSnap))?.toISOString() ?? null;
     // Dernier favori retiré, gardé pour « Annuler » (lib/favorites.ts) : remplacé au retrait suivant.
     const removed = profileSnap.get("lastRemovedFavorite") as { snapshot?: unknown; at?: unknown } | undefined;
+    // Retraits récents, gardés pour qu'« Annuler » rende sa date d'ajout d'origine (lib/favorites.ts, recentRemovals).
+    const removals = profileSnap.get("recentRemovals") as Record<string, { addedAt?: unknown; at?: unknown }> | undefined;
+    const recentRemovals = removals && typeof removals === "object" ? Object.entries(removals).map(([id, r]) => ({ id, addedAt: iso(r?.addedAt), removedAt: iso(r?.at) })) : [];
     const data = {
       format: "Sextant — export des données du compte",
       exportedAt: new Date().toISOString(),
@@ -57,6 +60,7 @@ export async function GET() {
       },
       favorites,
       lastRemovedFavorite: removed?.snapshot ? { article: removed.snapshot, removedAt: iso(removed.at) } : null,
+      recentlyRemovedFavorites: recentRemovals,
       lists,
       sharedLinks: shares,
       citations: highlights,

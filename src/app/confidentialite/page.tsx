@@ -61,7 +61,12 @@ export default function PrivacyPage() {
         <li><strong>listes</strong> : leur nom, leur description, leur ordre et les articles qu'elles contiennent ;</li>
         <li><strong>citations</strong> : les passages surlignés, leur page, leur date et vos notes éventuelles ;</li>
         <li><strong>notes</strong> : ce que vous écrivez sur un article ;</li>
-        <li>le <strong>dernier favori retiré</strong>, pour que « Annuler » puisse le rétablir ; il est remplacé au retrait suivant.</li>
+        <li>
+          le <strong>dernier favori retiré</strong>, pour que « Annuler » puisse le rétablir ; il est remplacé au retrait suivant. Pour chaque
+          favori retiré, nous gardons aussi son identifiant, sa date d'ajout et celle du retrait, pour que « Annuler » lui rende sa date
+          d'ajout : ces informations sont effacées dès que « Annuler » le rétablit dans les 10 minutes, sinon au premier retrait de favori
+          qui suit ces 10 minutes.
+        </li>
       </ul>
       <p>
         Ces données sont privées : personne d'autre que vous n'y a accès depuis Sextant, sauf une liste que vous choisissez de partager
@@ -181,9 +186,9 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Accès et portabilité</strong> : « Télécharger mes données », sur la page « Mon compte », fournit un fichier JSON avec tout ce que
-          Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA, favoris
-          et dernier favori retiré, listes et liens de partage, citations, notes, clés d'assistant IA (sans leur empreinte, avec leurs premiers
-          caractères et la date de la connexion depuis laquelle elles ont été créées), sujets publiés et votes sur « Bugs et idées ». Les
+          Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA,
+          favoris, dernier favori retiré et dates des favoris retirés récemment, listes et liens de partage, citations, notes, clés
+          d'assistant IA (sans leur empreinte, avec leurs premiers caractères et la date de la connexion depuis laquelle elles ont été créées), sujets publiés et votes sur « Bugs et idées ». Les
           messages que vous nous avez envoyés n'y figurent pas : ils sont dans notre messagerie, pas dans Sextant.
         </li>
         <li><strong>Rectification</strong> : vos favoris, listes, citations et notes se modifient directement dans Sextant ; votre nom et votre photo viennent de votre compte Google.</li>

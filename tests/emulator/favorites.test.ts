@@ -238,15 +238,52 @@ describe("favoris (transactions sur émulateur)", () => {
     expect(other.favorite.addedAt).not.toBe(old);
     // Retrait trop ancien (au-delà de RESTORE_WINDOW_MS) : date du serveur aussi.
     await addFavorite(uid, snap(4));
+    await db.doc(`users/${uid}/favorites/W4`).update({ addedAt: Timestamp.fromDate(new Date("2025-01-02T03:04:05.000Z")) });
     await removeFavorite(uid, "W4");
-    await db.doc(`users/${uid}`).set({ lastRemovedFavorite: { at: Timestamp.fromMillis(Date.now() - RESTORE_WINDOW_MS - 60_000) } }, { merge: true });
-    const late = await restoreFavorite(uid, snap(4), true, { addedAt: old, index: null, lists: [] });
-    expect(late.favorite.addedAt).not.toBe(old);
-    // Retiré à l'instant : la date d'origine est reprise.
+    await db.doc(`users/${uid}`).update({ "recentRemovals.W4.at": Timestamp.fromMillis(Date.now() - RESTORE_WINDOW_MS - 60_000) });
+    const late = await restoreFavorite(uid, snap(4), true, { addedAt: "2025-01-02T03:04:05.000Z", index: null, lists: [] });
+    expect(late.favorite.addedAt).not.toBe("2025-01-02T03:04:05.000Z");
+    // Retiré à l'instant : la date d'origine gardée par le serveur est reprise, pas celle envoyée par le client.
     await addFavorite(uid, snap(5));
+    await db.doc(`users/${uid}/favorites/W5`).update({ addedAt: Timestamp.fromDate(new Date("2025-01-02T03:04:05.000Z")) });
     await removeFavorite(uid, "W5");
-    const back = await restoreFavorite(uid, snap(5), true, { addedAt: "2025-01-02T03:04:05.000Z", index: null, lists: [] });
+    const back = await restoreFavorite(uid, snap(5), true, { addedAt: old, index: null, lists: [] });
     expect(back.favorite.addedAt).toBe("2025-01-02T03:04:05.000Z");
+    // Entrée consommée par le rétablissement : elle ne sert plus.
+    expect((await userDoc(uid))?.recentRemovals).not.toHaveProperty("W5");
+  });
+
+  it("« Annuler » sur plusieurs retraits : retirer W1 puis W2, rétablir W1 garde sa date d'origine", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const w1 = "2025-03-04T05:06:07.000Z";
+    const w2 = "2025-06-07T08:09:10.000Z";
+    await addFavorite(uid, snap(1));
+    await addFavorite(uid, snap(2));
+    await db.doc(`users/${uid}/favorites/W1`).update({ addedAt: Timestamp.fromDate(new Date(w1)) });
+    await db.doc(`users/${uid}/favorites/W2`).update({ addedAt: Timestamp.fromDate(new Date(w2)) });
+
+    const p1 = await removeFavorite(uid, "W1");
+    const p2 = await removeFavorite(uid, "W2");
+    // Deux toasts : « Annuler » sur le premier retrait, alors que lastRemovedFavorite porte W2.
+    const one = await restoreFavorite(uid, snap(1), true, p1);
+    expect(one.favorite.addedAt).toBe(w1);
+    expect(((await db.doc(`users/${uid}/favorites/W1`).get()).get("addedAt") as Timestamp).toDate().toISOString()).toBe(w1);
+    const two = await restoreFavorite(uid, snap(2), true, p2);
+    expect(two.favorite.addedAt).toBe(w2);
+    expect(await userDoc(uid)).toMatchObject({ favoriteIds: expect.arrayContaining(["W1", "W2"]), favoritesCount: 2 });
+    expect(Object.keys(((await userDoc(uid))?.recentRemovals ?? {}) as object)).toEqual([]);
+  });
+
+  it("retraits récents : les entrées de plus de RESTORE_WINDOW_MS sont effacées au retrait suivant", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    await addFavorite(uid, snap(1));
+    await addFavorite(uid, snap(2));
+    await removeFavorite(uid, "W1");
+    await db.doc(`users/${uid}`).update({ "recentRemovals.W1.at": Timestamp.fromMillis(Date.now() - RESTORE_WINDOW_MS - 1_000) });
+    await removeFavorite(uid, "W2");
+    expect(Object.keys(((await userDoc(uid))?.recentRemovals ?? {}) as object)).toEqual(["W2"]);
   });
 
   it("« Annuler » sans date connue : date posée par le serveur, en dernier dans l'index", async () => {
