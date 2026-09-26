@@ -36,14 +36,15 @@ export function isRenderedOnRequest(pathname: string): boolean {
  * vérifient la session elle-même, l'indice ne donne aucun droit.
  */
 /**
- * Nonce actif par défaut (CSP_NONCE=0 pour le couper). Il est passé à Next sous l'en-tête de REQUÊTE
- * `content-security-policy` : sous le nom `content-security-policy-report-only`, Vercel ne le transmet pas au rendu et
- * les scripts de Next partaient sans nonce (une vingtaine de rapports de violation par page). Si une montée de Next
- * casse de nouveau sa propagation (vercel/next.js#96063), CSP_NONCE=0 rend à toutes les pages la politique des pages
- * en cache ('unsafe-inline' pour les scripts), toujours en Report-Only.
+ * Nonce désactivé par défaut (CSP_NONCE=1 pour le réessayer, par exemple après une montée de Next). Mesuré en
+ * production le 26/09 : la politique porte le nonce, mais le HTML servi par Vercel n'a aucun attribut `nonce`, que la
+ * politique soit transmise à Next sous `content-security-policy` ou sous `content-security-policy-report-only`
+ * (Turbopack dans le mode de déploiement de Vercel, cf. vercel/next.js#96063 ; `next start` en local le pose bien).
+ * Chaque page rendue à la demande envoyait alors une vingtaine de rapports de violation. Sans nonce, toutes les pages
+ * ont la politique des pages en cache ('unsafe-inline' pour les scripts), toujours en Report-Only.
  */
 function nonceEnabled(): boolean {
-  return process.env.CSP_NONCE !== "0";
+  return process.env.CSP_NONCE === "1";
 }
 
 export function proxy(request: NextRequest) {
