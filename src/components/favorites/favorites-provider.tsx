@@ -303,7 +303,8 @@ export function FavoritesProvider({ children }: Props) {
         if (wasFavorite) {
           // Place renvoyée par le serveur (date d'ajout comprise) ; à défaut, celle que le client connaissait.
           const placement = (await remote.deleteFavorite(snapshot.id)) ?? localPlacement;
-          const n = memberships.length;
+          // Nombre de listes d'après le serveur (`restore.lists`) : les listes connues du client peuvent manquer (recherche, « Pour vous »).
+          const n = placement?.lists.length ?? memberships.length;
           undoToast(n ? `Retiré de vos favoris et de ${n} liste${n > 1 ? "s" : ""}.` : "Retiré de vos favoris.", () => {
             if (placement) void restoreRef.current?.(snapshot, placement);
           });
