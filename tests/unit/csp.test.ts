@@ -134,8 +134,7 @@ describe("pages en cache et script d'avant hydratation (PERF-01)", () => {
 describe("proxy : nonce (SEC-03)", () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it("CSP_NONCE=0 : pas de nonce, politique Report-Only avec 'unsafe-inline', aucune surcharge d'en-tête de requête", () => {
-    vi.stubEnv("CSP_NONCE", "0");
+  it("par défaut, pas de nonce : politique Report-Only avec 'unsafe-inline', aucune surcharge d'en-tête de requête", () => {
     const res = proxy(new NextRequest("https://sextant.test/search?q=climat"));
     const reportOnly = res.headers.get("content-security-policy-report-only") ?? "";
     expect(reportOnly).toContain("'unsafe-inline'");
@@ -144,7 +143,8 @@ describe("proxy : nonce (SEC-03)", () => {
     expect(res.headers.get("content-security-policy")).toBeNull();
   });
 
-  it("par défaut : la politique à nonce est passée à Next sous l'en-tête de requête content-security-policy, le navigateur ne reçoit que la version Report-Only", () => {
+  it("CSP_NONCE=1 : la politique à nonce est passée à Next sous l'en-tête de requête content-security-policy, le navigateur ne reçoit que la version Report-Only", () => {
+    vi.stubEnv("CSP_NONCE", "1");
     const res = proxy(new NextRequest("https://sextant.test/search?q=climat"));
     const forwarded = res.headers.get("x-middleware-request-content-security-policy");
     expect(forwarded).toMatch(/'nonce-[A-Za-z0-9+/=]+'/);
