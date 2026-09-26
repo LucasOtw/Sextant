@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 import { buildCsp, STATIC_PAGES } from "./src/lib/csp";
 import { HTML_LIMITED_BOTS } from "./src/lib/html-bots";
+import { missingLegalIdentity } from "./src/lib/site";
+
+// Build de production Vercel sans éditeur ni adresse de contact réels (vides ou valeurs d'exemple) : refusé. Les pages
+// légales sont prérendues au build ; les publier désignerait un éditeur fictif, et les liens « Signaler » (DSA) comme
+// les demandes RGPD n'arriveraient pas à l'éditeur. Les déploiements de prévisualisation et le développement passent.
+if (process.env.VERCEL_ENV === "production") {
+  const missing = missingLegalIdentity(process.env);
+  if (missing.length) throw new Error(`Identité légale manquante ou d'exemple en production : ${missing.join(", ")} (voir .env.example).`);
+}
 
 /**
  * En-têtes de sécurité fixes (SEC-03, étape 1), sur tout le site sauf les pages d'aide Firebase relayées
