@@ -6,14 +6,25 @@ import "server-only";
  */
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
+/** Intervalle du ménage des compteurs expirés : une clé (adresse IP ou compte) ne survit pas longtemps à sa fenêtre. */
+const SWEEP_MS = 60_000;
+let lastSweep = 0;
+
+/** Retire les compteurs dont la fenêtre est terminée ; renvoie combien il en reste. */
+export function sweepExpired(now = Date.now()): number {
+  lastSweep = now;
+  for (const [k, v] of buckets) if (v.resetAt <= now) buckets.delete(k);
+  return buckets.size;
+}
+
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
+  // Ménage au plus une fois par minute, et dès que la table grossit : un compteur n'est gardé que le temps de sa
+  // fenêtre (une heure au plus, cf. RATE_LIMITS), plus une minute, tant que l'instance reçoit des requêtes.
+  if (now - lastSweep >= SWEEP_MS || buckets.size > 10_000) sweepExpired(now);
   const b = buckets.get(key);
   if (!b || b.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });
-    if (buckets.size > 10_000) {
-      for (const [k, v] of buckets) if (v.resetAt <= now) buckets.delete(k);
-    }
     return true;
   }
   b.count++;
