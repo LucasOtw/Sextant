@@ -1,4 +1,5 @@
-import { type FavoriteSnapshot, apaFromSnapshot, citeInline, sanitizeSnapshot } from "@/lib/favorites-shared";
+import { citeInline, formatApa } from "@/lib/citation";
+import { type FavoriteSnapshot, sanitizeSnapshot } from "@/lib/favorites-shared";
 import { cleanText } from "@/lib/text";
 
 // Déplacé dans src/lib/text.ts (utilisé aussi par favorites-shared) ; réexporté pour les appelants existants.
@@ -74,5 +75,5 @@ export function sourceLabel(h: Pick<Highlight, "source" | "page">): string {
 
 /** Le passage prêt à coller : citation entre guillemets, appel de citation, puis la référence complète. */
 export function citationBlock(h: Highlight, retracted = false): string {
-  return `« ${h.text} » ${citeInline(h.article, h.page)}\n\n${apaFromSnapshot(h.article, retracted)}`;
+  return `« ${h.text} » ${citeInline(h.article, h.page)}\n\n${formatApa(h.article, retracted)}`;
 }

@@ -2,9 +2,10 @@ import "server-only";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { listCollections } from "@/lib/collections";
-import { apaFromSnapshot, type Favorite } from "@/lib/favorites-shared";
+import { formatApa } from "@/lib/citation";
+import { citationFromWork, type Favorite } from "@/lib/favorites-shared";
 import { countFavorites, findFavorites, getFavoritesByIds, listFavorites } from "@/lib/favorites";
-import { abstractFromInvertedIndex, formatAuthors, openAccessUrl, toApa, typeLabel, venueName, workTitle } from "@/lib/format";
+import { abstractFromInvertedIndex, formatAuthors, openAccessUrl, typeLabel, venueName, workTitle } from "@/lib/format";
 import { citationBlock, sourceLabel, type Highlight } from "@/lib/highlights-shared";
 import { findHighlights, listHighlights } from "@/lib/highlights";
 import { getNote, listNotes } from "@/lib/notes";
@@ -136,7 +137,7 @@ export function registerSextantTools(server: McpServer) {
           abstract ?? "Résumé non disponible dans OpenAlex.",
           "",
           `## Référence APA`,
-          toApa(w),
+          formatApa(citationFromWork(w), Boolean(w.is_retracted)),
         ]
           .filter((l) => l !== "")
           .join("\n"),
@@ -233,7 +234,7 @@ export function registerSextantTools(server: McpServer) {
           found.description,
           `${items.length} article(s) :`,
           "",
-          ...items.map((f, i) => `${favoriteLine(f, i, retracted)}\n   APA : ${apaFromSnapshot(f, retracted.has(f.id))}`),
+          ...items.map((f, i) => `${favoriteLine(f, i, retracted)}\n   APA : ${formatApa(f, retracted.has(f.id))}`),
         ]
           .filter(Boolean)
           .join("\n") + caveat,

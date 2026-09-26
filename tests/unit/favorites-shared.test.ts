@@ -1,15 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  apaFromSnapshot,
-  bibField,
-  bibtexAll,
-  citeInline,
-  fileSlug,
-  sanitizeSnapshot,
-  snapshotFromWork,
-  splitAuthorName,
-  WORK_ID,
-} from "@/lib/favorites-shared";
+import { fileSlug, sanitizeSnapshot, snapshotFromWork, WORK_ID } from "@/lib/favorites-shared";
 import { makeSnapshot, makeWork } from "../fixtures";
 
 describe("WORK_ID (identifiant d'article accepté par les routes)", () => {
@@ -80,74 +70,6 @@ describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
     const s = snapshotFromWork(makeWork());
     expect(s.id).toBe("W4200000001");
     expect(sanitizeSnapshot(s)).toEqual(s);
-  });
-});
-
-describe("bibField", () => {
-  it("échappe les caractères spéciaux LaTeX", () => {
-    expect(bibField("50% & $5 #1 a_b")).toBe("50\\% \\& \\$5 \\#1 a\\_b");
-    expect(bibField("a\\b")).toBe("a\\textbackslash{}b");
-  });
-
-  it("équilibre les accolades : orphelines fermantes retirées, ouvrantes refermées", () => {
-    expect(bibField("a}b")).toBe("ab");
-    expect(bibField("{a")).toBe("{a}");
-    expect(bibField("{{a}")).toBe("{{a}}");
-    expect(bibField("}{DNA}")).toBe("{DNA}");
-  });
-});
-
-describe("splitAuthorName", () => {
-  it.each([
-    ["Heather Piwowar", { last: "Piwowar", initials: "H." }],
-    ["Jean-Pierre Dupont", { last: "Dupont", initials: "J.-P." }],
-    ["Ludwig van der Berg", { last: "van der Berg", initials: "L." }],
-    ["Plato", { last: "Plato", initials: "" }],
-    ["  ", { last: "", initials: "" }],
-  ])("%j", (full, expected) => {
-    expect(splitAuthorName(full)).toEqual(expected);
-  });
-});
-
-describe("références depuis un instantané", () => {
-  it("APA : deux auteurs, revue et DOI", () => {
-    expect(apaFromSnapshot(makeSnapshot())).toBe(
-      "Piwowar, H., & Priem, J. (2018). Open access and citation advantage. PeerJ. https://doi.org/10.1000/xyz123",
-    );
-  });
-
-  it("APA : anonyme, sans date, rétracté", () => {
-    expect(apaFromSnapshot(makeSnapshot({ authorNames: [], year: null, venue: null, doi: null }), true)).toBe(
-      "Anonyme (s. d.). Open access and citation advantage. [Article rétracté]",
-    );
-  });
-
-  it("APA : au-delà de 20 auteurs, les 19 premiers puis le dernier", () => {
-    const names = Array.from({ length: 25 }, (_, i) => `Prénom Nom${i + 1}`);
-    const apa = apaFromSnapshot(makeSnapshot({ authorNames: names }));
-    expect(apa).toContain("Nom19, P., … Nom25, P. (2018)");
-    expect(apa).not.toContain("Nom20,");
-  });
-
-  it("appel de citation court", () => {
-    expect(citeInline(makeSnapshot({ authorNames: [] }))).toBe("(Anonyme, 2018)");
-    expect(citeInline(makeSnapshot({ authorNames: ["Heather Piwowar"] }), 4)).toBe("(Piwowar, 2018, p. 4)");
-    expect(citeInline(makeSnapshot())).toBe("(Piwowar & Priem, 2018)");
-    expect(citeInline(makeSnapshot({ authorNames: ["A Un", "B Deux", "C Trois"], year: null }))).toBe("(Un et al., s. d.)");
-  });
-
-  it("bibtexAll : clés rendues uniques et articles rétractés marqués", () => {
-    const a = makeSnapshot({ id: "W1" });
-    const b = makeSnapshot({ id: "W2" });
-    const c = makeSnapshot({ id: "W3", type: "dissertation", title: "Une thèse remarquable", authorNames: ["Marie Curie"], year: 1903, venue: "Sorbonne", doi: null });
-    const out = bibtexAll([a, b, c], new Set(["W2"]));
-    const entries = out.split("\n\n");
-    expect(entries).toHaveLength(3);
-    expect(entries[0].split("\n")[0]).toBe("@article{piwowar2018open,");
-    expect(entries[1].split("\n")[0]).toBe("@article{piwowar2018openb,");
-    expect(entries[0]).not.toContain("note = {Retracted}");
-    expect(entries[1]).toContain("  note = {Retracted},");
-    expect(entries[2]).toBe(["@phdthesis{curie1903thse,", "  title = {Une thèse remarquable},", "  author = {Marie Curie},", "  year = {1903},", "  school = {Sorbonne},", "}"].join("\n"));
   });
 });
 

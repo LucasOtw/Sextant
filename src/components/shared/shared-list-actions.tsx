@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { CheckIcon, CopyIcon, DownloadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { bibtexAll, fileSlug, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { bibtexAll } from "@/lib/citation";
+import { fileSlug, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { useCopy } from "@/hooks/use-copy";
 
 /** Export BibTeX d'une liste partagée : copier ou télécharger le .bib. `retracted` : vérifié côté serveur. */

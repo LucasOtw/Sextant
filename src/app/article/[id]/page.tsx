@@ -15,7 +15,8 @@ import { ReadPdfButton } from "@/components/highlights/read-pdf-button";
 import { listHighlights } from "@/lib/highlights";
 import { ArticleNote } from "@/components/notes/article-note";
 import { getNote } from "@/lib/notes";
-import { snapshotFromWork } from "@/lib/favorites-shared";
+import { formatApa, formatBibtex } from "@/lib/citation";
+import { citationFromWork, snapshotFromWork } from "@/lib/favorites-shared";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { isFavorite } from "@/lib/favorites";
 import { TrackView } from "@/components/track-view";
@@ -37,9 +38,7 @@ import {
   openAccessPdfUrls,
   openAccessUrl,
   publisherUrl,
-  toApa,
   titleLang,
-  toBibtex,
   typeLabel,
   venueName,
   workTitle,
@@ -114,6 +113,7 @@ export default async function ArticlePage({ params }: Props) {
   const publisher = publisherUrl(work);
   const doiUrl = safeHttpUrl(work.doi);
   const venue = venueName(work);
+  const citation = citationFromWork(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
   const aiEnabled = provider !== null && Boolean(abstract);
@@ -206,8 +206,8 @@ export default async function ArticlePage({ params }: Props) {
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
             </ExternalLink>
           )}
-          <CopyButton text={toApa(work)} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
-          <CopyButton text={toBibtex(work)} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
+          <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
+          <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
           {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
           {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
         </div>
