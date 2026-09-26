@@ -23,7 +23,7 @@ let kitReady = false;
  * Google pendant l'affichage, et `signInWithPopup` ouvre la fenêtre dans la foulée du clic (sinon le bloqueur de
  * fenêtres surgissantes l'arrêterait). Un échec (réseau, configuration absente) n'est pas mémorisé : le clic réessaie.
  */
-export function loadFirebaseAuth(): Promise<FirebaseAuthKit> {
+function loadFirebaseAuth(): Promise<FirebaseAuthKit> {
   if (!kit) {
     const loading = Promise.all([import("firebase/auth"), import("@/lib/firebase/client")]).then(([sdk, client]) => {
       const loaded = { sdk, auth: client.firebaseAuth(), googleProvider: client.googleProvider };

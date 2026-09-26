@@ -12,19 +12,19 @@ import { safeHttpUrl } from "@/lib/text";
 
 const BASE = "https://api.openalex.org";
 
-export interface Author {
+interface Author {
   id: string | null;
   display_name: string;
   orcid: string | null;
 }
 
-export interface Authorship {
+interface Authorship {
   author_position: "first" | "middle" | "last";
   author: Author;
   institutions: { id: string; display_name: string; country_code: string | null }[];
 }
 
-export interface Source {
+interface Source {
   id: string;
   display_name: string;
   type: string | null;
@@ -42,7 +42,7 @@ export interface Location {
   version: string | null;
 }
 
-export interface TopicRef {
+interface TopicRef {
   id: string;
   display_name: string;
   score?: number;
@@ -100,7 +100,7 @@ export interface Page<T> {
   results: T[];
 }
 
-export type SortKey = "relevance" | "cited" | "recent";
+type SortKey = "relevance" | "cited" | "recent";
 
 export interface SearchParams {
   q?: string;

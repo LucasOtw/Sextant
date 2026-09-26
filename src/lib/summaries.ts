@@ -49,7 +49,7 @@ export async function readStoredSummary(model: string, promptVersion: number, wo
  * Durée de vie d'un condensé : `expiresAt`, champ de la politique TTL de Firestore (firestore.indexes.json). Un
  * mauvais condensé (réponse incohérente d'un petit modèle) finit ainsi par être régénéré, sans intervention.
  */
-export const SUMMARY_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+const SUMMARY_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 
 /**
  * Enregistre un condensé réussi, après l'envoi de la réponse (`after`) : l'utilisateur n'attend pas l'écriture, et

@@ -84,7 +84,7 @@ export function buildHref(base: string, sp: RawSearchParams, patch: Record<strin
 }
 
 /** OpenAlex limite la pagination simple à 10 000 résultats. */
-export const MAX_RESULTS = 10_000;
+const MAX_RESULTS = 10_000;
 
 /** Numéro de la dernière page atteignable (au moins 1). */
 export function lastPageOf(total: number, perPage: number): number {

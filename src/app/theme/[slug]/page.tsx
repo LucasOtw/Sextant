@@ -7,17 +7,13 @@ import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/searc
 import { Badge } from "@/components/ui/badge";
 import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
-import { THEMES, themeBySlug, themeCanonical, themeMetaDescription } from "@/lib/themes";
+import { themeBySlug, themeCanonical, themeMetaDescription } from "@/lib/themes";
 import { cn } from "cn";
 import { recover } from "@/lib/log";
 
 interface Props {
   params: Promise<{ slug: string }>;
   searchParams: Promise<RawSearchParams>;
-}
-
-export function generateStaticParams() {
-  return THEMES.map((t) => ({ slug: t.slug }));
 }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {

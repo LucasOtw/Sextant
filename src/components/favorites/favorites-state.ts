@@ -20,7 +20,7 @@ export interface FavoritesState {
 
 export const EMPTY_FAVORITES: FavoritesState = { ids: new Set(), added: new Map(), collections: [], collectionsLoaded: false };
 
-export type CollectionPatch = { name?: string; description?: string; articleIds?: string[] };
+type CollectionPatch = { name?: string; description?: string; articleIds?: string[] };
 
 export type FavoritesAction =
   /** Déconnexion : tout est vidé. */
@@ -55,11 +55,11 @@ export type FavoritesAction =
   | { type: "collectionRestored"; collection: Collection; index: number }
   | { type: "shareToken"; id: string; token: string | null };
 
-export function without(c: Collection, id: string): Collection {
+function without(c: Collection, id: string): Collection {
   return c.articleIds.includes(id) ? { ...c, articleIds: c.articleIds.filter((x) => x !== id) } : c;
 }
 
-export function withId(c: Collection, id: string): Collection {
+function withId(c: Collection, id: string): Collection {
   return c.articleIds.includes(id) ? c : { ...c, articleIds: [...c.articleIds, id] };
 }
 

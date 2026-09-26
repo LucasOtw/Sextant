@@ -8,7 +8,7 @@ import { MAX_HIGHLIGHT_TEXT, type Highlight, type HighlightInput } from "@/lib/h
 import { undoToast } from "@/lib/undo-toast";
 import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 
-export type NewHighlight = Omit<HighlightInput, "article">;
+type NewHighlight = Omit<HighlightInput, "article">;
 
 interface HighlightsContext {
   /** Utilisateur connecté : on peut enregistrer. Sinon, toute action ouvre la connexion. */

@@ -60,7 +60,7 @@ const FEEDBACK_TAG = "feedback";
 export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list-v2"], { tags: [FEEDBACK_TAG], revalidate: 60 });
 
 /** Vide le cache de la liste de /retours : la prochaine visite relit la base. Peut lever (hors requête Next) : passer par `refreshFeedbackList`. */
-export function invalidateFeedbackList(): void {
+function invalidateFeedbackList(): void {
   revalidateTag(FEEDBACK_TAG, { expire: 0 });
 }
 

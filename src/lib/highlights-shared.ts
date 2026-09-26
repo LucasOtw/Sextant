@@ -7,7 +7,7 @@ import { cleanText, tooLong } from "@/lib/text";
  * `prefix` / `suffix` = quelques caractères autour du passage, pour le retrouver dans le résumé même si le texte bouge.
  * L'article est dénormalisé (même instantané que les favoris) : la page « Mes citations » se rend sans appel OpenAlex.
  */
-export type HighlightSource = "abstract" | "pdf" | "manual";
+type HighlightSource = "abstract" | "pdf" | "manual";
 
 export interface HighlightInput {
   text: string;
@@ -28,8 +28,8 @@ export interface Highlight extends HighlightInput {
 export const MAX_HIGHLIGHTS = 2000;
 export const MAX_HIGHLIGHT_TEXT = 3000;
 export const MAX_NOTE = 1000;
-export const MAX_CONTEXT = 120;
-export const MAX_PAGE = 100_000;
+const MAX_CONTEXT = 120;
+const MAX_PAGE = 100_000;
 
 const SOURCES: HighlightSource[] = ["abstract", "pdf", "manual"];
 

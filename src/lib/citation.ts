@@ -30,7 +30,7 @@ export interface CitationSource {
 
 /** Mention ajoutée aux références d'un article rétracté : on peut le citer, jamais sans le savoir. */
 export const RETRACTED_APA_SUFFIX = " [Article rétracté]";
-export const RETRACTED_BIBTEX_NOTE = "Retracted";
+const RETRACTED_BIBTEX_NOTE = "Retracted";
 
 /** Échappe un champ BibTeX : caractères spéciaux LaTeX et accolades déséquilibrées. */
 export function bibField(value: string): string {
