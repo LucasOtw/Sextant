@@ -42,6 +42,37 @@ describe("CitationsList par tranches (PERF-11)", () => {
     expect(more()).toBeUndefined();
   });
 
+  it("tranches coupées dans l'ordre des sections : les citations révélées apparaissent après la dernière section affichée", async () => {
+    await render(Array.from({ length: 120 }, (_, i) => highlight(i)));
+    const texts = () => [...container.querySelectorAll("blockquote")].map((b) => b.textContent);
+    const sections = () => [...container.querySelectorAll("section")].map((s) => s.getAttribute("aria-label"));
+    const before = texts();
+    const sectionsBefore = sections();
+    await act(async () => more()!.click());
+    // Les 50 premières citations restent en tête, dans le même ordre : rien ne s'insère au-dessus du bouton.
+    expect(texts().slice(0, PAGE_SIZE)).toEqual(before);
+    // Les sections déjà affichées sont complètes, sauf la dernière, que la tranche suivante prolonge.
+    expect(sections().slice(0, sectionsBefore.length)).toEqual(sectionsBefore);
+    const complete = sectionsBefore.slice(0, -1);
+    for (const title of complete) {
+      const n = Number(title!.split(" ")[1]);
+      const expected = Array.from({ length: 120 }, (_, i) => i).filter((i) => (i % 7) + 1 === n).length;
+      expect(container.querySelector(`section[aria-label="${title}"]`)!.querySelectorAll("blockquote").length).toBe(expected);
+    }
+  });
+
+  it("« Afficher plus » : focus sur la première citation révélée, compteur annoncé (role=status)", async () => {
+    await render(Array.from({ length: 120 }, (_, i) => highlight(i)));
+    expect(container.querySelector('[role="status"]')?.textContent).toBe(`${PAGE_SIZE} affichées sur 120`);
+    const button = more()!;
+    button.focus();
+    await act(async () => button.click());
+    const items = container.querySelectorAll("section > ul > li");
+    expect(document.activeElement).toBe(items[PAGE_SIZE]);
+    expect(items[PAGE_SIZE].getAttribute("tabindex")).toBe("-1");
+    expect(container.querySelector('[role="status"]')?.textContent).toBe(`${2 * PAGE_SIZE} affichées sur 120`);
+  });
+
   it("sans bouton quand tout tient dans une tranche", async () => {
     await render(Array.from({ length: 10 }, (_, i) => highlight(i)));
     expect(cards()).toBe(10);

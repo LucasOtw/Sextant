@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowDownIcon, ArrowUpIcon, CopyIcon, DownloadIcon, FolderIcon, Link2Icon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
@@ -18,7 +18,7 @@ import { useFavorites } from "@/components/favorites/favorites-provider";
 import type { Collection } from "@/lib/collections-shared";
 import { bibtexAll, fileSlug, type Favorite } from "@/lib/favorites-shared";
 import { ShareDialog } from "@/components/collections/share-dialog";
-import { ShowMore } from "@/components/show-more";
+import { ShowMore, useRevealFocus } from "@/components/show-more";
 import { formatCount, typeLabel } from "@/lib/format";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { cn } from "cn";
@@ -147,6 +147,10 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const pageKey = `${dq}|${selectedId ?? ""}|${activeSort}`;
   const limit = visibleCount(page, pageKey);
 
+  const { containerRef: listRef, reveal } = useRevealFocus<HTMLUListElement>(":scope > li");
+  /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
+  const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
+
   /** Déplace un article d'un cran dans l'ordre de la liste. */
   const move = useCallback(
     (id: string, delta: -1 | 1) => {
@@ -156,10 +160,28 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       const j = i + delta;
       if (i < 0 || j < 0 || j >= ids.length) return;
       [ids[i], ids[j]] = [ids[j], ids[i]];
+      // Dernière carte de la tranche descendue d'un cran : la tranche s'agrandit, sinon la carte (qui a le focus)
+      // sortirait de l'écran, démontée.
+      const pos = shown.findIndex((f) => f.id === id);
+      if (delta === 1 && pos >= 0 && pos + 1 >= limit) setPage((p) => nextPage(p, pageKey));
+      moved.current = { id, delta };
       void updateCollection(collection.id, { articleIds: ids });
     },
-    [collection, updateCollection],
+    [collection, updateCollection, shown, limit, pageKey],
   );
+
+  // Après un déplacement, le focus revient sur le bouton de la carte déplacée (sur l'autre flèche si elle a atteint un
+  // bout de la liste), où qu'il soit tombé pendant le réordonnancement.
+  useLayoutEffect(() => {
+    const m = moved.current;
+    if (!m) return;
+    moved.current = null;
+    const row = listRef.current?.querySelector<HTMLElement>(`:scope > li[data-id="${m.id}"]`);
+    if (!row || row.contains(document.activeElement)) return;
+    const buttons = row.querySelectorAll<HTMLButtonElement>("button[data-move]");
+    const same = [...buttons].find((b) => b.dataset.move === (m.delta === 1 ? "down" : "up") && !b.disabled);
+    (same ?? [...buttons].find((b) => !b.disabled))?.focus();
+  });
 
   async function copyBibtex() {
     try {
@@ -340,7 +362,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         </div>
       )}
 
-      <ul className="flex flex-col gap-3">
+      <ul ref={listRef} className="flex flex-col gap-3">
         {shown.slice(0, limit).map((f, i) => (
           <FavoriteRow
             key={f.id}
@@ -355,7 +377,14 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
           />
         ))}
       </ul>
-      <ShowMore shown={Math.min(limit, shown.length)} total={shown.length} onMore={() => setPage((p) => nextPage(p, pageKey))} />
+      <ShowMore
+        shown={Math.min(limit, shown.length)}
+        total={shown.length}
+        onMore={() => {
+          reveal(Math.min(limit, shown.length));
+          setPage((p) => nextPage(p, pageKey));
+        }}
+      />
       {dialogs}
     </div>
   );
@@ -381,6 +410,7 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
   const animated = i < ANIMATED_ROWS;
   return (
     <li
+      data-id={f.id}
       className={cn(animated && "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none")}
       style={animated ? { animationDelay: `${Math.min(i, 8) * 40}ms` } : undefined}
     >
@@ -393,8 +423,8 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
           {manualOrder && (
             <>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Monter dans la liste" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Descendre dans la liste" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
+              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Monter dans la liste" data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
+              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Descendre dans la liste" data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
             </>
           )}
           <CollectionPicker snapshot={f} />

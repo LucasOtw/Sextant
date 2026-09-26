@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HighlightItem } from "@/components/highlights/highlight-item";
-import { ShowMore } from "@/components/show-more";
+import { ShowMore, useRevealFocus } from "@/components/show-more";
 import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
 import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
@@ -54,7 +54,12 @@ export function CitationsList({ initial, collections, loadError = false, retract
   const pageKey = `${dq}|${list}`;
   const limit = visibleCount(page, pageKey);
   const articleCount = useMemo(() => countDistinct(shown, (h) => h.workId), [shown]);
-  const groups = useMemo(() => groupBy(shown.slice(0, limit), (h) => h.workId), [shown, limit]);
+  // Citations remises dans l'ordre des groupes avant de couper la tranche : sinon (tri par date, articles mêlés) chaque
+  // tranche compléterait des sections déjà affichées, au-dessus du bouton, et rien n'apparaîtrait sous lui. Ainsi, une
+  // tranche prolonge la dernière section ou en ajoute de nouvelles en bas.
+  const ordered = useMemo(() => groupBy(shown, (h) => h.workId).flat(), [shown]);
+  const groups = useMemo(() => groupBy(ordered.slice(0, limit), (h) => h.workId), [ordered, limit]);
+  const { containerRef, reveal } = useRevealFocus<HTMLDivElement>(":scope > section > ul > li");
 
   async function updateNote(id: string, note: string) {
     const previous = items.find((h) => h.id === id)?.note ?? "";
@@ -148,7 +153,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
         {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour « {q} »</>}
       </p>
 
-      <div className="flex flex-col gap-8">
+      <div ref={containerRef} className="flex flex-col gap-8">
         {groups.map((group) => {
           const a = group[0].article;
           return (
@@ -169,7 +174,15 @@ export function CitationsList({ initial, collections, loadError = false, retract
           );
         })}
       </div>
-      <ShowMore shown={Math.min(limit, shown.length)} total={shown.length} feminine onMore={() => setPage((p) => nextPage(p, pageKey))} />
+      <ShowMore
+        shown={Math.min(limit, shown.length)}
+        total={shown.length}
+        feminine
+        onMore={() => {
+          reveal(Math.min(limit, shown.length));
+          setPage((p) => nextPage(p, pageKey));
+        }}
+      />
     </div>
   );
 }
