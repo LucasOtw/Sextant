@@ -106,6 +106,11 @@ describe("pages en cache et script d'avant hydratation (PERF-01)", () => {
       expect(re.test(page), page).toBe(true);
     }
     for (const asset of ["/api/favorites", "/icon.svg", "/_next/static/x.js", "/pdfjs/6/pdf.worker.mjs", "/__/auth/handler"]) expect(re.test(asset), asset).toBe(false);
+    // Seules les charges RSC du routeur sont écartées : un document demandé avec « Purpose: prefetch » (préchargement
+    // ou prérendu par le navigateur) sera affiché tel quel et doit recevoir son nonce et sa politique.
+    const missing = config.matcher[0].missing ?? [];
+    expect(missing).toEqual([{ type: "header", key: "next-router-prefetch" }]);
+    expect(missing.some((m) => m.key.toLowerCase() === "purpose" || m.key.toLowerCase() === "sec-purpose")).toBe(false);
   });
 
   it("seconde entrée : les pages en cache, seulement pour rattraper l'indice d'une session ouverte avant lui", () => {

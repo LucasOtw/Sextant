@@ -65,13 +65,13 @@ export const config = {
     {
       // Pages rendues à la demande seulement : ni pages en cache (/, /a-propos, /conditions, /confidentialite,
       // /mentions-legales : STATIC_PAGES), ni API, ni fichiers statiques (Next, PDF.js, icônes, manifeste, robots), ni
-      // pages d'aide Firebase relayées (/__/auth/*), ni préchargements de liens.
+      // pages d'aide Firebase relayées (/__/auth/*), ni préchargements RSC du routeur de Next (`next-router-prefetch`).
+      // Un document préchargé ou prérendu par le navigateur (`Purpose: prefetch` : <link rel=prefetch>, règles de
+      // spéculation, barre d'adresse) passe, lui, par le proxy : il sera affiché tel quel et doit porter son nonce et
+      // sa politique, comme une navigation normale.
       source:
         "/((?!$|a-propos$|conditions$|confidentialite$|mentions-legales$|api/|_next/static|_next/image|pdfjs/|__/auth/|favicon\\.ico|robots\\.txt|manifest\\.webmanifest|.*\\.(?:png|svg|ico|jpg|webp|txt|xml|mjs|js|css|map)$).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
+      missing: [{ type: "header", key: "next-router-prefetch" }],
     },
     {
       // Pages en cache (STATIC_PAGES), seulement pour rattraper l'indice d'une session ouverte avant son introduction :
