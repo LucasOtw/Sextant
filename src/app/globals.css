@@ -215,11 +215,12 @@
 /* Rôles typographiques (§ 3.3), en couche components : un utilitaire posé sur l'élément (taille, graisse, marge) les
    remplace sans !important (Y3). Tailles mobiles d'abord, puis à partir de sm (40rem). */
 @layer components {
-  /* Titres : Fredoka 600, interlettrage à peine resserré ; un mot trop long (sigles, URL) se coupe au lieu de déborder à 320 px. */
+  /* Titres : Fredoka 600, interlettrage normal (resserré à -0,01em sur les seuls rôles de 24 px et plus, Y3) ; un mot
+     trop long (sigles, URL) se coupe au lieu de déborder à 320 px. */
   .title-display {
     font-family: var(--font-heading);
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: normal;
     text-wrap: balance;
     overflow-wrap: break-word;
   }
@@ -227,21 +228,25 @@
   .type-hero {
     font-size: 2.5rem;
     line-height: 1.1;
+    letter-spacing: -0.01em;
   }
   /* h1 de page : 36 / 48 px. */
   .type-h1 {
     font-size: 2.25rem;
     line-height: 1.1;
+    letter-spacing: -0.01em;
   }
   /* h1 d'une fiche d'article, souvent long : 28 / 40 px. */
   .type-h1-article {
     font-size: 1.75rem;
     line-height: 1.2;
+    letter-spacing: -0.01em;
   }
   /* h2 de section : 26 / 32 px. */
   .type-h2 {
     font-size: 1.625rem;
     line-height: 1.2;
+    letter-spacing: -0.01em;
   }
   /* Titre de bloc, intertitre, titre de dialogue : 20 / 22 px. */
   .type-h3 {

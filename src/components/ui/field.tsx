@@ -32,7 +32,7 @@ function Field({ label, optional = false, hint, invalid = false, className, chil
   const hintId = `${id}-hint`
   return (
     <div data-slot="field" className={cn("flex flex-col gap-1.5", className)}>
-      <label htmlFor={id} className="text-sm font-medium">
+      <label htmlFor={id} className="text-meta font-semibold">
         {label}
         {optional && <span className="font-normal text-muted-foreground"> (facultatif)</span>}
       </label>

@@ -164,7 +164,7 @@ export function SearchFilters({ className, defaults }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium text-muted-foreground">
+    <label className="flex flex-col gap-1.5 text-meta font-semibold text-muted-foreground">
       {label}
       <span className="text-base font-normal text-foreground">{children}</span>
     </label>

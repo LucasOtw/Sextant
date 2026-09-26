@@ -40,7 +40,7 @@ export function ServerError({ error, retry }: Props) {
       </div>
       <div className="flex flex-col items-center gap-1.5 text-center text-sm text-muted-foreground">
         <p>
-          Ça persiste ? <Link href="/retours" className="text-accent-brand underline underline-offset-3">Signalez-le dans Bugs et idées</Link>
+          Ça persiste&#8239;? <Link href="/retours" className="text-accent-brand underline underline-offset-3">Signalez-le dans Bugs et idées</Link>
           {reference && <>, en indiquant la référence ci-dessous</>}.
         </p>
         {reference && (
@@ -51,7 +51,7 @@ export function ServerError({ error, retry }: Props) {
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs tabular-nums hover:bg-secondary hover:text-foreground"
             aria-label={copied ? "Référence copiée" : `Copier la référence ${reference}`}
           >
-            Référence : {reference} {copied ? <CheckIcon className="size-3.5" aria-hidden /> : <CopyIcon className="size-3.5" aria-hidden />}
+            Référence&nbsp;: {reference} {copied ? <CheckIcon className="size-3.5" aria-hidden /> : <CopyIcon className="size-3.5" aria-hidden />}
           </button>
         )}
       </div>

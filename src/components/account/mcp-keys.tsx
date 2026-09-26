@@ -183,7 +183,7 @@ export function McpKeys() {
       {full && <p id={limitId} className="text-sm text-muted-foreground">Limite de {MAX_API_KEYS} clés atteinte : révoquez-en une pour en créer une autre.</p>}
 
       <details className="text-sm">
-        <summary className="font-medium">Comment brancher Sextant à mon assistant ?</summary>
+        <summary className="font-medium">Comment brancher Sextant à mon assistant&#8239;?</summary>
         <div className="mt-3 flex flex-col gap-2 text-muted-foreground">
           <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages → Connecteurs → Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
           <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans «&nbsp;Autres méthodes&nbsp;».</p>
