@@ -3,13 +3,22 @@ import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
 import { SITE } from "@/lib/site";
 import { ExternalLink } from "@/components/external-link";
+import { RETENTION, retentionLabel, validMonths } from "@/lib/retention";
 
-export const metadata: Metadata = { title: "Confidentialité" };
+export const metadata: Metadata = {
+  title: "Confidentialité",
+  description: "Ce que Sextant garde, sans compte et avec un compte, les services tiers qu'il utilise, et vos droits sur vos données : export, effacement.",
+  alternates: { canonical: "/confidentialite" },
+};
 
-const UPDATED = "25 septembre 2026";
+const UPDATED = "26 septembre 2026";
 
 export default function PrivacyPage() {
   const contact = SITE.contactEmail ? <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a> : <strong>[adresse de contact à compléter]</strong>;
+  // Durées décidées par l'éditeur (lib/retention.ts, NEW-14) : la même constante règle la purge automatique. Tant
+  // qu'une durée vaut null, le texte s'en tient à « tant que le compte existe » (aucun emplacement à compléter en ligne).
+  const accountMonths = validMonths(RETENTION.inactiveAccountMonths);
+  const keyMonths = validMonths(RETENTION.unusedKeyMonths);
 
   return (
     <ProsePage
@@ -28,26 +37,29 @@ export default function PrivacyPage() {
       <ul>
         <li>votre préférence d'affichage clair ou sombre, et le fait d'avoir lu le message d'accueil ;</li>
         <li>la liste des derniers articles consultés (« Consultés récemment ») ;</li>
-        <li>les suggestions que vous avez écartées dans « Pour vous » ;</li>
+        <li>les suggestions que vous avez écartées dans « Pour vous » (leurs identifiants servent aussi au calcul, voir ci-dessous) ;</li>
         <li>brièvement, l'article que vous vouliez enregistrer au moment de vous connecter, pour l'ajouter une fois connecté (10 minutes au plus).</li>
       </ul>
       <p>
-        Pour calculer « Pour vous », votre navigateur envoie au serveur de Sextant les identifiants publics des articles consultés
-        (et de vos favoris si vous êtes connecté). Ils servent à la réponse puis ne sont pas conservés. Vous pouvez tout effacer en
-        vidant les données du site dans votre navigateur ; l'historique s'efface aussi depuis l'accueil.
+        Pour calculer « Pour vous », votre navigateur envoie au serveur de Sextant, dans l'adresse de la requête, les identifiants
+        publics des articles consultés, des suggestions écartées et de vos favoris si vous êtes connecté. Ils servent à la réponse et
+        ne sont pas enregistrés par Sextant ; comme toute adresse demandée, ils peuvent figurer dans les journaux techniques de
+        l'hébergeur (voir Vercel ci-dessous). La réponse n'est gardée en cache que dans votre navigateur, cinq minutes. Vous pouvez tout
+        effacer en vidant les données du site dans votre navigateur ; l'historique s'efface aussi depuis l'accueil.
       </p>
 
       <h2>Avec un compte</h2>
       <p>
         La connexion se fait avec Google, via Firebase Authentication (Google). Nous recevons votre nom, votre adresse e-mail, votre photo
-        de profil Google et un identifiant technique. Aucun mot de passe n'est stocké chez nous. Nous conservons ensuite ce que vous
-        enregistrez :
+        de profil Google et un identifiant technique. Aucun mot de passe n'est stocké chez nous. Nous enregistrons aussi la date de
+        création du compte et celle de votre dernière connexion. Nous conservons ensuite ce que vous enregistrez :
       </p>
       <ul>
         <li><strong>favoris</strong> : les articles et leurs références (titre, auteurs, revue, année) ;</li>
         <li><strong>listes</strong> : leur nom, leur description, leur ordre et les articles qu'elles contiennent ;</li>
         <li><strong>citations</strong> : les passages surlignés, leur page, leur date et vos notes éventuelles ;</li>
-        <li><strong>notes</strong> : ce que vous écrivez sur un article.</li>
+        <li><strong>notes</strong> : ce que vous écrivez sur un article ;</li>
+        <li>le <strong>dernier favori retiré</strong>, pour que « Annuler » puisse le rétablir ; il est remplacé au retrait suivant.</li>
       </ul>
       <p>
         Ces données sont privées : personne d'autre que vous n'y a accès depuis Sextant, sauf une liste que vous choisissez de partager
@@ -57,7 +69,16 @@ export default function PrivacyPage() {
       </p>
       <ul>
         <li><strong>Finalité et base légale</strong> : fournir le service que vous demandez en créant un compte (exécution du contrat, RGPD art. 6.1.b).</li>
-        <li><strong>Durée</strong> : tant que le compte existe. Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.</li>
+        <li>
+          <strong>Durée</strong> : tant que le compte existe
+          {accountMonths && (
+            <>
+              , et au plus {retentionLabel(accountMonths)} après votre dernière connexion ou le dernier usage d'une de vos clés d'assistant IA :
+              passé ce délai, le compte est supprimé automatiquement avec toutes ses données
+            </>
+          )}
+          . Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.
+        </li>
         <li>
           <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours,
           accompagné d'un cookie <code>sextant_signed_in</code> sans donnée personnelle, qui indique seulement aux pages si une session est ouverte
@@ -71,16 +92,21 @@ export default function PrivacyPage() {
       <p>
         Depuis « Mon compte », vous pouvez créer des clés personnelles pour donner à un assistant IA de votre choix (Claude, ChatGPT…)
         un accès en lecture seule à votre bibliothèque : favoris, listes, citations et notes. Sextant ne conserve que l'empreinte de chaque
-        clé (jamais la clé elle-même), son nom et ses dates de création et de dernière utilisation. Ce que vous consultez ainsi est
+        clé (jamais la clé elle-même), son nom et ses dates de création et de dernière utilisation, ainsi que, dans votre profil, la date
+        du dernier usage d'une de vos clés, qui reste connue après la révocation de la clé. Ce que vous consultez ainsi est
         transmis à l'assistant que vous avez branché et relève alors de sa propre politique de confidentialité. Une clé se révoque à tout
         moment ; toutes sont supprimées avec le compte.
+        {keyMonths && (
+          <> Une clé inutilisée pendant {retentionLabel(keyMonths)} (depuis sa création si elle n'a jamais servi) est supprimée automatiquement.</>
+        )}
       </p>
 
       <h2>Bugs et idées</h2>
       <p>
         Les sujets publiés sur la page « Bugs et idées » sont publics et n'affichent pas leur auteur ; Sextant garde l'identifiant technique
-        du compte qui les a publiés, pour limiter les abus. Les votes sont anonymes pour les autres visiteurs. À la suppression du compte,
-        ses votes sont effacés et ses sujets restent en ligne, détachés de lui.
+        du compte qui les a publiés, pour limiter les abus, ainsi que vos votes et leur date. Les votes sont anonymes pour les autres
+        visiteurs. À la suppression du compte, ses votes sont effacés et ses sujets restent en ligne, détachés de lui. Un sujet ou une
+        liste partagée qui enfreint la loi peut nous être signalé : voir <Link href="/mentions-legales#signaler">Signaler un contenu</Link>.
       </p>
 
       <h2>Services tiers et sous-traitants</h2>
@@ -126,7 +152,11 @@ export default function PrivacyPage() {
       <h2>Vos droits</h2>
       <p>Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité (RGPD, art. 15 à 21).</p>
       <ul>
-        <li><strong>Accès et portabilité</strong> : « Télécharger mes données », sur la page « Mon compte », fournit un fichier JSON avec tout ce que Sextant conserve pour vous.</li>
+        <li>
+          <strong>Accès et portabilité</strong> : « Télécharger mes données », sur la page « Mon compte », fournit un fichier JSON avec tout ce que
+          Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA, favoris, listes et liens de partage, citations,
+          notes, clés d'assistant IA (sans leur empreinte), sujets publiés et votes sur « Bugs et idées ».
+        </li>
         <li><strong>Rectification</strong> : vos favoris, listes, citations et notes se modifient directement dans Sextant ; votre nom et votre photo viennent de votre compte Google.</li>
         <li><strong>Effacement</strong> : « Supprimer mon compte » efface tout, immédiatement et sans nous solliciter.</li>
         <li>Pour toute autre demande : {contact}. Nous répondons dans un délai d'un mois.</li>

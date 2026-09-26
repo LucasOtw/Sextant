@@ -2,7 +2,7 @@ import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
 import { logError } from "@/lib/log";
-import type { FeedbackItem, FeedbackKind, FeedbackStatus } from "@/lib/feedback-shared";
+import { mergeFeedbackLists, type FeedbackItem, type FeedbackKind, type FeedbackList, type FeedbackStatus } from "@/lib/feedback-shared";
 
 /**
  * `feedback/{id}` = { kind, title, description, votes, status, authorUid, createdAt } — public, sans nom d'auteur.
@@ -26,10 +26,27 @@ function toItem(id: string, d: Record<string, unknown>): FeedbackItem {
   };
 }
 
-export async function listFeedback(limit = 300): Promise<FeedbackItem[]> {
+/**
+ * Sujets de /retours (NEW-11) : les `top` plus votés ET les `recent` plus récents, dédoublonnés. Avec une seule
+ * requête par date, les sujets les plus anciens, souvent les plus votés ou déjà « Prévu » / « Fait », sortaient du
+ * tableau (donc du tri « Les plus votés » et du vote) dès que la collection dépassait la limite. Index automatiques sur
+ * un seul champ (`votes`, `createdAt`), pas d'index composite. Les totaux par type sont comptés à part (agrégation
+ * `count()`, une lecture par tranche de 1 000 sujets) : les compteurs des filtres restent justes au-delà de la limite.
+ */
+export async function listFeedback({ top = 100, recent = 200 }: { top?: number; recent?: number } = {}): Promise<FeedbackList> {
   const db = await adminDb();
-  const snap = await db.collection("feedback").orderBy("createdAt", "desc").limit(limit).get();
-  return snap.docs.map((d) => toItem(d.id, d.data()));
+  const col = db.collection("feedback");
+  const [bySupport, byDate, all, bugs] = await Promise.all([
+    col.orderBy("votes", "desc").limit(top).get(),
+    col.orderBy("createdAt", "desc").limit(recent).get(),
+    col.count().get(),
+    col.where("kind", "==", "bug").count().get(),
+  ]);
+  const items = mergeFeedbackLists(...[bySupport, byDate].map((snap) => snap.docs.map((d) => toItem(d.id, d.data()))));
+  const total = all.data().count;
+  const bug = bugs.data().count;
+  // `toItem` range tout ce qui n'est pas « bug » parmi les idées : même règle ici.
+  return { items, totals: { all: total, bug, idea: Math.max(0, total - bug) } };
 }
 
 const FEEDBACK_TAG = "feedback";
@@ -37,9 +54,10 @@ const FEEDBACK_TAG = "feedback";
 /**
  * Liste publique de /retours mise en cache 60 s, partagée entre les instances (cache de données de Next) : les visites,
  * robots compris, ne relisent plus jusqu'à 300 documents chacune (PERF-08). Chaque écriture qui change la liste ou
- * un compteur appelle `refreshFeedbackList` : l'auteur d'un vote ou d'un sujet revoit la page à jour.
+ * un compteur appelle `refreshFeedbackList` : l'auteur d'un vote ou d'un sujet revoit la page à jour. Clé « v2 » :
+ * la valeur est devenue `{ items, totals }` (NEW-11) ; l'ancienne clé pouvait encore renvoyer un tableau nu.
  */
-export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list"], { tags: [FEEDBACK_TAG], revalidate: 60 });
+export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list-v2"], { tags: [FEEDBACK_TAG], revalidate: 60 });
 
 /** Vide le cache de la liste de /retours : la prochaine visite relit la base. Peut lever (hors requête Next) : passer par `refreshFeedbackList`. */
 export function invalidateFeedbackList(): void {
@@ -64,6 +82,26 @@ export async function userFeedbackVotes(uid: string): Promise<string[]> {
   const db = await adminDb();
   const snap = await db.collection(`users/${uid}/feedbackVotes`).select().get();
   return snap.docs.map((d) => d.id);
+}
+
+/**
+ * Export des données du compte (RGPD art. 15 et 20) : les sujets publiés par l'utilisateur, du plus récent au plus
+ * ancien. Pas d'`orderBy` dans la requête : il exigerait un index composite ; l'égalité seule est déjà servie
+ * (cf. `detachAuthor`), et un utilisateur publie au plus quelques sujets par heure.
+ */
+export async function listFeedbackByAuthor(uid: string): Promise<FeedbackItem[]> {
+  const db = await adminDb();
+  const snap = await db.collection("feedback").where("authorUid", "==", uid).get();
+  return snap.docs.map((d) => toItem(d.id, d.data())).sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+/** Export : les votes de l'utilisateur avec leur date (que `userFeedbackVotes` ne lit pas, à cause de `select()`). */
+export async function listFeedbackVotesForExport(uid: string): Promise<{ id: string; createdAt: string | null }[]> {
+  const db = await adminDb();
+  const snap = await db.collection(`users/${uid}/feedbackVotes`).get();
+  return snap.docs
+    .map((d) => ({ id: d.id, createdAt: (d.get("createdAt") as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null }))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 
 /** Crée un sujet ; son auteur vote d'office pour lui. */

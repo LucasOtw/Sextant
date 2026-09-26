@@ -9,6 +9,12 @@ export const SITE = {
   publisherName: process.env.LEGAL_PUBLISHER_NAME?.trim() || null,
   /** Adresse de contact affichée sur le site (mentions légales, demandes RGPD). */
   contactEmail: process.env.LEGAL_CONTACT_EMAIL?.trim() || null,
+  /**
+   * Licence du code source (identifiant SPDX, ex. "AGPL-3.0-only" ou "MIT"), à renseigner avec le fichier LICENSE du
+   * dépôt (NEW-13). Décision de l'éditeur : tant qu'elle vaut null, les mentions légales disent qu'aucune licence n'est
+   * attachée au code.
+   */
+  codeLicense: null as string | null,
   host: {
     name: "Vercel Inc.",
     address: "440 N Barranca Avenue #4133, Covina, CA 91723, États-Unis",

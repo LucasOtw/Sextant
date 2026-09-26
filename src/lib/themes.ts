@@ -38,3 +38,17 @@ export function themeByFieldId(fieldId: string): Theme | undefined {
   const id = fieldId.replace(/^.*fields\//, "");
   return THEMES.find((t) => t.fieldId === id);
 }
+
+/** Description de la page d'un thème (balise meta et aperçus de partage), distincte de celle du site (QUAL-18). */
+export function themeMetaDescription(theme: Theme): string {
+  return `${theme.name} : ${theme.description} Les articles les plus cités de l'année, et une recherche limitée à cette discipline.`;
+}
+
+/**
+ * Adresse canonique d'une page de thème (QUAL-18) : ?q, ?sort, ?from… en sont des variantes de la même page, mais pas
+ * ?page=2, qui liste d'autres articles. La pagination garde donc son numéro, pour que Google la parcoure (/search est
+ * exclu par robots.txt : les thèmes sont le chemin de découverte des articles).
+ */
+export function themeCanonical(slug: string, page: number | undefined): string {
+  return page && page > 1 ? `/theme/${slug}?page=${page}` : `/theme/${slug}`;
+}

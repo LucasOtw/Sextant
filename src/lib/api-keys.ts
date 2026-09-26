@@ -33,6 +33,22 @@ export async function listKeys(uid: string): Promise<ApiKeyInfo[]> {
 }
 
 /**
+ * Export des données du compte : chaque clé sans son empreinte (identifiant du document), qui suffirait à la
+ * reconnaître. `createdBySessionAt` = date de la connexion Google de la session qui l'a créée (`sessionAuthTime`).
+ */
+export async function listKeysForExport(uid: string): Promise<{ name: string; prefix: string; createdAt: string | null; lastUsedAt: string | null; createdBySessionAt: string | null }[]> {
+  const db = await adminDb();
+  const snap = await db.collection("apiKeys").where("uid", "==", uid).get();
+  return snap.docs
+    .map((d) => {
+      const { name, prefix, createdAt, lastUsedAt } = toInfo(d.id, d.data());
+      const session = d.get("sessionAuthTime");
+      return { name, prefix, createdAt, lastUsedAt, createdBySessionAt: typeof session === "number" && Number.isFinite(session) ? new Date(session * 1000).toISOString() : null };
+    })
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+/**
  * Crée une clé et la renvoie en clair, une seule fois. `sessionAuthTime` (claim `auth_time` de la session qui la crée)
  * rattache la clé à cette session : une révocation postérieure à cette connexion la refuse, même si la clé a été écrite
  * après la révocation par une instance dont l'état du compte mémorisé était encore l'ancien.
@@ -101,7 +117,13 @@ export async function verifyKey(key: string): Promise<{ uid: string; keyId: stri
     // Attendue (quelques dizaines de ms, une fois par heure et par clé) : une écriture lancée sans attente peut être
     // coupée quand la fonction serverless est gelée après la réponse. Un échec n'empêche pas l'accès, mais laisse une trace :
     // « Utilisée le … » est l'indice qui permet de repérer une clé exposée.
-    await snap.ref.update({ lastUsedAt: FieldValue.serverTimestamp() }).catch((e) => logError("mcp.lastUsedAt", e));
+    // Même date dans le profil (`lastKeyUsedAt`) : l'usage du compte par un assistant IA reste connu après la purge
+    // de la clé (lib/account.ts, NEW-14). Dans un même lot : si la clé a disparu entre-temps (compte supprimé), la mise
+    // à jour échoue et le profil n'est pas recréé.
+    const batch = db.batch();
+    batch.update(snap.ref, { lastUsedAt: FieldValue.serverTimestamp() });
+    batch.set(db.doc(`users/${uid}`), { lastKeyUsedAt: FieldValue.serverTimestamp() }, { merge: true });
+    await batch.commit().catch((e) => logError("mcp.lastUsedAt", e));
   }
   return { uid, keyId: id };
 }

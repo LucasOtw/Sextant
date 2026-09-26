@@ -10,15 +10,24 @@ import { isAuthEnabled } from "@/lib/auth";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
 import { ANNOUNCER_ID } from "@/lib/announce";
 import { SkipLink } from "@/components/skip-link";
+import { SITE } from "@/lib/site";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  // Base des adresses relatives (canoniques, image de partage) : l'adresse de production, y compris sur un déploiement de
+  // prévisualisation (Vercel y ajoute de lui-même un en-tête noindex).
+  metadataBase: new URL(SITE.url),
   title: { default: "Sextant — la littérature scientifique, sans détour", template: "%s · Sextant" },
   description:
     "Articles évalués par les pairs, thèses et ouvrages universitaires : recherche par mots-clés, métadonnées claires, accès ouvert, articles similaires.",
   // Fichiers statiques de public/ (favicon.ico y est aussi, pour les navigateurs et robots qui le demandent sans balise).
   icons: { icon: { url: "/icon.svg", type: "image/svg+xml" }, apple: "/apple-touch-icon.png" },
+  // Aperçus de partage (QUAL-18) : ni titre ni description ici, Next reprend ceux de chaque page pour og:* et twitter:*,
+  // et l'image vient de app/opengraph-image.png (source : scripts/og-image.html). Une page ne doit PAS définir son
+  // propre `openGraph` : la fusion n'est pas profonde, il remplacerait celui-ci en entier (nom du site, langue, image).
+  openGraph: { siteName: SITE.name, locale: "fr_FR", type: "website" },
+  twitter: { card: "summary_large_image" },
 };
 
 /** Barre du navigateur mobile aux couleurs du fond (--background clair / sombre) ; suit le thème du système, pas la bascule du site. */

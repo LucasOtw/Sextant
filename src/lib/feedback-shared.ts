@@ -15,6 +15,37 @@ export interface FeedbackItem {
   createdAt: string | null;
 }
 
+/** Nombre total de sujets par type, compté dans la base : juste même quand la liste affichée est tronquée (NEW-11). */
+export interface FeedbackTotals {
+  all: number;
+  bug: number;
+  idea: number;
+}
+
+/** Liste de /retours : les sujets chargés (plus votés et plus récents, cf. lib/feedback.ts) et les totaux réels. */
+export interface FeedbackList {
+  items: FeedbackItem[];
+  totals: FeedbackTotals;
+}
+
+/** Réunit plusieurs extraits de la collection (plus votés, plus récents) sans doublon ; la première occurrence l'emporte. */
+export function mergeFeedbackLists(...lists: FeedbackItem[][]): FeedbackItem[] {
+  const byId = new Map<string, FeedbackItem>();
+  for (const list of lists) for (const item of list) if (!byId.has(item.id)) byId.set(item.id, item);
+  return [...byId.values()];
+}
+
+/**
+ * Compteurs des filtres « Tous / Bugs / Idées ». Sans totaux (liste complète), ils se comptent sur la liste ; avec, ce
+ * sont les totaux de la base, plus les sujets publiés depuis le chargement de la page (absents de `initialIds`).
+ */
+export function feedbackCounts(items: FeedbackItem[], totals: FeedbackTotals | null, initialIds: ReadonlySet<string>): FeedbackTotals {
+  const tally = (list: FeedbackItem[]) => ({ all: list.length, bug: list.filter((i) => i.kind === "bug").length, idea: list.filter((i) => i.kind === "idea").length });
+  if (!totals) return tally(items);
+  const added = tally(items.filter((i) => !initialIds.has(i.id)));
+  return { all: totals.all + added.all, bug: totals.bug + added.bug, idea: totals.idea + added.idea };
+}
+
 export const MAX_FEEDBACK_TITLE = 120;
 /** Longueur minimale du titre, annoncée sous le champ (A11Y-21) et vérifiée par l'API. */
 export const MIN_FEEDBACK_TITLE = 5;

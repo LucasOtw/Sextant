@@ -12,8 +12,10 @@ import { SHARE_TOKEN } from "@/lib/collections-shared";
 import { isAdminConfigured } from "@/lib/firebase/admin";
 import { formatCount, typeLabel } from "@/lib/format";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { reportHref } from "@/lib/report";
 import { retractedWithin } from "@/lib/retracted";
 import { getSharedList, type SharedList } from "@/lib/shares";
+import { SITE } from "@/lib/site";
 
 // Lu à chaque visite : un lien désactivé cesse de fonctionner tout de suite.
 export const dynamic = "force-dynamic";
@@ -51,7 +53,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /** Page publique d'une liste partagée : nom, description, articles, export BibTeX. Rien d'autre du compte. */
 export default async function SharedListPage({ params }: Props) {
-  const list = await load((await params).token);
+  const { token } = await params;
+  const list = await load(token);
   if (list === "limited") {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
@@ -124,6 +127,13 @@ export default async function SharedListPage({ params }: Props) {
         <p className="mt-10 text-sm text-muted-foreground">
           Liste partagée avec <Link href="/" className="text-accent-brand underline underline-offset-3">Sextant</Link>, un moteur de recherche
           d'articles scientifiques évalués par les pairs. Le cœur enregistre un article dans vos propres favoris.
+        </p>
+        {/* Contenu publié par un utilisateur : signalement à portée de main (DSA art. 16, SEC-13). */}
+        <p className="mt-2 text-sm text-muted-foreground">
+          Cette liste contient un contenu illicite ?{" "}
+          <a href={reportHref(SITE.contactEmail, "liste partagée", `${SITE.url}/liste/${token}`)} className="underline underline-offset-3 hover:text-foreground">
+            Signaler cette liste
+          </a>
         </p>
       </div>
     </div>

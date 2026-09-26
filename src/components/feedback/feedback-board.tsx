@@ -2,6 +2,7 @@
 
 import { useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { BugIcon, ChevronUpIcon, LightbulbIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
@@ -12,9 +13,10 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { feedbackCounts, feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind, type FeedbackTotals } from "@/lib/feedback-shared";
 import { announce } from "@/lib/announce";
 import { voteLabel } from "@/lib/labels";
+import { REPORT_SECTION, reportHref } from "@/lib/report";
 import { cn } from "cn";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
@@ -26,13 +28,17 @@ type Filter = "all" | FeedbackKind;
 
 interface Props {
   initial: FeedbackItem[];
+  /** Totaux de la base (lib/feedback.ts) : `initial` peut n'en être qu'une partie (plus votés et plus récents). */
+  totals?: FeedbackTotals | null;
   initialVoted: string[];
   signedIn: boolean;
   loadError?: boolean;
+  /** Signalement d'un sujet (DSA art. 16) : adresse de contact des mentions légales (null : leur section) et adresse de la page. */
+  report?: { email: string | null; pageUrl: string };
 }
 
 /** Liste publique des bugs et idées, avec vote (un par personne, retirable) et publication d'un nouveau sujet. */
-export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = false }: Props) {
+export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, loadError = false, report = { email: null, pageUrl: "/retours" } }: Props) {
   const [items, setItems] = useState(initial);
   const [voted, setVoted] = useState(() => new Set(initialVoted));
   const [filter, setFilter] = useState<Filter>("all");
@@ -48,7 +54,10 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
 
   const shown = useMemo(() => inOrder(items, order.ids).filter((i) => filter === "all" || i.kind === filter), [items, order.ids, filter]);
 
-  const counts = useMemo(() => ({ all: items.length, bug: items.filter((i) => i.kind === "bug").length, idea: items.filter((i) => i.kind === "idea").length }), [items]);
+  // Totaux de la base (justes même si la liste est tronquée), plus les sujets publiés depuis l'arrivée sur la page.
+  const [initialIds] = useState(() => new Set(initial.map((i) => i.id)));
+  const counts = useMemo(() => feedbackCounts(items, totals, initialIds), [items, totals, initialIds]);
+  const truncated = totals !== null && totals.all > initial.length;
 
   async function vote(item: FeedbackItem) {
     if (!signedIn) return setSignIn("Connectez-vous pour voter. Un vote par personne, retirable à tout moment.");
@@ -119,6 +128,12 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
         </div>
       </div>
 
+      {truncated && (
+        <p className="text-sm text-muted-foreground">
+          Sont affichés les sujets les plus votés et les plus récents : {initial.length} sur {totals.all}.
+        </p>
+      )}
+
       {loadError && items.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
       ) : shown.length === 0 ? (
@@ -130,13 +145,21 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((item) => (
-            <FeedbackRow key={item.id} item={item} voted={voted.has(item.id)} busy={pending.has(item.id)} onVote={() => void vote(item)} />
+            <FeedbackRow
+              key={item.id}
+              item={item}
+              voted={voted.has(item.id)}
+              busy={pending.has(item.id)}
+              onVote={() => void vote(item)}
+              reportLink={reportHref(report.email, `sujet « ${item.title} »`, `${report.pageUrl}#sujet-${item.id}`)}
+            />
           ))}
         </ul>
       )}
 
       <p className="text-sm text-muted-foreground">
-        Les sujets sont publics et sans nom d'auteur ; n'y mettez pas d'informations personnelles. Les votes sont anonymes.
+        Les sujets sont publics et sans nom d'auteur ; n'y mettez pas d'informations personnelles. Les votes sont anonymes. Un sujet
+        illicite ou hors sujet se signale par son lien « Signaler » (<Link href={REPORT_SECTION} className="underline underline-offset-3 hover:text-foreground">procédure</Link>).
       </p>
 
       <Composer
@@ -154,13 +177,14 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
   );
 }
 
-function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted: boolean; busy: boolean; onVote: () => void }) {
+function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: FeedbackItem; voted: boolean; busy: boolean; onVote: () => void; reportLink: string }) {
   const [expanded, setExpanded] = useState(false);
   const descriptionId = useId();
   const long = item.description.length > 280;
   const status = STATUS_LABEL[item.status];
   return (
-    <li className="flex gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+    // Ancre du sujet : l'adresse exacte d'un signalement (DSA art. 16) mène à lui.
+    <li id={`sujet-${item.id}`} className="flex scroll-mt-24 gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
       <button
         type="button"
         onClick={onVote}
@@ -184,6 +208,10 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
           </Badge>
           {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
           {item.createdAt && <span className="text-xs text-muted-foreground">{DATE.format(new Date(item.createdAt))}</span>}
+          {/* Nom accessible qui commence par le texte visible (WCAG 2.5.3) et dit quel sujet est visé. */}
+          <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="ml-auto text-xs text-muted-foreground underline-offset-3 hover:text-foreground hover:underline">
+            Signaler
+          </a>
         </div>
         <h2 className="mt-1.5 text-[1.0625rem] font-semibold leading-snug">{item.title}</h2>
         {item.description && (

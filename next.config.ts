@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { buildCsp, STATIC_PAGES } from "./src/lib/csp";
+import { HTML_LIMITED_BOTS } from "./src/lib/html-bots";
 
 /**
  * En-têtes de sécurité fixes (SEC-03, étape 1), sur tout le site sauf les pages d'aide Firebase relayées
@@ -39,6 +40,9 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   // Pas d'en-tête « x-powered-by: Next.js » : inutile de publier la pile technique.
   poweredByHeader: false,
+  // Titre, description et balises de partage dans le <head> pour Googlebot aussi, pas seulement pour les robots de la
+  // liste de Next (QUAL-16) : cf. lib/html-bots.ts.
+  htmlLimitedBots: HTML_LIMITED_BOTS,
   // firebase-admin (et ses dépendances Google Cloud) ne supportent pas d'être bundlés : chargés tels quels côté serveur.
   serverExternalPackages: ["firebase-admin"],
   // Worker et ressources PDF.js : chemin versionné (public/pdfjs/<version>/, cf. scripts/copy-pdfjs-assets.mjs),
