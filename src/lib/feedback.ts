@@ -37,21 +37,13 @@ const FEEDBACK_TAG = "feedback";
 /**
  * Liste publique de /retours mise en cache 60 s, partagée entre les instances (cache de données de Next) : les visites,
  * robots compris, ne relisent plus jusqu'à 300 documents chacune (PERF-08). Chaque écriture qui change la liste ou
- * un compteur appelle `invalidateFeedbackList` : l'auteur d'un vote ou d'un sujet revoit la page à jour.
+ * un compteur appelle `refreshFeedbackList` : l'auteur d'un vote ou d'un sujet revoit la page à jour.
  */
 export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list"], { tags: [FEEDBACK_TAG], revalidate: 60 });
 
-/**
- * À appeler après une écriture sur `feedback` (sujet publié, vote, compte supprimé) : la prochaine visite relit la base.
- * Jamais bloquant : l'écriture est faite, un échec d'invalidation (hors contexte de requête Next, cache indisponible)
- * laisse au pire la liste en retard de 60 s ; il ne doit pas transformer un vote ou une suppression réussis en erreur.
- */
+/** Vide le cache de la liste de /retours : la prochaine visite relit la base. Peut lever (hors requête Next) : passer par `refreshFeedbackList`. */
 export function invalidateFeedbackList(): void {
-  try {
-    revalidateTag(FEEDBACK_TAG, { expire: 0 });
-  } catch (e) {
-    logError("feedback.invalidate", e);
-  }
+  revalidateTag(FEEDBACK_TAG, { expire: 0 });
 }
 
 /**
