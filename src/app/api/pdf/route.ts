@@ -5,7 +5,7 @@ import { fetchPublic } from "@/lib/public-fetch";
 import { getWork } from "@/lib/openalex";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { recover } from "@/lib/log";
-import { isExpectedRange, parseContentRange, parseRange } from "@/lib/pdf-range";
+import { boundedRangeBody, isExpectedRange, parseContentRange, parseRange } from "@/lib/pdf-range";
 
 export const runtime = "nodejs";
 /** Un PDF de 30 Mo à 1 Mo/s : on laisse le temps au flux. */
@@ -136,27 +136,8 @@ async function rangeResponse(req: Request, id: string, index: number): Promise<R
     reader.cancel().catch(() => undefined);
     return refuse();
   }
-  let sent = 0;
-  const body = new ReadableStream<Uint8Array>({
-    start(controller) {
-      if (first.done || !first.value) return controller.close();
-      sent += first.value.byteLength;
-      controller.enqueue(first.value);
-    },
-    async pull(controller) {
-      const { done, value } = await reader.read();
-      if (done) return controller.close();
-      sent += value.byteLength;
-      if (sent > expected) {
-        controller.error(new Error("Plage plus longue qu'annoncé."));
-        return reader.cancel();
-      }
-      controller.enqueue(value);
-    },
-    cancel() {
-      return reader.cancel();
-    },
-  });
+  // Borné à la longueur annoncée : jamais plus d'octets que Content-Length, même si l'hébergeur en envoie davantage.
+  const body = boundedRangeBody(reader, first, expected);
   return new Response(body, {
     status: 206,
     headers: {

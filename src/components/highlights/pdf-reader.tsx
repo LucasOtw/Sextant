@@ -11,7 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
-import { isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
+import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { cn } from "cn";
 
 type PdfLib = typeof import("pdfjs-dist");
@@ -277,8 +277,9 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           const initial = stream.attach((chunk) => range?.onDataProgressiveRead(chunk));
           const transport = new pdfjs.PDFDataRangeTransport(total, initial.length > 0 ? initial : null, false);
           transport.requestDataRange = (begin: number, end: number) => {
-            // Plage refusée ou non conforme : ignorée, le téléchargement complet apportera les mêmes octets.
-            void fetchRange(url, candidate, begin, end, total, download.signal).then((chunk) => {
+            // Plage refusée ou non conforme : ignorée, le téléchargement complet apportera les mêmes octets. Une demande
+            // de plus de 4 Mo (PDF.js regroupe les morceaux contigus sans plafond) est lue par tranches, puis réunie.
+            void fetchInSlices(begin, end, (b, e) => fetchRange(url, candidate, b, e, total, download.signal)).then((chunk) => {
               if (!chunk || cancelled) return;
               try {
                 transport.onDataRange(begin, chunk);
