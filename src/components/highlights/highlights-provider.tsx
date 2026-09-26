@@ -7,9 +7,14 @@ import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_HIGHLIGHT_TEXT, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
 import { undoToast } from "@/lib/undo-toast";
 import { passagesSavedToast } from "@/lib/sentences";
-import { api, errorMessage, needsSignIn } from "@/lib/client/api";
+import { api, ApiError, errorMessage, needsSignIn } from "@/lib/client/api";
 
 type NewHighlight = Omit<HighlightInput, "article">;
+
+/** Résultat d'un enregistrement de plusieurs passages : `error`, la raison du premier refus. */
+export type SaveResult = { ok: boolean; error?: string };
+
+const TOO_LONG = `Passage trop long : ${MAX_HIGHLIGHT_TEXT} caractères au plus.`;
 
 interface HighlightsContext {
   /** Utilisateur connecté : on peut enregistrer. Sinon, toute action ouvre la connexion. */
@@ -21,9 +26,10 @@ interface HighlightsContext {
   add: (input: NewHighlight, options?: { silent?: boolean }) => Promise<Highlight | null>;
   /**
    * Enregistre plusieurs passages (choix de phrases), l'un après l'autre, avec un seul toast de réussite pour le lot
-   * (« 2 passages surlignés. ») au lieu d'un par passage. true si tous ont été enregistrés.
+   * (« 2 passages surlignés. ») au lieu d'un par passage. `ok` si tous ont été enregistrés ; sinon `error`, la raison
+   * du premier refus, sans toast : la fenêtre la dit elle-même (un toast est invisible en plein écran natif).
    */
-  addMany: (inputs: NewHighlight[]) => Promise<boolean>;
+  addMany: (inputs: NewHighlight[]) => Promise<SaveResult>;
   updateNote: (id: string, note: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   requestSignIn: () => void;
@@ -71,43 +77,73 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
     };
   }, [enabled, snapshot.id]);
 
-  const add = useCallback<HighlightsContext["add"]>(
-    async (input, options) => {
+  /**
+   * Enregistre un passage, sans toast : le passage créé, ou la raison du refus (`signIn` : connexion demandée, déjà
+   * ouverte ; `tooLong` ; `error`, avec le message du serveur s'il en a donné un). `add` et `addMany` disent ensuite le
+   * résultat chacun à leur façon.
+   */
+  const save = useCallback(
+    async (input: NewHighlight): Promise<{ created: Highlight } | { failure: "signIn" | "tooLong" | "error"; message?: string }> => {
       if (!enabled) {
         setSignIn(true);
-        return null;
+        return { failure: "signIn" };
       }
-      if (Array.from(input.text).length > MAX_HIGHLIGHT_TEXT) {
-        toast.error(`Passage trop long : ${MAX_HIGHLIGHT_TEXT} caractères au plus. Sélectionnez un extrait plus court.`);
-        return null;
-      }
+      if (Array.from(input.text).length > MAX_HIGHLIGHT_TEXT) return { failure: "tooLong" };
       mutations.current++;
       try {
-        const { highlight: created } = await api<{ highlight: Highlight }>("/api/highlights", { method: "POST", json: { ...input, article: snapshot } });
+        const { highlight: created } = await api<{ highlight: Highlight }>("/api/highlights", { method: "POST", json: { ...input, article: snapshot }, fallback: "" });
         setHighlights((prev) => [created, ...prev]);
-        if (!options?.silent) {
-          toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
-            description: "Retrouvez-le dans « Mes citations », avec sa source.",
-          });
-        }
-        return created;
+        return { created };
       } catch (e) {
-        if (needsSignIn(e)) setSignIn(true);
-        else toast.error(errorMessage(e, "Le passage n'a pas pu être enregistré."));
-        return null;
+        if (needsSignIn(e)) {
+          setSignIn(true);
+          return { failure: "signIn" };
+        }
+        // Message du serveur s'il en a donné un ; sinon (coupure réseau, réponse sans corps) aucun.
+        return { failure: "error", message: e instanceof ApiError && e.message ? e.message : undefined };
       }
     },
     [enabled, snapshot],
   );
 
+  const add = useCallback<HighlightsContext["add"]>(
+    async (input, options) => {
+      const result = await save(input);
+      if ("failure" in result) {
+        if (result.failure === "tooLong") toast.error(`${TOO_LONG} Sélectionnez un extrait plus court.`);
+        else if (result.failure === "error") toast.error(result.message ?? "Le passage n'a pas pu être enregistré.");
+        return null;
+      }
+      if (!options?.silent) {
+        toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
+          description: "Retrouvez-le dans « Mes citations », avec sa source.",
+        });
+      }
+      return result.created;
+    },
+    [save],
+  );
+
   const addMany = useCallback<HighlightsContext["addMany"]>(
     async (inputs) => {
       let saved = 0;
-      for (const input of inputs) if (await add(input, { silent: true })) saved++;
+      let error: string | undefined;
+      for (const input of inputs) {
+        const result = await save(input);
+        if ("created" in result) {
+          saved++;
+          continue;
+        }
+        // Raison du premier refus ; sans message connu (réseau), la fenêtre propose de réessayer.
+        if (error) continue;
+        if (result.failure === "tooLong") error = `${TOO_LONG} Une phrase dépasse cette limite à elle seule : sélectionnez-en un extrait dans le texte.`;
+        else if (result.failure === "signIn") error = "Connectez-vous pour surligner.";
+        else error = result.message;
+      }
       if (saved > 0) toast.success(...passagesSavedToast(saved));
-      return saved === inputs.length;
+      return saved === inputs.length ? { ok: true } : { ok: false, error };
     },
-    [add],
+    [save],
   );
 
   const updateNote = useCallback<HighlightsContext["updateNote"]>(async (id, note) => {

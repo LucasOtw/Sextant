@@ -20,8 +20,11 @@ interface Props {
   lang?: string;
   /** Phrase déjà comprise dans un passage retenu : cochée et inactive. */
   isHighlighted: (sentence: Sentence) => boolean;
-  /** Enregistre les phrases cochées (indices) ; true si tout a été enregistré (la fenêtre se ferme). */
-  onSave: (indexes: number[]) => Promise<boolean>;
+  /**
+   * Enregistre les phrases cochées (indices) ; `ok` si tout a été enregistré (la fenêtre se ferme), sinon `error`, la
+   * raison du refus, dite dans la fenêtre.
+   */
+  onSave: (indexes: number[]) => Promise<{ ok: boolean; error?: string }>;
   /** Contrôles au-dessus de la liste (choix de la page dans le lecteur PDF). */
   children?: React.ReactNode;
 }
@@ -78,10 +81,12 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
     if (pending.length === 0 || busy) return;
     setBusy(true);
     setSaveError(null);
-    const ok = await onSave(pending);
+    const result = await onSave(pending);
     setBusy(false);
-    if (ok) onClose();
-    else setSaveError(`${pending.length > 1 ? "Certaines phrases n'ont" : "La phrase n'a"} pas pu être surlignée${pending.length > 1 ? "s" : ""}. Réessayez.`);
+    if (result.ok) return onClose();
+    // La raison du refus quand elle est connue : « Réessayez » ne vaut que pour un échec passager (réseau, serveur).
+    const failed = `${pending.length > 1 ? "Certaines phrases n'ont" : "La phrase n'a"} pas pu être surlignée${pending.length > 1 ? "s" : ""}.`;
+    setSaveError(`${failed} ${result.error ?? "Réessayez."}`);
   }
 
   return (

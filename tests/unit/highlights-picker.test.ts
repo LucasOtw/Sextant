@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { HighlightsProvider, useHighlights } from "@/components/highlights/highlights-provider";
 import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
 import { pageAtTop, parsePickerPage } from "@/lib/pdf-pages";
-import { passagesSavedToast, splitSentences, type Sentence } from "@/lib/sentences";
+import { MAX_HIGHLIGHT_TEXT } from "@/lib/highlights-shared";
+import { passagesFrom, passagesSavedToast, splitSentences, type Sentence } from "@/lib/sentences";
 import { makeSnapshot } from "../fixtures";
 
 const sonner = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
@@ -47,23 +48,65 @@ describe("choix de phrases : un seul toast pour le lot", () => {
           : Response.json({ highlights: [] }),
       ),
     );
-    let result: boolean | null = null;
+    let result: { ok: boolean; error?: string } | null = null;
     function Consumer() {
       const { addMany } = useHighlights();
       useEffect(() => {
         void addMany([
           { source: "abstract", text: "Un.", prefix: "", suffix: "", page: null, note: "" },
           { source: "abstract", text: "Trois.", prefix: "", suffix: "", page: null, note: "" },
-        ]).then((ok) => (result = ok));
+        ]).then((r) => (result = r));
       }, [addMany]);
       return null;
     }
     const props = { enabled: true, snapshot: makeSnapshot(), initial: [] } as unknown as React.ComponentProps<typeof HighlightsProvider>;
     await render(createElement(HighlightsProvider, props, createElement(Consumer)));
     await act(async () => new Promise((r) => setTimeout(r, 0)));
-    expect(result).toBe(true);
+    expect(result).toEqual({ ok: true });
     expect(sonner.success).toHaveBeenCalledOnce();
     expect(sonner.success.mock.calls[0][0]).toBe("2 passages surlignés.");
+  });
+
+  it("addMany : passage trop long refusé, raison renvoyée à la fenêtre (sans toast d'erreur, invisible en plein écran)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "POST" ? Response.json({ highlight: { id: "h1", text: "Un." } }) : Response.json({ highlights: [] }))),
+    );
+    let result: { ok: boolean; error?: string } | null = null;
+    function Consumer() {
+      const { addMany } = useHighlights();
+      useEffect(() => {
+        void addMany([
+          { source: "pdf", text: "Un.", prefix: "", suffix: "", page: 3, note: "" },
+          { source: "pdf", text: "x".repeat(MAX_HIGHLIGHT_TEXT + 1), prefix: "", suffix: "", page: 3, note: "" },
+        ]).then((r) => (result = r));
+      }, [addMany]);
+      return null;
+    }
+    const props = { enabled: true, snapshot: makeSnapshot(), initial: [] } as unknown as React.ComponentProps<typeof HighlightsProvider>;
+    await render(createElement(HighlightsProvider, props, createElement(Consumer)));
+    await act(async () => new Promise((r) => setTimeout(r, 0)));
+    expect(result).toMatchObject({ ok: false, error: expect.stringContaining(`Passage trop long : ${MAX_HIGHLIGHT_TEXT} caractères au plus.`) });
+    expect(sonner.error).not.toHaveBeenCalled();
+    expect(sonner.success.mock.calls[0][0]).toBe("Passage surligné.");
+  });
+
+  it("passagesFrom : toutes les phrases d'une page dense cochées donnent des passages sous la limite, coupés entre deux phrases", () => {
+    const sentence = `Le ${"mot ".repeat(59).trim()}.`; // 239 caractères
+    const full = Array.from({ length: 40 }, () => sentence).join(" ");
+    const sentences = splitSentences(full);
+    expect(sentences).toHaveLength(40);
+    const passages = passagesFrom(full, sentences, sentences.map((_, i) => i));
+    expect(passages.length).toBeGreaterThan(1);
+    for (const p of passages) {
+      expect(Array.from(p.text).length).toBeLessThanOrEqual(MAX_HIGHLIGHT_TEXT);
+      expect(p.text.endsWith(".")).toBe(true);
+    }
+    // Rien de perdu : les passages mis bout à bout redonnent le texte.
+    expect(passages.map((p) => p.text).join(" ")).toBe(full);
+    // Une phrase plus longue que la limite à elle seule reste un passage (refusé à l'enregistrement, raison dite).
+    const huge = `${"a".repeat(MAX_HIGHLIGHT_TEXT + 10)}.`;
+    expect(passagesFrom(huge, splitSentences(huge), [0])).toHaveLength(1);
   });
 });
 
@@ -79,7 +122,7 @@ describe("SentencePickerDialog : échec d'enregistrement dit dans la fenêtre (p
         description: "Cochez les phrases.",
         sentences,
         isHighlighted: () => false,
-        onSave: async () => false,
+        onSave: async () => ({ ok: false }),
       }),
     );
     const box = document.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
@@ -88,6 +131,27 @@ describe("SentencePickerDialog : échec d'enregistrement dit dans la fenêtre (p
     await act(async () => submit.click());
     expect(document.querySelector('[role="alert"]')?.textContent).toBe("La phrase n'a pas pu être surlignée. Réessayez.");
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it("raison connue (passage trop long) : dite dans la fenêtre au lieu de « Réessayez »", async () => {
+    const sentences: Sentence[] = splitSentences("Première phrase. Deuxième phrase.");
+    await render(
+      createElement(SentencePickerDialog, {
+        open: true,
+        onOpenChange: vi.fn(),
+        title: "Surligner des phrases",
+        description: "Cochez les phrases.",
+        sentences,
+        isHighlighted: () => false,
+        onSave: async () => ({ ok: false, error: "Passage trop long : 3000 caractères au plus." }),
+      }),
+    );
+    for (const box of document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')) await act(async () => box.click());
+    const submit = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("Surligner (2)"))!;
+    await act(async () => submit.click());
+    const alert = document.querySelector('[role="alert"]')?.textContent;
+    expect(alert).toBe("Certaines phrases n'ont pas pu être surlignées. Passage trop long : 3000 caractères au plus.");
+    expect(alert).not.toContain("Réessayez");
   });
 });
 

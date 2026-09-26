@@ -108,7 +108,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
   return (
     // En plein écran natif, seul le conteneur s'affiche : les fenêtres des surlignages y sont montées, pas dans <body>.
     <DialogContainerContext.Provider value={full ? wrapRef : undefined}>
-      <div ref={wrapRef} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
+      <div ref={wrapRef} data-full={full ? "" : undefined} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
         {!full && (
           <div className="lg:hidden">
             <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
@@ -486,13 +486,13 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
   }
 
   /**
-   * Dernière page lue (en haut de l'écran, sous l'en-tête collant) : point de départ du choix de phrases. Suivie au
-   * défilement, parce que le bouton « Surligner des phrases » est au-dessus de la page 1 : l'atteindre au clavier fait
-   * remonter le document, et une mesure prise au clic donnerait toujours la page 1. Le défilement causé par le focus
-   * du bouton est donc ignoré.
+   * Dernière page lue (en haut de l'écran, sous la barre collante du lecteur) : point de départ du choix de phrases.
+   * Suivie au défilement. La barre (nombre de pages, « Surligner des phrases ») reste collée en haut du lecteur : le
+   * bouton s'atteint sans remonter le document, au clavier comme au doigt ou à la souris, et la page lue n'est pas
+   * perdue en chemin (avant, remonter jusqu'au bouton ramenait la mesure à la page 1).
    */
   const lastPageRef = useRef(1);
-  const pickerButtonRef = useRef<HTMLButtonElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!doc) return;
     let frame = 0;
@@ -500,8 +500,10 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        if (document.activeElement === pickerButtonRef.current) return;
-        lastPageRef.current = pageAtTop(containerRef.current?.querySelectorAll<HTMLElement>("[data-page]") ?? []);
+        const pages = containerRef.current?.querySelectorAll<HTMLElement>("[data-page]") ?? [];
+        // Bas de la barre collante : ce qui passe dessous est caché, la page lue est la suivante.
+        const bar = barRef.current?.getBoundingClientRect().bottom;
+        lastPageRef.current = bar === undefined ? pageAtTop(pages) : pageAtTop(pages, bar);
       });
     };
     // Capture : le défilement du plein écran (conteneur) comme celui de la page.
@@ -523,7 +525,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
   }
 
   async function savePicked(indexes: number[]) {
-    if (!picker?.sentences) return false;
+    if (!picker?.sentences) return { ok: false };
     // Un seul toast pour le lot (« 2 passages surlignés. »), pas un par passage.
     return addMany(passagesFrom(picker.text, picker.sentences, indexes).map((p) => ({ source: "pdf", text: p.text, page: picker.page, prefix: "", suffix: "", note: "" })));
   }
@@ -588,9 +590,14 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
       )}
       {doc && lib && width > 0 && (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner, ou choisissez des phrases.</p>
-            <Button ref={pickerButtonRef} variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(lastPageRef.current) : signInOutOfFullscreen(requestSignIn))}>
+          <p className="text-sm text-muted-foreground">Sélectionnez un passage pour le surligner, ou choisissez des phrases.</p>
+          {/*
+            Barre collante sous l'en-tête du site (tout en haut en plein écran, où il est caché) : voir lastPageRef. Sur
+            une ligne (la consigne reste au-dessus, non collante) pour ne pas manger l'écran d'un téléphone.
+          */}
+          <div ref={barRef} className="sticky top-16 z-10 -mt-3 flex items-center justify-between gap-2 bg-background py-2 in-data-full:top-0">
+            <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""}</p>
+            <Button variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(lastPageRef.current) : signInOutOfFullscreen(requestSignIn))}>
               <HighlighterIcon /> Surligner des phrases
             </Button>
           </div>
@@ -767,7 +774,7 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
   return (
     // Repère « Page N » pour les lecteurs d'écran, focalisable par « aller à la page ». Le canevas redessine le texte de
     // la couche texte : masqué, pour ne pas être lu comme une image de plus.
-    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10 outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
+    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative scroll-mt-14 bg-white shadow-sm ring-1 ring-foreground/10 outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
       <canvas ref={canvasRef} aria-hidden />
       <div ref={textRef} className="textLayer" />
       {!rendered && visible && (

@@ -44,7 +44,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
 
   const abstractHighlights = highlights.filter((h) => h.source === "abstract").map((h) => h.text);
   async function saveSentences(indexes: number[]) {
-    if (!abstract) return false;
+    if (!abstract) return { ok: false };
     // Un seul toast pour le lot (« 2 passages surlignés. »), pas un par passage.
     return addMany(passagesFrom(abstract, sentences, indexes).map((p) => ({ source: "abstract", text: p.text, prefix: p.prefix, suffix: p.suffix, page: null, note: "" })));
   }

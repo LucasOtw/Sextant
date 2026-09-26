@@ -4,6 +4,7 @@
  * est celui de `readSelection` : le résumé et le lecteur PDF retrouvent et marquent ces passages comme les autres.
  */
 
+import { MAX_HIGHLIGHT_TEXT } from "@/lib/highlights-shared";
 import { joinFragments } from "@/lib/pdf-marks";
 
 export interface Sentence {
@@ -50,15 +51,19 @@ export function splitSentences(full: string, locale = "fr"): Sentence[] {
 }
 
 /**
- * Passages formés par les phrases cochées (indices dans `sentences`) : des phrases consécutives n'en font qu'un.
+ * Passages formés par les phrases cochées (indices dans `sentences`) : des phrases consécutives n'en font qu'un, coupé
+ * à une frontière de phrase dès qu'il dépasserait `max` caractères (la limite d'un passage enregistré) : toutes les
+ * phrases d'une page dense cochées donnent plusieurs passages au lieu d'un seul, refusé à chaque essai. Une phrase
+ * plus longue que `max` à elle seule reste un passage, refusé à l'enregistrement.
  * Le contexte avant et après lève l'ambiguïté quand le même texte apparaît deux fois.
  */
-export function passagesFrom(full: string, sentences: Sentence[], indexes: Iterable<number>): Passage[] {
+export function passagesFrom(full: string, sentences: Sentence[], indexes: Iterable<number>, max = MAX_HIGHLIGHT_TEXT): Passage[] {
   const sorted = [...new Set(indexes)].filter((i) => i >= 0 && i < sentences.length).sort((a, b) => a - b);
+  const length = (a: number, b: number) => Array.from(squash(full.slice(sentences[a].start, sentences[b].end)).trim()).length;
   const runs: [number, number][] = [];
   for (const i of sorted) {
     const last = runs[runs.length - 1];
-    if (last && last[1] === i - 1) last[1] = i;
+    if (last && last[1] === i - 1 && length(last[0], i) <= max) last[1] = i;
     else runs.push([i, i]);
   }
   return runs.map(([a, b]) => {
