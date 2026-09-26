@@ -40,7 +40,7 @@ function Probe({ onMount }: { onMount?: (f: Favorites) => void }) {
   return null;
 }
 
-async function mount(children: ReactNode) {
+async function mount(children: ReactNode, wait: () => Promise<void> = settle) {
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -50,7 +50,7 @@ async function mount(children: ReactNode) {
     const Favorites = FavoritesProvider as ComponentType<{ children?: ReactNode }>;
     root!.render(createElement(Session, { enabled: true }, createElement(Favorites, null, children)));
   });
-  await settle();
+  await wait();
 }
 
 async function settle() {
@@ -169,6 +169,54 @@ describe("session côté client et favoris (PERF-01, PERF-10)", () => {
     expect(urls()).toEqual(["/api/favorites", "/api/collections"]);
     expect(seen.favorites?.collectionsLoaded).toBe(true);
     expect(seen.favorites?.listsOf("W1").map((c) => c.id)).toEqual(["l1"]);
+  });
+
+  it("retour arrière sur /favoris : les listes du premier rendu (cache du routeur) n'écrasent pas un ajout fait depuis", async () => {
+    document.cookie = "sextant_signed_in=1; path=/";
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === "/api/favorites") return json({ user: USER, ids: ["W1"], count: 1 });
+      if (url === "/api/collections/l1/articles" && init?.method === "POST") return json({ favorite: { id: "W2", title: "Deux", addedAt: null } }, 201);
+      throw new Error(`inattendu : ${url}`);
+    });
+    await mount(createElement(Probe, { onMount: (f) => void f.loadCollections([LIST], { fresh: true }) }));
+    expect(seen.favorites?.listsOf("W1").map((c) => c.id)).toEqual(["l1"]);
+    // Ailleurs, l'article W2 est rangé dans la liste.
+    await act(async () => void (await seen.favorites?.setInCollection("l1", { id: "W2", title: "Deux" } as never, true, { silent: true })));
+    await settle();
+    expect(seen.favorites?.collections[0].articleIds).toEqual(["W1", "W2"]);
+    // Retour arrière : la page ressert ses anciennes listes, marquées « fraîches ».
+    await act(async () => void (await seen.favorites?.loadCollections([LIST], { fresh: true })));
+    await settle();
+    expect(seen.favorites?.collections[0].articleIds).toEqual(["W1", "W2"]);
+    expect(urls().filter((u) => u.startsWith("/api/collections"))).toEqual(["/api/collections/l1/articles"]);
+  });
+
+  it("identité toujours absente (503) : relances espacées de 4 s, 15 s puis 60 s, sans s'arrêter après la première", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      document.cookie = "sextant_signed_in=1; path=/";
+      fetchMock.mockImplementation(async () => json({ error: "Session momentanément invérifiable." }, 503));
+      const advance = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
+      await mount(createElement(Probe), () => advance(0));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await advance(4_000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await advance(14_000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await advance(1_000);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      await advance(60_000);
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      // Service revenu : l'identité arrive, les relances cessent.
+      fetchMock.mockImplementation(async () => json({ user: USER, ids: [], count: 0 }));
+      await advance(60_000);
+      expect(fetchMock).toHaveBeenCalledTimes(5);
+      expect(seen.session?.user).toEqual(USER);
+      await advance(120_000);
+      expect(fetchMock).toHaveBeenCalledTimes(5);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("listes déjà lues par le serveur de /favoris : aucune relecture côté client (PERF-10)", async () => {

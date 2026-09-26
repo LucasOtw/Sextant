@@ -15,7 +15,8 @@ const PENDING_MAX_AGE_MS = 10 * 60 * 1000;
 /** Rechargement au retour sur l'onglet, au plus une fois par minute. */
 const FOCUS_REFRESH_MIN_MS = 60 * 1000;
 /** Délai avant de relancer un chargement revenu sans identité (réseau, panne passagère de la vérification de session). */
-const IDENTITY_RETRY_MS = 4000;
+/** Délais des relances d'un chargement revenu sans identité : croissants, puis plafonnés à la dernière valeur. */
+const IDENTITY_RETRY_MS = [4_000, 15_000, 60_000];
 const NO_LISTS: Collection[] = [];
 
 export interface PendingFavorite {
@@ -147,6 +148,8 @@ export function FavoritesProvider({ children }: Props) {
   const loadedFor = useRef<string | null>(null);
   /** Incrémenté à chaque mutation : un chargement parti avant une mutation ne doit pas l'écraser. */
   const mutationSeq = useRef(0);
+  /** Valeur de `mutationSeq` à l'ouverture de la session courante : une graine du serveur n'est sûre que sans mutation depuis. */
+  const sessionSeq = useRef(0);
   const lastRefreshAt = useRef(0);
   const inFlight = useRef<Promise<Set<string> | null> | null>(null);
   /** La requête en cours embarque les listes. */
@@ -154,10 +157,10 @@ export function FavoritesProvider({ children }: Props) {
   /** Le dernier chargement a reçu un 401 : la session a expiré ou a été révoquée. */
   const unauthorized = useRef(false);
   /**
-   * Session dont un chargement est revenu sans identité (réseau, 503), à relancer (voir l'effet plus bas). Une seule
-   * relance par session : un nouvel échec repose la même valeur, sans nouveau rendu ni nouvelle relance.
+   * Session dont un chargement est revenu sans identité (réseau, 503), à relancer (voir l'effet plus bas), avec le
+   * nombre d'échecs : chaque nouvel échec pose un nouvel objet, donc un nouveau rendu et une nouvelle relance, plus tard.
    */
-  const [identityRetryFor, setIdentityRetryFor] = useState<string | null>(null);
+  const [identityRetry, setIdentityRetry] = useState<{ key: string; attempt: number } | null>(null);
   const restoreRef = useRef<((snapshot: FavoriteSnapshot, lists: string[]) => Promise<void>) | null>(null);
 
   const applyIds = useCallback((next: Set<string>) => {
@@ -214,8 +217,8 @@ export function FavoritesProvider({ children }: Props) {
         if (forUser === loadedFor.current) {
           setError(true);
           // Réponse sans identité (réseau coupé, panne passagère) : sans relance, l'en-tête resterait sur la place de
-          // l'avatar, sans menu ni déconnexion, jusqu'au retour sur l'onglet. Une seule relance par session.
-          if (!identified && forUser) setIdentityRetryFor(forUser);
+          // l'avatar, sans menu ni déconnexion, jusqu'au retour sur l'onglet. Relances espacées (4 s, 15 s, puis 60 s).
+          if (!identified && forUser) setIdentityRetry((prev) => ({ key: forUser, attempt: prev?.key === forUser ? prev.attempt + 1 : 1 }));
         }
         return null;
       } finally {
@@ -248,8 +251,11 @@ export function FavoritesProvider({ children }: Props) {
   const loadCollections = useCallback<FavoritesContext["loadCollections"]>(
     async (seed, options) => {
       collectionsWanted.current = true;
-      if (seed && options?.fresh) {
+      if (seed && options?.fresh && !collectionsLoadedRef.current && mutationSeq.current === sessionSeq.current) {
         // Lu à l'instant par le serveur de la page pour cette session : rien à relire (jusqu'à 50 lectures évitées).
+        // Seulement si le fournisseur n'a encore rien de plus récent : au retour arrière, Next ressert la page d'origine
+        // depuis le cache du routeur, avec ses anciennes listes, qui écraseraient un ajout fait depuis. L'état du
+        // fournisseur, tenu à jour par chaque mutation, reste alors la référence.
         applyCollections(() => seed);
         markCollectionsLoaded(true);
         return;
@@ -311,17 +317,22 @@ export function FavoritesProvider({ children }: Props) {
     // Autre compte (ouvert dans un autre onglet) : ses listes sont à relire.
     if (loadedFor.current !== null) markCollectionsLoaded(false);
     loadedFor.current = userId;
+    sessionSeq.current = mutationSeq.current;
     // Listes embarquées seulement si un écran les montre et que le serveur de la page ne les a pas déjà fournies.
     void refresh({ lists: collectionsWanted.current && !collectionsLoadedRef.current }).then((known) => consumePending(known));
   }, [userId, refresh, consumePending, applyIds, applyCollections, markCollectionsLoaded]);
 
-  // Relance, quelques secondes après, d'un chargement revenu sans identité, si elle n'est pas arrivée entre-temps.
+  // Relance d'un chargement revenu sans identité, si elle n'est pas arrivée entre-temps : délai croissant et borné, tant
+  // que l'identité manque. Onglet masqué : pas de requête, le retour sur l'onglet recharge (voir plus bas).
   const identityKnown = session.user !== null;
   useEffect(() => {
-    if (!userId || identityRetryFor !== userId || identityKnown) return;
-    const timer = setTimeout(() => void refresh(), IDENTITY_RETRY_MS);
+    if (!userId || !identityRetry || identityRetry.key !== userId || identityKnown) return;
+    const delay = IDENTITY_RETRY_MS[Math.min(identityRetry.attempt, IDENTITY_RETRY_MS.length) - 1];
+    const timer = setTimeout(() => {
+      if (document.visibilityState !== "hidden") void refresh();
+    }, delay);
     return () => clearTimeout(timer);
-  }, [identityRetryFor, userId, identityKnown, refresh]);
+  }, [identityRetry, userId, identityKnown, refresh]);
 
   // Retour sur l'onglet : on se réaligne avec ce qui a pu être fait sur un autre appareil.
   useEffect(() => {
