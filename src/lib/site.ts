@@ -23,8 +23,8 @@ export function legalContactEmail(raw: string | undefined): string | null {
 }
 
 /**
- * Identité légale manquante, à refuser au build de production (next.config.ts) : les pages légales sont prérendues,
- * un déploiement sans éditeur ni adresse réels publierait « [à compléter] » et des liens « Signaler » sans destinataire.
+ * Identité légale manquante, signalée au build de production (next.config.ts) : les pages légales sont prérendues,
+ * un déploiement sans éditeur ni adresse réels publie « [à compléter] » et des liens « Signaler » vers la procédure.
  */
 export function missingLegalIdentity(env: Record<string, string | undefined>): string[] {
   const missing: string[] = [];
