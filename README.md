@@ -92,7 +92,7 @@ Sur une fiche, un bouton condense le résumé original en quatre points : **ques
 ## 🔒 Vie privée
 
 - **Utilisable sans compte.** Le compte Google est facultatif (Firebase Authentication) ; favoris, listes, citations et notes sont alors stockés dans Firestore, en Europe (Paris), et se téléchargent ou s'effacent depuis « Mon compte ».
-- **Un seul cookie, technique** : `sextant_session` (14 jours), avec un indice `sextant_signed_in` sans donnée personnelle. Aucun cookie de suivi, aucune mesure d'audience, aucune publicité.
+- **Deux cookies techniques**, strictement nécessaires : `sextant_session` (session, 14 jours) et `sextant_signed_in` (indice sans donnée personnelle). Aucun cookie de suivi, aucune mesure d'audience, aucune publicité.
 - **Dans votre navigateur** : l'affichage, l'historique de consultation et les suggestions écartées. Pour « Pour vous », les identifiants de ces articles (et de vos favoris) sont envoyés au serveur, qui ne les enregistre pas.
 - **Services tiers** : OpenAlex reçoit les recherches et les identifiants d'articles ; Mistral reçoit le titre et le résumé public d'un article, uniquement quand vous demandez un condensé.
 
