@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { Auth, GoogleAuthProvider, UserCredential } from "firebase/auth";
+import { isFirebaseConfigured } from "@/lib/firebase/config";
 
 /** L'utilisateur a fermé la fenêtre Google : rien à afficher. */
 export class GooglePopupCancelled extends Error {}
@@ -12,6 +14,8 @@ interface FirebaseAuthKit {
 }
 
 let kit: Promise<FirebaseAuthKit> | null = null;
+/** SDK téléchargé et initialisé : un clic peut ouvrir la fenêtre Google sans attente réseau. */
+let kitReady = false;
 
 /**
  * SDK Firebase Auth chargé à la demande (morceau séparé, ~110 Ko), puis instance initialisée ; mémorisé (PERF-02).
@@ -21,17 +25,41 @@ let kit: Promise<FirebaseAuthKit> | null = null;
  */
 export function loadFirebaseAuth(): Promise<FirebaseAuthKit> {
   if (!kit) {
-    const loading = Promise.all([import("firebase/auth"), import("@/lib/firebase/client")]).then(([sdk, client]) => ({
-      sdk,
-      auth: client.firebaseAuth(),
-      googleProvider: client.googleProvider,
-    }));
+    const loading = Promise.all([import("firebase/auth"), import("@/lib/firebase/client")]).then(([sdk, client]) => {
+      const loaded = { sdk, auth: client.firebaseAuth(), googleProvider: client.googleProvider };
+      kitReady = true;
+      return loaded;
+    });
     kit = loading;
     loading.catch(() => {
       if (kit === loading) kit = null;
     });
   }
   return kit;
+}
+
+/**
+ * Précharge le SDK à l'ouverture d'une fenêtre de connexion et dit s'il est prêt (téléchargé, persistance initialisée).
+ * Tant qu'il ne l'est pas, le bouton Google reste occupé : un clic pendant le téléchargement ouvrirait la fenêtre Google
+ * après une attente réseau, hors de l'activation utilisateur, et Safari la bloquerait. Un échec du chargement rend
+ * aussi la main (prêt = vrai) : le clic réessaie et affiche l'erreur.
+ */
+export function useFirebaseAuthPreload(open: boolean): boolean {
+  const [ready, setReady] = useState(() => kitReady || !isFirebaseConfigured);
+  useEffect(() => {
+    if (!open || !isFirebaseConfigured) return;
+    let live = true;
+    loadFirebaseAuth()
+      .then((k) => k.auth.authStateReady())
+      .catch(() => undefined)
+      .finally(() => {
+        if (live) setReady(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [open]);
+  return ready;
 }
 
 /**
@@ -42,6 +70,8 @@ export function loadFirebaseAuth(): Promise<FirebaseAuthKit> {
  * Erreurs : GooglePopupCancelled (fenêtre fermée), ou Error au message prêt à afficher.
  */
 export async function withGooglePopup<T>(exchange: (idToken: string, credential: UserCredential) => Promise<T>): Promise<T> {
+  // SDK déjà prêt au moment du clic ? Sinon l'attente du téléchargement a pu faire perdre l'activation utilisateur.
+  const readyAtClick = kitReady;
   const { sdk, auth, googleProvider } = await loadFirebaseAuth();
   let credential: UserCredential;
   try {
@@ -51,6 +81,8 @@ export async function withGooglePopup<T>(exchange: (idToken: string, credential:
     // Pas de repli par redirection : avec l'authDomain Firebase (autre domaine que le site), Safari 16.1+,
     // Firefox 109+ et Chrome sans cookies tiers ramènent l'utilisateur déconnecté, sans message. On explique plutôt.
     if (code === "auth/popup-blocked") {
+      // Fenêtre bloquée parce qu'elle est partie après le téléchargement du SDK : un second clic suffit, pas les réglages.
+      if (!readyAtClick) throw new Error("La connexion Google est prête : cliquez de nouveau sur le bouton.");
       throw new Error("Votre navigateur a bloqué la fenêtre de connexion Google. Autorisez les fenêtres surgissantes pour ce site, puis réessayez.");
     }
     if (code === "auth/operation-not-supported-in-this-environment") throw new Error("Ouvrez Sextant dans votre navigateur (Safari, Chrome…) pour vous connecter.");

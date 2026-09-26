@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { GoogleButton } from "@/components/auth/google-button";
-import { GooglePopupCancelled, loadFirebaseAuth, withGooglePopup } from "@/components/auth/google-popup";
+import { GooglePopupCancelled, useFirebaseAuthPreload, withGooglePopup } from "@/components/auth/google-popup";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useSession } from "@/components/auth/session-provider";
-import { isFirebaseConfigured } from "@/lib/firebase/config";
 import type { ClientUser } from "@/lib/session-shared";
 
 interface Props {
@@ -41,17 +40,14 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
   const { signedIn } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
   // Le SDK Firebase Auth n'est téléchargé et initialisé qu'à l'ouverture de cette fenêtre, jamais au chargement d'une
   // page : un visiteur qui ne se connecte pas ne télécharge pas le SDK et ne contacte pas Google (iframe
   // d'authentification, base IndexedDB). Sur mobile et Safari, `getAuth()` précharge alors l'iframe pendant que la
   // fenêtre s'affiche, pour que `signInWithPopup` ouvre la fenêtre Google dans la foulée du clic (sinon le bloqueur de
-  // fenêtres surgissantes l'arrêterait).
-  useEffect(() => {
-    if (!open || !isFirebaseConfigured) return;
-    // Échec (réseau, configuration absente) : l'erreur s'affichera au clic, qui réessaie.
-    loadFirebaseAuth().catch(() => undefined);
-  }, [open]);
+  // fenêtres surgissantes l'arrêterait). Le bouton reste occupé jusqu'à ce que le SDK soit prêt.
+  const ready = useFirebaseAuthPreload(open);
 
   async function signInWithGoogle() {
     setBusy(true);
@@ -82,8 +78,12 @@ export function SignInDialog({ open, onOpenChange, intro, onBeforeSignIn, onSucc
         <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
           {intro ?? "Un compte sert à retrouver vos favoris et vos listes d'un appareil à l'autre. La recherche reste libre sans compte."}
         </DialogDescription>
-        <GoogleButton className="mt-2" onClick={signInWithGoogle} busy={busy} />
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        <GoogleButton className="mt-2" onClick={signInWithGoogle} busy={busy || !ready} aria-describedby={error ? errorId : undefined} />
+        {error && (
+          <p id={errorId} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">
           Nous recevons votre nom, votre e-mail et votre photo de profil Google, rien d'autre. Détails dans la politique de confidentialité.
         </p>
