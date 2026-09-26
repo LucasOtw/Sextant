@@ -115,12 +115,22 @@ describe("GET /api/cron/retention", () => {
     expect(account.purgeInactive).toHaveBeenLastCalledWith(expect.objectContaining({ accountMonths: null, keyMonths: 24, dryRun: true }));
   });
 
-  it("durées candidates ignorées hors mode à blanc : seules les durées publiées suppriment", async () => {
+  it("dryRun autre que « 1 » (true, yes, 0, vide) : 400, aucune purge réelle avec les durées publiées", async () => {
     vi.stubEnv("CRON_SECRET", "s3cret-de-test");
-    expect(await (await call("?accountMonths=1&keyMonths=1", "Bearer s3cret-de-test")).json()).toEqual({ enabled: false });
     retention.RETENTION.inactiveAccountMonths = 36;
-    await call("?dryRun=0&accountMonths=1", "Bearer s3cret-de-test");
-    expect(account.purgeInactive).toHaveBeenCalledWith(expect.objectContaining({ accountMonths: 36, keyMonths: null, dryRun: false }));
+    for (const q of ["dryRun=true", "dryRun=yes", "dryRun=0", "dryRun=", "dryRun=1%20", "dryRun=true&accountMonths=60"]) {
+      expect((await call(`?${q}`, "Bearer s3cret-de-test")).status, q).toBe(400);
+    }
+    expect(account.purgeInactive).not.toHaveBeenCalled();
+  });
+
+  it("durées candidates sans dryRun=1 : 400, jamais ignorées en silence", async () => {
+    vi.stubEnv("CRON_SECRET", "s3cret-de-test");
+    retention.RETENTION.inactiveAccountMonths = 36;
+    for (const q of ["accountMonths=1", "keyMonths=1", "accountMonths=60&keyMonths=12"]) {
+      expect((await call(`?${q}`, "Bearer s3cret-de-test")).status, q).toBe(400);
+    }
+    expect(account.purgeInactive).not.toHaveBeenCalled();
   });
 
   it("durée candidate illisible : 400, rien n'est lancé", async () => {
