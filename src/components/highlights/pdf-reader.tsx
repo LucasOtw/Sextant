@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type Ref } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist";
 import { AlertTriangleIcon, ChevronDownIcon, HighlighterIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
@@ -23,14 +23,9 @@ import { ExternalLink } from "@/components/external-link";
 
 type PdfLib = typeof import("pdfjs-dist");
 
-const GOTO_EVENT = "sextant:goto-page";
 const NO_HIGHLIGHTS: Highlight[] = [];
 /** Proportion A4, en attendant de connaître celle de la première page du document. */
 const A4_ASPECT = 1.414;
-
-function goToPage(page: number) {
-  window.dispatchEvent(new CustomEvent(GOTO_EVENT, { detail: page }));
-}
 
 interface LayoutProps {
   url: string;
@@ -50,6 +45,8 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  /** Lecteur rendu ci-dessous : « aller à la page » depuis « Mes surlignages » l'appelle directement (QUAL-40). */
+  const readerRef = useRef<PdfReaderHandle>(null);
   /** API Fullscreen disponible ? Supposée présente au rendu serveur, vérifiée au navigateur (QUAL-31). */
   const fullscreenApi = useClientValue(() => typeof document.documentElement.requestFullscreen === "function", true);
   /** Demande acceptée sans bascule, ou refusée : repli fixe pour le reste de la visite. */
@@ -120,7 +117,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
           </div>
         )}
         <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", (!open || full) && "hidden", full && "lg:hidden")}>
-          <ArticleHighlights compact lang={lang} onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
+          <ArticleHighlights compact lang={lang} onGoToPage={(page) => { setOpen(false); readerRef.current?.goToPage(page); }} />
         </aside>
         <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
           <div className="mb-3 flex justify-end">
@@ -128,7 +125,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
               {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
             </Button>
           </div>
-          <PdfReader url={url} originalUrl={originalUrl} embedUrl={embedUrl} lang={lang} />
+          <PdfReader ref={readerRef} url={url} originalUrl={originalUrl} embedUrl={embedUrl} lang={lang} />
         </div>
       </div>
     </DialogContainerContext.Provider>
@@ -247,11 +244,17 @@ function pageOf(node: Node | null | undefined): string | undefined {
   return (node instanceof Element ? node : node?.parentElement)?.closest<HTMLElement>("[data-page]")?.dataset.page;
 }
 
+/** Commandes du lecteur exposées à la mise en page qui le rend (une référence, pas un événement global). */
+interface PdfReaderHandle {
+  goToPage(page: number): void;
+}
+
 interface ReaderProps {
   url: string;
   originalUrl: string;
   embedUrl: string | null;
   lang?: string;
+  ref?: Ref<PdfReaderHandle>;
 }
 
 /**
@@ -264,7 +267,7 @@ async function signInOutOfFullscreen(requestSignIn: () => void) {
 }
 
 /** Affiche le PDF page par page (PDF.js) avec une couche texte sélectionnable ; une sélection propose « Surligner ». */
-export function PdfReader({ url, originalUrl, embedUrl, lang }: ReaderProps) {
+function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
   const { enabled, highlights, add, requestSignIn } = useHighlights();
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
@@ -425,19 +428,20 @@ export function PdfReader({ url, originalUrl, embedUrl, lang }: ReaderProps) {
     };
   }, []);
 
-  useEffect(() => {
-    const onGoto = (e: Event) => {
-      const page = (e as CustomEvent<number>).detail;
-      // Saut instantané : un défilement doux ferait rendre les pages traversées, dont la hauteur peut changer en route
-      // (documents mêlant plusieurs formats), et la cible, calculée au départ, ne serait plus au bon endroit.
-      const el = containerRef.current?.querySelector<HTMLElement>(`[data-page="${page}"]`);
-      el?.scrollIntoView({ behavior: "auto", block: "start" });
-      // Le focus suit (« aller à la page » depuis « Mes surlignages ») : le lecteur d'écran lit la page, pas la barre latérale.
-      el?.focus({ preventScroll: true });
-    };
-    window.addEventListener(GOTO_EVENT, onGoto);
-    return () => window.removeEventListener(GOTO_EVENT, onGoto);
-  }, []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      goToPage(page: number) {
+        // Saut instantané : un défilement doux ferait rendre les pages traversées, dont la hauteur peut changer en route
+        // (documents mêlant plusieurs formats), et la cible, calculée au départ, ne serait plus au bon endroit.
+        const el = containerRef.current?.querySelector<HTMLElement>(`[data-page="${page}"]`);
+        el?.scrollIntoView({ behavior: "auto", block: "start" });
+        // Le focus suit (« aller à la page » depuis « Mes surlignages ») : le lecteur d'écran lit la page, pas la barre latérale.
+        el?.focus({ preventScroll: true });
+      },
+    }),
+    [],
+  );
 
   /**
    * Passages par page. Les références ne changent qu'avec les surlignages (jamais au défilement ni à la sélection) ;
