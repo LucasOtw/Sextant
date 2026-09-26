@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HighlightItem } from "@/components/highlights/highlight-item";
+import { ArticleMeta } from "@/components/article-card";
+import { EmptyState } from "@/components/empty-state";
 import { ShowMore, useRevealFocus } from "@/components/show-more";
 import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
@@ -118,24 +120,26 @@ export function CitationsList({ initial, collections, loadError = false, retract
 
   if (loadError && items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <p className="text-lg font-medium">Vos citations sont indisponibles pour le moment.</p>
-        <p className="mt-1 text-base text-muted-foreground">Le service de stockage ne répond pas. Vos citations sont intactes, réessayez dans un instant.</p>
-      </div>
+      <EmptyState
+        title="Vos citations sont indisponibles pour le moment."
+        hint="Le service de stockage ne répond pas. Vos citations sont intactes, réessayez dans un instant."
+      />
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <p ref={countRef} tabIndex={-1} className="text-lg font-medium outline-none">Aucune citation pour l'instant.</p>
-        <p className="mt-1 text-base text-muted-foreground">
-          Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton « Surligner » apparaît. Le passage est gardé ici, avec l'article, la page et la date.
-        </p>
-        <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
-          <SearchIcon className="size-4" /> Lancer une recherche
-        </Link>
-      </div>
+      <EmptyState
+        titleRef={countRef}
+        focusableTitle
+        title="Aucune citation pour l'instant."
+        hint="Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton « Surligner » apparaît. Le passage est gardé ici, avec l'article, la page et la date."
+        action={
+          <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
+            <SearchIcon className="size-4" /> Lancer une recherche
+          </Link>
+        }
+      />
     );
   }
 
@@ -168,9 +172,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
               <h2 className="title-display text-xl leading-snug">
                 <Link href={`/article/${group[0].workId}`} className="hover:text-accent-brand">{a.title}</Link>
               </h2>
-              <p className="mt-1 text-[0.9375rem] text-muted-foreground">
-                {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
-              </p>
+              <ArticleMeta authors={a.authors} venue={a.venue} year={a.year} className="mt-1" />
               <ul className="mt-3 flex flex-col gap-2">
                 {group.map((h) => (
                   <HighlightItem key={h.id} highlight={h} retracted={retractedIds.has(h.workId)} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} deferPaint />

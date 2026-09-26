@@ -3,14 +3,14 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
-import { FolderIcon, LockOpenIcon, QuoteIcon } from "lucide-react";
+import { FolderIcon } from "lucide-react";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
-import { SharedListActions } from "@/components/shared/shared-list-actions";
+import { BibtexActions } from "@/components/bibtex-actions";
+import { ArticleBadges, ArticleMeta, ArticleTitle, CitationCount } from "@/components/article-card";
 import { TooManyRequests } from "@/components/too-many-requests";
-import { Badge } from "@/components/ui/badge";
 import { SHARE_TOKEN } from "@/lib/collections-shared";
+import { fileSlug } from "@/lib/favorites-shared";
 import { isAdminConfigured } from "@/lib/firebase/admin";
-import { formatCount, typeLabel } from "@/lib/format";
 import { overLimit } from "@/lib/api/guard";
 import { clientIp } from "@/lib/rate-limit";
 import { reportHref } from "@/lib/report";
@@ -90,7 +90,7 @@ export default async function SharedListPage({ params }: Props) {
         {list.description && <p className="mt-3 text-lg text-muted-foreground">{list.description}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <p className="text-[0.9375rem] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
-          <SharedListActions name={list.name} articles={list.articles} retracted={[...retracted]} />
+          <BibtexActions articles={list.articles} filename={`sextant-${fileSlug(list.name)}.bib`} retracted={[...retracted]} />
         </div>
 
         {n === 0 ? (
@@ -100,24 +100,15 @@ export default async function SharedListPage({ params }: Props) {
             {list.articles.map((a) => (
               <li key={a.id}>
                 <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
-                  <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-                    <Badge variant="secondary">{typeLabel(a.type)}</Badge>
-                    {a.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
-                    {retracted.has(a.id) && <Badge variant="destructive">Rétracté</Badge>}
-                    {a.topic && <span className="truncate">· {a.topic}</span>}
-                  </div>
-                  <h2 className="title-display text-xl leading-snug">
-                    <Link href={`/article/${a.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{a.title}</Link>
-                  </h2>
+                  <ArticleBadges type={a.type} isOa={a.isOa} retracted={retracted.has(a.id)} topic={a.topic} />
+                  <ArticleTitle href={`/article/${a.id}`} as="h2" className="text-xl leading-snug">{a.title}</ArticleTitle>
                   {/* Le cœur suit le titre dans le DOM, en haut à droite à l'écran (A11Y-23). */}
                   <div className="absolute right-3 top-3 z-10">
                     <FavoriteButton snapshot={a} />
                   </div>
-                  <p className="text-[0.9375rem] text-muted-foreground">
-                    {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
-                  </p>
+                  <ArticleMeta authors={a.authors} venue={a.venue} year={a.year} />
                   <p className="flex items-center gap-1 pt-1 text-sm text-muted-foreground">
-                    <QuoteIcon className="size-4 text-accent-brand" aria-hidden />{formatCount(a.citedByCount)} citation{a.citedByCount > 1 ? "s" : ""}
+                    <CitationCount count={a.citedByCount} />
                   </p>
                 </article>
               </li>

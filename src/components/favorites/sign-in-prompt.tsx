@@ -4,6 +4,7 @@ import { useState } from "react";
 import { BookmarkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { EmptyState } from "@/components/empty-state";
 
 interface Props {
   icon?: React.ReactNode;
@@ -21,12 +22,16 @@ export function SignInPrompt({
 }: Props) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-xl border border-dashed p-10 text-center">
-      {icon}
-      <p className="mt-3 text-lg font-medium">{title}</p>
-      <p className="mt-1 text-base text-muted-foreground">{text}</p>
-      <Button size="lg" className="mt-5" onClick={() => setOpen(true)}>Se connecter</Button>
-      <SignInDialog open={open} onOpenChange={setOpen} intro={intro} />
-    </div>
+    <EmptyState
+      icon={icon}
+      title={title}
+      hint={text}
+      action={
+        <>
+          <Button size="lg" className="mt-5" onClick={() => setOpen(true)}>Se connecter</Button>
+          <SignInDialog open={open} onOpenChange={setOpen} intro={intro} />
+        </>
+      }
+    />
   );
 }

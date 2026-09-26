@@ -10,6 +10,7 @@ import { citationBlock, sourceLabel, type Highlight } from "@/lib/highlights-sha
 import { findHighlights, listHighlights } from "@/lib/highlights";
 import { getNote, listNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
+import { fold } from "@/lib/list-filter";
 import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, shortId, type Work } from "@/lib/openalex";
 import { SITE } from "@/lib/site";
 
@@ -40,10 +41,6 @@ function uidOf(ctx: Ctx): string {
 
 function text(t: string) {
   return { content: [{ type: "text" as const, text: t }] };
-}
-
-function fold(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 function workLine(w: Work, i?: number): string {

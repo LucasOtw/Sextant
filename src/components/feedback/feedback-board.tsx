@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BugIcon, ChevronUpIcon, LightbulbIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -137,11 +138,11 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
       {loadError && items.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
       ) : shown.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center">
-          <p className="text-lg font-medium">{items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}</p>
-          <p className="mt-1 text-base text-muted-foreground">Un bug repéré, une idée qui vous manque ? Soyez le premier à la proposer.</p>
-          <Button variant="outline" className="mt-5 bg-card" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
-        </div>
+        <EmptyState
+          title={items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}
+          hint="Un bug repéré, une idée qui vous manque ? Soyez le premier à la proposer."
+          action={<Button variant="outline" className="mt-5 bg-card" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((item) => (
