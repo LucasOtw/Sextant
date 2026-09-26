@@ -1,4 +1,4 @@
-import { sameIdSet, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { insertAt, sameIdSet, type Favorite, type FavoritePlacement, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { sameCollections, type Collection } from "@/lib/collections-shared";
 
 /**
@@ -39,6 +39,8 @@ export type FavoritesAction =
   | { type: "favoriteAdded"; favorite: Favorite }
   /** Bascule optimiste du cœur : `favorite` = nouvel état ; un retrait sort l'article des listes `memberships`. */
   | { type: "toggled"; snapshot: FavoriteSnapshot; favorite: boolean; memberships: string[]; at: string }
+  /** « Annuler » un retrait (NEW-8) : le favori revient à sa place, dans l'index et dans chacune de ses listes. */
+  | { type: "favoriteRestored"; snapshot: FavoriteSnapshot; placement: FavoritePlacement; at: string }
   /** Retour arrière d'une bascule refusée par le serveur : `previous` = instantané d'avant un retrait. */
   | { type: "toggleReverted"; snapshot: FavoriteSnapshot; wasFavorite: boolean; memberships: string[]; previous: Favorite }
   /** Article mis ou retiré d'une liste ; `markFavorite` : l'ajout l'enregistre aussi en favori. */
@@ -61,6 +63,10 @@ export function withId(c: Collection, id: string): Collection {
   return c.articleIds.includes(id) ? c : { ...c, articleIds: [...c.articleIds, id] };
 }
 
+function withIdAt(c: Collection, id: string, index: number): Collection {
+  return c.articleIds.includes(id) ? c : { ...c, articleIds: insertAt(c.articleIds, id, index) };
+}
+
 /** Index article → listes qui le contiennent. */
 export function membershipIndex(collections: readonly Collection[]): Map<string, Collection[]> {
   const m = new Map<string, Collection[]>();
@@ -77,6 +83,23 @@ export function membershipIndex(collections: readonly Collection[]): Map<string,
 /** Identifiants des listes qui contiennent l'article. */
 export function listsContaining(collections: readonly Collection[], id: string): string[] {
   return collections.filter((c) => c.articleIds.includes(id)).map((c) => c.id);
+}
+
+/**
+ * Place de l'article connue du client : rang dans l'index et dans chaque liste, date d'ajout si l'article a été ajouté
+ * pendant la session. Repli de « Annuler » si la réponse du retrait ne porte pas celle du serveur, qui seule connaît
+ * toujours la date d'ajout.
+ */
+export function placementOf(state: FavoritesState, id: string): FavoritePlacement {
+  const index = [...state.ids].indexOf(id);
+  return {
+    addedAt: state.added.get(id)?.addedAt ?? null,
+    index: index >= 0 ? index : null,
+    lists: state.collections.flatMap((c) => {
+      const at = c.articleIds.indexOf(id);
+      return at >= 0 ? [{ id: c.id, index: at }] : [];
+    }),
+  };
 }
 
 function withIds(state: FavoritesState, id: string, present: boolean): Set<string> {
@@ -142,6 +165,16 @@ export function favoritesReducer(state: FavoritesState, action: FavoritesAction)
         added: withAdded(state, snapshot.id, favorite ? { ...snapshot, addedAt: action.at } : null),
         // Un favori retiré quitte ses listes (le serveur fait de même).
         collections: favorite ? state.collections : mapLists(state.collections, (c) => memberships.includes(c.id), (c) => without(c, snapshot.id)),
+      });
+    }
+    case "favoriteRestored": {
+      const { snapshot, placement } = action;
+      const rank = new Map(placement.lists.map((l) => [l.id, l.index]));
+      return merge(state, {
+        // Un Set garde l'ordre d'insertion : l'index est reconstruit avec l'article à son rang d'origine.
+        ids: state.ids.has(snapshot.id) ? state.ids : new Set(insertAt([...state.ids], snapshot.id, placement.index)),
+        added: withAdded(state, snapshot.id, { ...snapshot, addedAt: placement.addedAt ?? action.at }),
+        collections: mapLists(state.collections, (c) => rank.has(c.id), (c) => withIdAt(c, snapshot.id, rank.get(c.id) ?? c.articleIds.length)),
       });
     }
     case "toggleReverted": {

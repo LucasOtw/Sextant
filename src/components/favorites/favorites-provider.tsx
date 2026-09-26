@@ -3,14 +3,14 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { Favorite, FavoriteSnapshot } from "@/lib/favorites-shared";
+import type { Favorite, FavoritePlacement, FavoriteSnapshot } from "@/lib/favorites-shared";
 import type { Collection } from "@/lib/collections-shared";
 import type { ClientUser } from "@/lib/session-shared";
 import { undoToast } from "@/lib/undo-toast";
 import { errorMessage, needsSignIn } from "@/lib/client/api";
 import { useSession } from "@/components/auth/session-provider";
 import * as remote from "@/components/favorites/favorites-api";
-import { EMPTY_FAVORITES, favoritesReducer, listsContaining, membershipIndex, type FavoritesAction, type FavoritesState } from "@/components/favorites/favorites-state";
+import { EMPTY_FAVORITES, favoritesReducer, listsContaining, membershipIndex, placementOf, type FavoritesAction, type FavoritesState } from "@/components/favorites/favorites-state";
 import { readPendingFavorite } from "@/components/favorites/pending-favorite";
 
 /** Rechargement au retour sur l'onglet, au plus une fois par minute. */
@@ -116,7 +116,7 @@ export function FavoritesProvider({ children }: Props) {
    * nombre d'échecs : chaque nouvel échec pose un nouvel objet, donc un nouveau rendu et une nouvelle relance, plus tard.
    */
   const [identityRetry, setIdentityRetry] = useState<{ key: string; attempt: number } | null>(null);
-  const restoreRef = useRef<((snapshot: FavoriteSnapshot, lists: string[]) => Promise<void>) | null>(null);
+  const restoreRef = useRef<((snapshot: FavoriteSnapshot, placement: FavoritePlacement) => Promise<void>) | null>(null);
 
   /** Applique l'action (favorites-state.ts) au miroir puis à l'état ; une action sans effet ne provoque aucun rendu. */
   const dispatch = useCallback((action: FavoritesAction) => {
@@ -293,16 +293,20 @@ export function FavoritesProvider({ children }: Props) {
       }
       const wasFavorite = known.has(snapshot.id);
       const previous = stateRef.current.added.get(snapshot.id) ?? { ...snapshot, addedAt: null };
-      // Un favori retiré quitte ses listes (le serveur fait de même) ; on les retient pour « Annuler ».
+      // Un favori retiré quitte ses listes (le serveur fait de même) ; on les retient pour « Annuler », avec sa place.
       const memberships = wasFavorite ? listsContaining(stateRef.current.collections, snapshot.id) : [];
+      const localPlacement = wasFavorite ? placementOf(stateRef.current, snapshot.id) : null;
       mutationSeq.current++;
       // Optimiste : l'interface réagit tout de suite, on revient en arrière si le serveur refuse.
       dispatch({ type: "toggled", snapshot, favorite: !wasFavorite, memberships, at: new Date().toISOString() });
       try {
         if (wasFavorite) {
-          await remote.deleteFavorite(snapshot.id);
+          // Place renvoyée par le serveur (date d'ajout comprise) ; à défaut, celle que le client connaissait.
+          const placement = (await remote.deleteFavorite(snapshot.id)) ?? localPlacement;
           const n = memberships.length;
-          undoToast(n ? `Retiré de vos favoris et de ${n} liste${n > 1 ? "s" : ""}.` : "Retiré de vos favoris.", () => void restoreRef.current?.(snapshot, memberships));
+          undoToast(n ? `Retiré de vos favoris et de ${n} liste${n > 1 ? "s" : ""}.` : "Retiré de vos favoris.", () => {
+            if (placement) void restoreRef.current?.(snapshot, placement);
+          });
           return "removed";
         }
         dispatch({ type: "favoriteSaved", favorite: await remote.postFavorite(snapshot) });
@@ -349,13 +353,30 @@ export function FavoritesProvider({ children }: Props) {
     [router, dispatch],
   );
 
-  // « Annuler » après un retrait : le favori revient, puis ses listes.
+  // « Annuler » après un retrait (NEW-8) : une seule requête rétablit le favori avec sa date d'ajout, et à son rang dans
+  // chacune de ses listes (un nouvel ajout le mettrait en tête de « Mes favoris » et en dernier dans ses listes).
   useEffect(() => {
-    restoreRef.current = async (snapshot, lists) => {
-      if ((await toggle(snapshot)) !== "added") return;
-      for (const id of lists) await setInCollection(id, snapshot, true, { silent: true });
+    restoreRef.current = async (snapshot, placement) => {
+      // Ce que le rétablissement ajoute (un retour arrière n'enlève que cela) : l'article a pu être remis entre-temps.
+      const { ids: known, collections: current } = stateRef.current;
+      const had = known.has(snapshot.id);
+      const inserted = placement.lists.filter((l) => current.some((c) => c.id === l.id && !c.articleIds.includes(snapshot.id))).map((l) => l.id);
+      mutationSeq.current++;
+      dispatch({ type: "favoriteRestored", snapshot, placement, at: new Date().toISOString() });
+      try {
+        const { favorite, collections: lists } = await remote.restoreFavorite(snapshot, placement);
+        dispatch({ type: "favoriteSaved", favorite });
+        // Ordre des listes tel que le serveur l'a écrit (une liste a pu changer entre-temps sur un autre appareil).
+        for (const l of lists) dispatch({ type: "collectionPatched", id: l.id, patch: { articleIds: l.articleIds } });
+        toast.success("Ajouté à vos favoris.", { action: { label: "Voir", onClick: () => router.push("/favoris") } });
+      } catch (e) {
+        mutationSeq.current++;
+        if (had) for (const listId of inserted) dispatch({ type: "listMembershipReverted", listId, snapshot, wasIn: false, unmarkFavorite: false });
+        else dispatch({ type: "toggled", snapshot, favorite: false, memberships: inserted, at: new Date().toISOString() });
+        toast.error(needsSignIn(e) ? "Connectez-vous pour rétablir ce favori." : errorMessage(e, "Le favori n'a pas pu être rétabli."));
+      }
     };
-  }, [toggle, setInCollection]);
+  }, [router, dispatch]);
 
   const createCollection = useCallback<FavoritesContext["createCollection"]>(
     async (name, options) => {

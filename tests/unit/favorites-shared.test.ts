@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fileSlug, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork } from "@/lib/favorites-shared";
+import { fileSlug, insertAt, sameSnapshot, sanitizePlacement, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork } from "@/lib/favorites-shared";
+import { MAX_COLLECTIONS } from "@/lib/collections-shared";
 import { makeSnapshot, makeWork } from "../fixtures";
 
 describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
@@ -115,5 +116,40 @@ describe("volume, numéro et pages dans l'instantané (QUAL-02)", () => {
     expect(sameSnapshot({ ...s, biblio: { ...biblio, volume: "7" } }, s)).toBe(false);
     expect(sameSnapshot({ ...makeSnapshot() }, s)).toBe(false);
     expect(sameSnapshot({ ...makeSnapshot(), biblio: null }, makeSnapshot())).toBe(true);
+  });
+});
+
+describe("place d'un favori retiré (« Annuler », NEW-8)", () => {
+  const NOW = Date.parse("2026-09-26T12:00:00.000Z");
+
+  it("garde une place valide ; date ramenée au plus tard à maintenant, date illisible = inconnue", () => {
+    const placement = { addedAt: "2025-01-02T03:04:05.000Z", index: 3, lists: [{ id: "a", index: 0 }, { id: "b_2-X", index: 7 }] };
+    expect(sanitizePlacement(placement, NOW)).toEqual(placement);
+    expect(sanitizePlacement({ ...placement, addedAt: "2030-01-01T00:00:00.000Z" }, NOW)?.addedAt).toBe("2026-09-26T12:00:00.000Z");
+    expect(sanitizePlacement({ ...placement, addedAt: "hier" }, NOW)?.addedAt).toBeNull();
+    expect(sanitizePlacement({ ...placement, addedAt: null }, NOW)?.addedAt).toBeNull();
+  });
+
+  it("rang invalide de l'index = en dernier ; doublons de listes ignorés", () => {
+    for (const index of [-1, 1.5, "2", null, 1000]) expect(sanitizePlacement({ addedAt: null, index, lists: [] }, NOW)?.index).toBeNull();
+    expect(sanitizePlacement({ addedAt: null, index: 0, lists: [{ id: "a", index: 1 }, { id: "a", index: 4 }] }, NOW)?.lists).toEqual([{ id: "a", index: 1 }]);
+  });
+
+  it("refuse une forme inutilisable : pas un objet, listes absentes ou trop nombreuses, identifiant ou rang de liste invalide", () => {
+    expect(sanitizePlacement(null)).toBeNull();
+    expect(sanitizePlacement({ addedAt: null, index: 0 })).toBeNull();
+    expect(sanitizePlacement({ lists: Array.from({ length: MAX_COLLECTIONS + 1 }, (_, i) => ({ id: `l${i}`, index: 0 })) })).toBeNull();
+    expect(sanitizePlacement({ lists: [{ id: "../autre", index: 0 }] })).toBeNull();
+    expect(sanitizePlacement({ lists: [{ id: "a", index: -1 }] })).toBeNull();
+    expect(sanitizePlacement({ lists: ["a"] })).toBeNull();
+  });
+
+  it("insertAt : copie, rang ramené dans les bornes, null = en dernier", () => {
+    const items = ["a", "b", "c"];
+    expect(insertAt(items, "x", 1)).toEqual(["a", "x", "b", "c"]);
+    expect(insertAt(items, "x", 0)).toEqual(["x", "a", "b", "c"]);
+    expect(insertAt(items, "x", 99)).toEqual(["a", "b", "c", "x"]);
+    expect(insertAt(items, "x", null)).toEqual(["a", "b", "c", "x"]);
+    expect(items).toEqual(["a", "b", "c"]);
   });
 });

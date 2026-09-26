@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, RESTORE_WINDOW_MS, removeFavorite, storedSnapshot } from "@/lib/favorites";
-import { addToCollection, createCollection, listCollections } from "@/lib/collections";
+import { addFavorite, FavoritesLimitError, listFavoriteIds, listFavorites, RESTORE_WINDOW_MS, removeFavorite, restoreFavorite, storedSnapshot } from "@/lib/favorites";
+import { addToCollection, createCollection, deleteCollection, listCollections, updateCollection } from "@/lib/collections";
 import { MAX_FAVORITES } from "@/lib/favorites-shared";
 import { exists, newUid, snap, userDoc } from "./helpers";
 
@@ -175,5 +175,61 @@ describe("favoris (transactions sur émulateur)", () => {
     expect((await storedSnapshot(uid, "W2"))?.biblio).toEqual({ volume: "9", issue: "1", firstPage: "1", lastPage: "5" });
     await removeFavorite(uid, "W1");
     expect(await storedSnapshot(uid, "W1")).not.toHaveProperty("biblio");
+  });
+
+  it("« Annuler » un retrait (NEW-8) : date d'ajout, rang dans l'index et rang dans chaque liste rétablis", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const a = await createCollection(uid, "Lecture");
+    const b = await createCollection(uid, "Thèse");
+    for (const n of [1, 2, 3]) await addToCollection(uid, a.id, snap(n));
+    await addToCollection(uid, b.id, snap(3));
+    await addToCollection(uid, b.id, snap(2));
+    // Ordre manuel : W2 en tête de la liste a.
+    await updateCollection(uid, a.id, { articleIds: ["W2", "W1", "W3"] });
+    const before = (await db.doc(`users/${uid}/favorites/W2`).get()).get("addedAt") as Timestamp;
+
+    const placement = await removeFavorite(uid, "W2");
+    expect(placement).toEqual({ addedAt: before.toDate().toISOString(), index: 1, lists: expect.arrayContaining([{ id: a.id, index: 0 }, { id: b.id, index: 1 }]) });
+    expect(placement.lists).toHaveLength(2);
+
+    const out = await restoreFavorite(uid, snap(2), true, placement);
+    expect(out.favorite.addedAt).toBe(before.toDate().toISOString());
+    expect(out.collections).toEqual(expect.arrayContaining([{ id: a.id, articleIds: ["W2", "W1", "W3"] }, { id: b.id, articleIds: ["W3", "W2"] }]));
+    const after = (await db.doc(`users/${uid}/favorites/W2`).get()).get("addedAt") as Timestamp;
+    expect(after.toMillis()).toBe(before.toMillis());
+    expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W1", "W2", "W3"], favoritesCount: 3 });
+    const lists = await listCollections(uid);
+    expect(lists.find((l) => l.id === a.id)?.articleIds).toEqual(["W2", "W1", "W3"]);
+    expect(lists.find((l) => l.id === b.id)?.articleIds).toEqual(["W3", "W2"]);
+  });
+
+  it("« Annuler » : une liste supprimée entre-temps est ignorée, une liste qui le contient déjà n'est pas réécrite", async () => {
+    const uid = newUid();
+    const a = await createCollection(uid, "Lecture");
+    const b = await createCollection(uid, "Thèse");
+    await addToCollection(uid, a.id, snap(1));
+    await addToCollection(uid, a.id, snap(2));
+    await addToCollection(uid, b.id, snap(1));
+    const placement = await removeFavorite(uid, "W1");
+    await deleteCollection(uid, b.id);
+    // Rangé de nouveau dans a (en dernier) avant « Annuler » : sa place actuelle est gardée.
+    await addToCollection(uid, a.id, snap(1));
+
+    const out = await restoreFavorite(uid, snap(1), true, placement);
+    expect(out.collections).toEqual([]);
+    expect((await listCollections(uid)).map((l) => [l.id, l.articleIds])).toEqual([[a.id, ["W2", "W1"]]]);
+    expect(await exists(`users/${uid}/collections/${b.id}`)).toBe(false);
+    expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W2", "W1"], favoritesCount: 2 });
+  });
+
+  it("« Annuler » sans date connue : date posée par le serveur, en dernier dans l'index", async () => {
+    const uid = newUid();
+    await addFavorite(uid, snap(1));
+    const out = await restoreFavorite(uid, snap(2), true, { addedAt: null, index: null, lists: [] });
+    const stored = (await (await adminDb()).doc(`users/${uid}/favorites/W2`).get()).get("addedAt");
+    expect(stored).toBeInstanceOf(Timestamp);
+    expect(out.favorite.addedAt).not.toBeNull();
+    expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W1", "W2"], favoritesCount: 2 });
   });
 });

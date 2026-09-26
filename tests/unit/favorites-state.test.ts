@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EMPTY_FAVORITES, favoritesReducer, listsContaining, membershipIndex, type FavoritesAction, type FavoritesState } from "@/components/favorites/favorites-state";
+import { EMPTY_FAVORITES, favoritesReducer, listsContaining, membershipIndex, placementOf, type FavoritesAction, type FavoritesState } from "@/components/favorites/favorites-state";
 import type { Collection } from "@/lib/collections-shared";
 import { makeSnapshot } from "../fixtures";
 
@@ -105,5 +105,27 @@ describe("état des favoris (reducer, QUAL-12)", () => {
     expect(m.get("W1")?.map((c) => c.id)).toEqual(["a", "b"]);
     expect(m.get("W2")?.map((c) => c.id)).toEqual(["a", "c"]);
     expect(m.has("W9")).toBe(false);
+  });
+
+  it("« Annuler » un retrait (NEW-8) : le favori revient à son rang dans l'index et dans chacune de ses listes", () => {
+    // W2 en tête de la liste a, avant W1 : retiré puis rétabli, il retrouve la première place, pas la dernière.
+    const start = run(EMPTY_FAVORITES, { type: "loaded", ids: ["W1", "W2", "W3"], collections: [list("a", ["W2", "W1"]), list("b", ["W3"]), list("c", ["W1", "W2", "W3"])] });
+    const placement = placementOf(start, "W2");
+    expect(placement).toEqual({ addedAt: null, index: 1, lists: [{ id: "a", index: 0 }, { id: "c", index: 1 }] });
+    const removed = run(start, { type: "toggled", snapshot: W2, favorite: false, memberships: listsContaining(start.collections, "W2"), at: AT });
+    const restored = run(removed, { type: "favoriteRestored", snapshot: W2, placement: { ...placement, addedAt: "2025-01-02T03:04:05.000Z" }, at: AT });
+    expect([...restored.ids]).toEqual(["W1", "W2", "W3"]);
+    expect(restored.collections.map((c) => c.articleIds)).toEqual([["W2", "W1"], ["W3"], ["W1", "W2", "W3"]]);
+    // La liste b n'est pas touchée ; la date d'ajout d'origine est gardée.
+    expect(restored.collections[1]).toBe(removed.collections[1]);
+    expect(restored.added.get("W2")?.addedAt).toBe("2025-01-02T03:04:05.000Z");
+    // Date inconnue du client : celle du rétablissement, en attendant la réponse du serveur.
+    expect(run(removed, { type: "favoriteRestored", snapshot: W2, placement, at: AT }).added.get("W2")?.addedAt).toBe(AT);
+  });
+
+  it("« Annuler » : une liste qui contient déjà l'article (rangé entre-temps) ou disparue n'est pas touchée", () => {
+    const again = run(base, { type: "favoriteRestored", snapshot: W1, placement: { addedAt: null, index: 0, lists: [{ id: "a", index: 1 }, { id: "zz", index: 0 }] }, at: AT });
+    expect(again.ids).toBe(base.ids);
+    expect(again.collections).toBe(base.collections);
   });
 });

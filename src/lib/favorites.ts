@@ -2,7 +2,7 @@ import "server-only";
 import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
-import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { insertAt, MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork, type Favorite, type FavoritePlacement, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { dateFromTimestamp, isoFromTimestamp, millisFromTimestamp } from "@/lib/firebase/decode";
 import { logError, recover } from "@/lib/log";
 import { getWork } from "@/lib/openalex";
@@ -149,23 +149,28 @@ export class FavoritesLimitError extends Error {}
  * touche ni `users/{uid}` ni le document favori. Deux listes cochées ensemble ne se disputent alors plus ces documents.
  * `verified: false` (instantané du client, OpenAlex en panne ; ou instantané déjà stocké) : écrit seulement pour un
  * nouveau favori, marqué `unverified`, jamais par-dessus un document existant. Un ajout vérifié plus tard le remplace.
+ * `restored` (« Annuler » après un retrait, NEW-8) : date d'ajout et rang dans l'index d'origine, pour un article qui
+ * n'est plus enregistré ; un favori présent entre-temps garde les siens.
  */
-export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference, s: FavoriteSnapshot, verified = true): Promise<Date> {
-  const { FieldValue } = await import("firebase-admin/firestore");
+export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference, s: FavoriteSnapshot, verified = true, restored?: { addedAt: Date | null; index: number | null }): Promise<Date> {
+  const { FieldValue, Timestamp } = await import("firebase-admin/firestore");
   const favRef = userRef.collection("favorites").doc(s.id);
   const [user, existing] = await Promise.all([tx.get(userRef), tx.get(favRef)]);
   const known = knownFavoriteIds(user);
   // Liste de référence : le champ s'il existe, sinon la sous-collection (rattrapage des anciens favoris).
-  const ids = known ?? (await favoriteIdsFromDocs(tx, userRef));
-  // Absent de l'index : ajouté, y compris si son document existe déjà (index désaccordé, réparé au passage). Le
-  // plafond ne vaut que pour un nouvel article : un document existant compte déjà dans les favoris.
+  let ids = known ?? (await favoriteIdsFromDocs(tx, userRef));
+  // Absent de l'index : ajouté (en dernier, ou à son rang d'origine s'il est rétabli), y compris si son document existe
+  // déjà (index désaccordé, réparé au passage). Le plafond ne vaut que pour un nouvel article : un document existant
+  // compte déjà dans les favoris.
   const isNewId = !ids.includes(s.id);
   if (isNewId) {
     if (!existing.exists && ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
-    ids.push(s.id);
+    ids = insertAt(ids, s.id, restored?.index ?? null);
   }
   // Valeur brute : réécrite telle quelle, la date d'ajout d'origine ne bouge pas.
   const previous: unknown = existing.exists ? existing.get("addedAt") : undefined;
+  // Favori rétabli (« Annuler ») : sa date d'ajout d'origine, à défaut celle du serveur.
+  const restoredAt = !existing.exists && restored?.addedAt ? restored.addedAt : null;
   // Index écrit s'il change, ou s'il vient d'être reconstruit depuis la sous-collection (anciens profils).
   if (isNewId || !known || user.get("favoritesCount") !== ids.length) {
     tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
@@ -174,9 +179,9 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
   // date d'ajout d'origine est conservée. Un instantané non vérifié ne remplace jamais un document existant.
   const storedUnverified = existing.exists && existing.get("unverified") === true;
   if (!existing.exists || (verified && (!previous || storedUnverified || !sameSnapshot(existing.data(), s)))) {
-    tx.set(favRef, { ...snapshotForStorage(s), addedAt: previous ?? FieldValue.serverTimestamp(), unverified: verified ? FieldValue.delete() : true }, { merge: true });
+    tx.set(favRef, { ...snapshotForStorage(s), addedAt: previous ?? (restoredAt ? Timestamp.fromDate(restoredAt) : FieldValue.serverTimestamp()), unverified: verified ? FieldValue.delete() : true }, { merge: true });
   }
-  return dateFromTimestamp(previous) ?? new Date();
+  return dateFromTimestamp(previous) ?? restoredAt ?? new Date();
 }
 
 /** Le favori tel que renvoyé au client, sans relecture après écriture. */
@@ -194,14 +199,15 @@ export async function addFavorite(uid: string, s: FavoriteSnapshot, verified = t
 /**
  * Retire le favori et le sort de toutes les listes qui le contenaient, en une seule transaction. Son instantané est
  * gardé dans `users/{uid}.lastRemovedFavorite` (un seul, le dernier) : « Annuler » peut le rétablir même si l'article a
- * disparu d'OpenAlex entre-temps (voir `storedSnapshot`).
+ * disparu d'OpenAlex entre-temps (voir `storedSnapshot`). Renvoie sa place (date d'ajout, rangs dans l'index et dans
+ * chaque liste) : « Annuler » la rend à `restoreFavorite` (NEW-8).
  */
-export async function removeFavorite(uid: string, id: string): Promise<void> {
+export async function removeFavorite(uid: string, id: string): Promise<FavoritePlacement> {
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");
   const userRef = db.doc(`users/${uid}`);
   const favRef = userRef.collection("favorites").doc(id);
-  await db.runTransaction(async (tx) => {
+  return db.runTransaction(async (tx) => {
     const [user, existing, lists] = await Promise.all([
       tx.get(userRef),
       tx.get(favRef),
@@ -214,5 +220,46 @@ export async function removeFavorite(uid: string, id: string): Promise<void> {
     tx.set(userRef, { favoriteIds: next, favoritesCount: next.length, ...(removed ? { lastRemovedFavorite: { snapshot: snapshotForStorage(removed), at: FieldValue.serverTimestamp() } } : {}) }, { merge: true });
     if (existing.exists) tx.delete(favRef);
     lists.docs.forEach((d) => tx.update(d.ref, { articleIds: FieldValue.arrayRemove(id) }));
+    const index = ids.indexOf(id);
+    return {
+      addedAt: existing.exists ? isoFromTimestamp(existing.get("addedAt")) : null,
+      index: index >= 0 ? index : null,
+      lists: lists.docs.flatMap((d) => {
+        const at = stringArray(d.get("articleIds")).indexOf(id);
+        return at >= 0 ? [{ id: d.id, index: at }] : [];
+      }),
+    };
+  });
+}
+
+const stringArray = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+
+/**
+ * « Annuler » après un retrait (NEW-8), en une transaction : le favori revient avec sa date d'ajout et son rang dans
+ * l'index, puis à son rang dans chacune de ses listes qui existe encore. Le tableau `articleIds` est réécrit : un
+ * `arrayUnion` le remettrait en dernier. Une liste qui le contient déjà (rangé entre-temps) ou pleine n'est pas touchée.
+ * Renvoie le favori et les listes modifiées, avec leur nouvel ordre.
+ */
+export async function restoreFavorite(
+  uid: string,
+  s: FavoriteSnapshot,
+  verified: boolean,
+  placement: FavoritePlacement,
+): Promise<{ favorite: Favorite; collections: { id: string; articleIds: string[] }[] }> {
+  const db = await adminDb();
+  const userRef = db.doc(`users/${uid}`);
+  const refs = placement.lists.map((l) => userRef.collection("collections").doc(l.id));
+  return db.runTransaction(async (tx) => {
+    // Toutes les lectures avant la première écriture (celles d'addFavoriteIn comprises).
+    const lists = refs.length ? await tx.getAll(...refs) : [];
+    const addedAt = await addFavoriteIn(tx, userRef, s, verified, { addedAt: placement.addedAt ? new Date(placement.addedAt) : null, index: placement.index });
+    const collections = lists.flatMap((list, i) => {
+      const current = stringArray(list.get("articleIds"));
+      if (!list.exists || current.includes(s.id) || current.length >= MAX_FAVORITES) return [];
+      const articleIds = insertAt(current, s.id, placement.lists[i].index);
+      tx.update(list.ref, { articleIds });
+      return [{ id: list.id, articleIds }];
+    });
+    return { favorite: favoriteFromSnapshot(s, addedAt), collections };
   });
 }

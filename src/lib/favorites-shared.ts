@@ -1,8 +1,9 @@
 import type { Work } from "@/lib/openalex";
-import { shortId, WORK_ID } from "@/lib/ids";
+import { DOC_ID, shortId, WORK_ID } from "@/lib/ids";
 import type { Biblio, CitationSource } from "@/lib/citation";
 import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { cleanText, fold } from "@/lib/text";
+import { MAX_COLLECTIONS } from "@/lib/collections-shared";
 
 /**
  * Instantané d'un article enregistré en favori : assez de métadonnées pour afficher la liste
@@ -166,6 +167,50 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
     // Facultatif : les favoris stockés avant ce champ n'en ont pas et restent citables sans lui.
     ...optionalBiblio(biblioFrom(o.biblio, shortText)),
   };
+}
+
+/**
+ * Place d'un favori retiré (NEW-8), renvoyée par son retrait et rendue par « Annuler » : sa date d'ajout, son rang dans
+ * l'index `favoriteIds` et son rang dans chaque liste qui le contenait. Sans elle, le favori rétabli prendrait la date
+ * du jour (tête de « Mes favoris ») et la dernière place de ses listes, dont l'ordre est manuel (page publique d'une
+ * liste partagée, export BibTeX).
+ */
+export interface FavoritePlacement {
+  /** Date d'ajout d'origine, ISO 8601 ; `null` : inconnue, le serveur pose la date du jour. */
+  addedAt: string | null;
+  /** Rang dans `favoriteIds` (ordre d'ajout) ; `null` : en dernier. */
+  index: number | null;
+  /** Rang de l'article dans chacune des listes qui le contenaient. */
+  lists: { id: string; index: number }[];
+}
+
+const rank = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v < MAX_FAVORITES ? v : null);
+
+/**
+ * Placement reçu du client, relu champ par champ : date valide ramenée au plus tard à `now` (sinon `null`), rangs
+ * entiers bornés, listes au plus `MAX_COLLECTIONS`, identifiants de document valides et sans doublon. `null` : forme
+ * inutilisable (la route répond 400). Rien de plus à vérifier : il ne place que les propres données de l'utilisateur.
+ */
+export function sanitizePlacement(input: unknown, now = Date.now()): FavoritePlacement | null {
+  if (!input || typeof input !== "object") return null;
+  const o = input as Record<string, unknown>;
+  if (!Array.isArray(o.lists) || o.lists.length > MAX_COLLECTIONS) return null;
+  const lists: FavoritePlacement["lists"] = [];
+  for (const l of o.lists as unknown[]) {
+    const id = l && typeof l === "object" ? (l as Record<string, unknown>).id : undefined;
+    const index = l && typeof l === "object" ? rank((l as Record<string, unknown>).index) : null;
+    if (typeof id !== "string" || !DOC_ID.test(id) || index === null) return null;
+    if (!lists.some((x) => x.id === id)) lists.push({ id, index });
+  }
+  const at = typeof o.addedAt === "string" ? Date.parse(o.addedAt) : NaN;
+  return { addedAt: Number.isFinite(at) ? new Date(Math.min(at, now)).toISOString() : null, index: rank(o.index), lists };
+}
+
+/** Copie du tableau avec `item` inséré à `index`, ramené dans les bornes (au-delà : en dernier). */
+export function insertAt<T>(items: readonly T[], item: T, index: number | null): T[] {
+  const next = [...items];
+  next.splice(index === null ? next.length : Math.max(0, Math.min(index, next.length)), 0, item);
+  return next;
 }
 
 /** Nom de fichier sûr à partir d'un nom de liste. */

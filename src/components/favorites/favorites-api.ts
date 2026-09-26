@@ -1,6 +1,6 @@
 import { api } from "@/lib/client/api";
 import type { Collection } from "@/lib/collections-shared";
-import type { Favorite, FavoriteSnapshot } from "@/lib/favorites-shared";
+import type { Favorite, FavoritePlacement, FavoriteSnapshot } from "@/lib/favorites-shared";
 
 /**
  * Appels réseau des favoris et des listes (QUAL-12), sur le client HTTP commun : chaque refus lève une `ApiError`
@@ -11,8 +11,14 @@ export async function postFavorite(snapshot: FavoriteSnapshot): Promise<Favorite
   return (await api<{ favorite: Favorite }>("/api/favorites", { method: "POST", json: snapshot, fallback: "L'enregistrement a échoué." })).favorite;
 }
 
-export async function deleteFavorite(id: string): Promise<void> {
-  await api(`/api/favorites?id=${id}`, { method: "DELETE", fallback: "La suppression a échoué." });
+/** Retire le favori : renvoie sa place d'avant le retrait (date d'ajout, rangs), pour « Annuler ». */
+export async function deleteFavorite(id: string): Promise<FavoritePlacement | undefined> {
+  return (await api<{ restore?: FavoritePlacement }>(`/api/favorites?id=${id}`, { method: "DELETE", fallback: "La suppression a échoué." })).restore;
+}
+
+/** « Annuler » un retrait : le favori revient à sa place ; renvoie le favori et les listes réordonnées par le serveur. */
+export async function restoreFavorite(snapshot: FavoriteSnapshot, placement: FavoritePlacement): Promise<{ favorite: Favorite; collections: { id: string; articleIds: string[] }[] }> {
+  return api("/api/favorites/restore", { method: "POST", json: { snapshot, placement }, fallback: "Le favori n'a pas pu être rétabli." });
 }
 
 /** Range l'article dans la liste (et l'enregistre en favori s'il ne l'était pas) : renvoie le favori enregistré. */

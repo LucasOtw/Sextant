@@ -73,15 +73,14 @@ export async function POST(req: Request) {
   }
 }
 
-/** Retire un favori : `?id=W…`. */
+/** Retire un favori : `?id=W…`. `restore` : sa place d'avant le retrait, que « Annuler » renvoie à /api/favorites/restore. */
 export async function DELETE(req: Request) {
   const { user, refused } = await requireUser(req, { bucket: "favorites" });
   if (refused) return refused;
   const id = new URL(req.url).searchParams.get("id") ?? "";
   if (!WORK_ID.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
   try {
-    await removeFavorite(user.uid, id);
-    return NextResponse.json({ ok: true }, { headers: PRIVATE });
+    return NextResponse.json({ ok: true, restore: await removeFavorite(user.uid, id) }, { headers: PRIVATE });
   } catch (e) {
     return serverError("favorites.DELETE", e, "La suppression a échoué.");
   }
