@@ -12,6 +12,7 @@ import { embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, titleLang, workTitl
 import { listHighlights } from "@/lib/highlights";
 import { getWork, OpenAlexError, shortId, type Work } from "@/lib/openalex";
 import { logError, recover } from "@/lib/log";
+import { ExternalLink } from "@/components/external-link";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -54,9 +55,9 @@ export default async function ReaderPage({ params }: Props) {
         </Link>
         {/* Sur mobile, le titre passe en entier sous les deux boutons au lieu d'être haché dans une colonne étroite. */}
         <h1 lang={titleLang(work)} className="title-display order-last basis-full wrap-break-word text-xl sm:order-none sm:min-w-0 sm:flex-1 sm:basis-0">{workTitle(work)}</h1>
-        <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+        <ExternalLink href={oa.url} className={buttonVariants({ variant: "ghost", size: "sm" })}>
           <ExternalLinkIcon /> PDF original
-        </a>
+        </ExternalLink>
       </div>
       <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initial}>
         <ReaderLayout url={`/api/pdf?work=${wid}`} originalUrl={oa.url} embedUrl={embeddablePdfUrl(work)} />

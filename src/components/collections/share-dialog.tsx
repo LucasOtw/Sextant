@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { shareUrl, type Collection } from "@/lib/collections-shared";
 import { useCopy } from "@/hooks/use-copy";
+import { ExternalLink } from "@/components/external-link";
 
 interface Props {
   open: boolean;
@@ -52,7 +53,7 @@ export function ShareDialog({ open, onOpenChange, collection }: Props) {
               <Button className="h-10 shrink-0" onClick={() => void copy(url)}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}</Button>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <a href={url} target="_blank" rel="noreferrer" className="text-sm text-accent-brand underline underline-offset-3">Voir la page partagée</a>
+              <ExternalLink href={url} className="text-sm text-accent-brand underline underline-offset-3">Voir la page partagée</ExternalLink>
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={busy} onClick={() => void disable()}>
                 {busy ? <Loader2Icon className="animate-spin" /> : <Link2OffIcon />} Désactiver le lien
               </Button>

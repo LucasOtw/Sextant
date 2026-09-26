@@ -7,6 +7,7 @@ import { BuildingIcon, ExternalLinkIcon, FileTextIcon, SearchIcon } from "lucide
 import type { AuthorProfile } from "@/lib/openalex";
 import { formatCount } from "@/lib/format";
 import { cn } from "cn";
+import { ExternalLink } from "@/components/external-link";
 
 interface Props {
   authorId: string | null;
@@ -116,10 +117,10 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
                 <span className="shimmer inline-block h-3.5 w-40 rounded" />
               ) : profile?.institution ? (
                 profile.institution.homepage ? (
-                  <a href={profile.institution.homepage} target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-accent-brand">
+                  <ExternalLink href={profile.institution.homepage} className="underline underline-offset-2 hover:text-accent-brand">
                     {profile.institution.name}
                     <ExternalLinkIcon className="ml-1 inline size-3" aria-hidden />
-                  </a>
+                  </ExternalLink>
                 ) : (
                   <span>{profile.institution.name}</span>
                 )
@@ -141,14 +142,14 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
                 <FileTextIcon className="size-3.5" aria-hidden /> Tous ses articles sur Sextant
               </Link>
               {profile?.orcid && (
-                <a href={profile.orcid} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-accent-brand">
+                <ExternalLink href={profile.orcid} className="inline-flex items-center gap-1.5 hover:text-accent-brand">
                   <span className="inline-flex size-3.5 items-center justify-center rounded-full bg-[#A6CE39] text-[8px] font-bold text-white" aria-hidden>iD</span>
                   Profil ORCID
-                </a>
+                </ExternalLink>
               )}
-              <a href={wiki} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-accent-brand">
+              <ExternalLink href={wiki} className="inline-flex items-center gap-1.5 hover:text-accent-brand">
                 <SearchIcon className="size-3.5" aria-hidden /> Chercher sur Wikipédia
-              </a>
+              </ExternalLink>
             </div>
           </Popover.Popup>
         </Popover.Positioner>

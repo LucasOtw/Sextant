@@ -49,6 +49,7 @@ import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
 import { logError, recover } from "@/lib/log";
 import { safeHttpUrl } from "@/lib/text";
+import { ExternalLink } from "@/components/external-link";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -173,10 +174,10 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {doiUrl && (
             <Stat label="DOI">
-              <a href={doiUrl} target="_blank" rel="noreferrer" className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
+              <ExternalLink href={doiUrl} className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
                 {(work.doi ?? doiUrl).replace(/^https?:\/\/doi\.org\//i, "")}
-              </a>
+              </ExternalLink>
             </Stat>
           )}
         </dl>
@@ -184,19 +185,19 @@ export default async function ArticlePage({ params }: Props) {
         <div className="mt-5 flex flex-wrap gap-2">
           {oa && oa.isPdf && readable && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
           {oa && oa.isPdf && !readable && (
-            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire le PDF
-            </a>
+            </ExternalLink>
           )}
           {oa && !oa.isPdf && (
-            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire en accès ouvert
-            </a>
+            </ExternalLink>
           )}
           {publisher && (
-            <a href={publisher} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
+            <ExternalLink href={publisher} className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
-            </a>
+            </ExternalLink>
           )}
           <CopyButton text={toApa(work)} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
           <CopyButton text={toBibtex(work)} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
@@ -211,14 +212,12 @@ export default async function ArticlePage({ params }: Props) {
                 <span className="font-medium text-foreground">Texte intégral non accessible ici.</span> Aucune version libre n'est connue : la page de l'éditeur demande en général un abonnement, souvent couvert par votre bibliothèque universitaire. Vous pouvez tout de même l'enregistrer, le citer et noter vos citations à la main.
               </p>
             </div>
-            <a
+            <ExternalLink
               href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, "") : workTitle(work))}`}
-              target="_blank"
-              rel="noreferrer"
               className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
             >
               <SearchIcon /> Chercher une version libre
-            </a>
+            </ExternalLink>
           </aside>
         )}
 

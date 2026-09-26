@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
 import { SITE } from "@/lib/site";
+import { ExternalLink } from "@/components/external-link";
 
 export const metadata: Metadata = { title: "Mentions légales" };
 
@@ -33,7 +34,7 @@ export default function LegalNoticePage() {
       <h2>Hébergeur</h2>
       <p>
         Le site est hébergé par <strong>{SITE.host.name}</strong>, {SITE.host.address}.<br />
-        Site : <a href={SITE.host.url} target="_blank" rel="noreferrer">{SITE.host.url}</a> · Contact : {SITE.host.contact}
+        Site : <ExternalLink href={SITE.host.url}>{SITE.host.url}</ExternalLink> · Contact : {SITE.host.contact}
       </p>
 
       <h2>Stockage des données des comptes</h2>
@@ -45,7 +46,7 @@ export default function LegalNoticePage() {
 
       <h2>Données bibliographiques</h2>
       <p>
-        Les métadonnées d'articles proviennent d'<a href="https://openalex.org" target="_blank" rel="noreferrer">OpenAlex</a>,
+        Les métadonnées d'articles proviennent d'<ExternalLink href="https://openalex.org">OpenAlex</ExternalLink>,
         publiées sous licence CC0 par OurResearch. Les titres, résumés et textes des publications restent la propriété de leurs
         auteurs et éditeurs ; Sextant n'en héberge aucun et renvoie vers les sites d'origine.
       </p>
@@ -53,7 +54,7 @@ export default function LegalNoticePage() {
       <h2>Propriété intellectuelle</h2>
       <p>
         Le nom « Sextant », son logo, l'interface et les textes du site sont la propriété de l'éditeur. Le code source est publié sur{" "}
-        <a href="https://github.com/LucasOtw/Sextant" target="_blank" rel="noreferrer">GitHub</a> ; les conditions de
+        <ExternalLink href="https://github.com/LucasOtw/Sextant">GitHub</ExternalLink> ; les conditions de
         réutilisation du code sont celles indiquées dans le dépôt.
       </p>
 

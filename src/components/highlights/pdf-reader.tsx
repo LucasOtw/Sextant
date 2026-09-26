@@ -17,6 +17,7 @@ import { inertOutside } from "@/lib/focus";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
 import { cn } from "cn";
+import { ExternalLink } from "@/components/external-link";
 
 type PdfLib = typeof import("pdfjs-dist");
 
@@ -535,7 +536,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
             )}
             {progress && progress.total > 8 * 1024 * 1024 && (
               <p className="text-sm text-muted-foreground">
-                Gros fichier : vous pouvez aussi <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</a> en attendant.
+                Gros fichier : vous pouvez aussi <ExternalLink href={originalUrl} className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</ExternalLink> en attendant.
               </p>
             )}
           </div>
