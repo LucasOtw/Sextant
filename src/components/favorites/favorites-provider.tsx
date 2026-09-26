@@ -369,7 +369,8 @@ export function FavoritesProvider({ children }: Props) {
         dispatch({ type: "favoriteSaved", favorite });
         // Ordre des listes tel que le serveur l'a écrit (une liste a pu changer entre-temps sur un autre appareil).
         for (const l of lists) dispatch({ type: "collectionPatched", id: l.id, patch: { articleIds: l.articleIds } });
-        toast.success("Ajouté à vos favoris.", { action: { label: "Voir", onClick: () => router.push("/favoris") } });
+        // Confirmation sobre, sans « Voir » : « Ajouté à vos favoris » contredisait l'« Annuler » qu'on vient de choisir.
+        toast.success("Favori rétabli.");
       } catch (e) {
         mutationSeq.current++;
         if (had) for (const listId of inserted) dispatch({ type: "listMembershipReverted", listId, snapshot, wasIn: false, unmarkFavorite: false });
@@ -377,7 +378,7 @@ export function FavoritesProvider({ children }: Props) {
         toast.error(needsSignIn(e) ? "Connectez-vous pour rétablir ce favori." : errorMessage(e, "Le favori n'a pas pu être rétabli."));
       }
     };
-  }, [router, dispatch]);
+  }, [dispatch]);
 
   const createCollection = useCallback<FavoritesContext["createCollection"]>(
     async (name, options) => {
