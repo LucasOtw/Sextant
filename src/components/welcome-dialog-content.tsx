@@ -12,7 +12,7 @@ export default function WelcomeDialogContent({ onClose }: { onClose: () => void 
   return (
     // Se ferme comme toute boîte de dialogue : le bouton, Échap ou un clic à l'extérieur, qui valent tous « vu » (A11Y-07).
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent showCloseButton={false} className="overflow-hidden p-0 sm:max-w-md">
+      <DialogContent showCloseButton={false} className="overflow-hidden p-0 sm:p-0 sm:max-w-md">
         <WelcomeIllustration />
         <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
           <DialogTitle className="title-display">Un compagnon, pas un raccourci</DialogTitle>

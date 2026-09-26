@@ -380,15 +380,20 @@
 }
 
 /* Barres de chargement animées (synthèse IA) */
+/* Sur la teinte (condensé IA), la base passe à --card pour garder l'écart avec le fond. */
 .shimmer {
+  --shimmer-base: var(--muted);
   background: linear-gradient(
     90deg,
-    var(--muted) 0%,
-    color-mix(in oklch, var(--muted), var(--foreground) 12%) 50%,
-    var(--muted) 100%
+    var(--shimmer-base) 0%,
+    color-mix(in oklch, var(--shimmer-base), var(--foreground) 12%) 50%,
+    var(--shimmer-base) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.3s ease-in-out infinite;
+}
+.surface-tint .shimmer {
+  --shimmer-base: var(--card);
 }
 @keyframes shimmer {
   0% { background-position: 200% 0; }

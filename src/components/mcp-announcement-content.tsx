@@ -35,7 +35,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="overflow-hidden p-0 sm:p-0 sm:max-w-lg">
         <Illustration />
         <div className="flex flex-col gap-4 px-6 pb-6 pt-1">
           <div className="flex flex-col gap-2">
