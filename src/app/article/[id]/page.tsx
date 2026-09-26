@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockIcon, LockOpenIcon, QuoteIcon, SearchIcon } from "lucide-react";
@@ -46,6 +47,7 @@ import {
 import { doiPath, normalizeWorkId, shortId } from "@/lib/ids";
 import { getSimilarWorks, getWork, OpenAlexError, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
+import { HTML_LIMITED_BOTS } from "@/lib/html-bots";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
 import { logError, recover } from "@/lib/log";
@@ -63,9 +65,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   let work: Awaited<ReturnType<typeof getWork>>;
   try {
     work = await getWork(id);
-  } catch {
-    // Panne de la source (OpenAlex) : le titre ne doit pas parler d'article absent.
-    return { title: "Article momentanément indisponible", robots: { index: false } };
+  } catch (e) {
+    // Panne passagère de la source (OpenAlex : 429, 5xx, délai). Jamais de noindex ici : servi en 200 à Googlebot, il
+    // retirerait de l'index un article qui existe. Un robot servi en rendu bloquant (html-bots) reçoit l'erreur, donc une
+    // réponse 5xx, qu'il traite comme temporaire ; un visiteur garde l'écran « Réessayer » de la page.
+    if (HTML_LIMITED_BOTS.test((await headers()).get("user-agent") ?? "")) throw e;
+    // Le titre ne doit pas parler d'article absent.
+    return { title: "Article momentanément indisponible" };
   }
   if (!work) return { title: "Article introuvable", robots: { index: false } };
   // Adresse canonique : identifiant OpenAlex tel qu'il le renvoie (« W » majuscule, notice fusionnée → la notice
