@@ -650,6 +650,8 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
   const ref = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  /** Largeur de la page à l'échelle 1, connue après le premier rendu : remet à l'échelle une couche texte gardée. */
+  const baseWidthRef = useRef(0);
   const [aspect, setAspect] = useState(defaultAspect);
   const [visible, setVisible] = useState(false);
   const [rendered, setRendered] = useState(false);
@@ -693,6 +695,7 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
       const canvas = canvasRef.current;
       const textDiv = textRef.current;
       if (cancelled || !canvas || !textDiv) return;
+      baseWidthRef.current = base.width;
       setAspect(base.height / base.width);
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = Math.floor(viewport.width * dpr);
@@ -725,10 +728,13 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
     };
   }, [visible, width, doc, lib, pageNumber]);
 
-  // Largeur changée (rotation, fenêtre) : la couche texte gardée d'une page éloignée n'est plus à l'échelle (elle
-  // déborderait de la page et la recherche Ctrl+F viserait à côté). Elle sera refaite quand la page reviendra.
+  // Largeur changée (plein écran, rotation, fenêtre) : la couche texte gardée d'une page éloignée est remise à l'échelle
+  // sans être reconstruite, comme au zoom du visualiseur PDF.js. Ses fragments sont placés en pourcentages et dimensionnés
+  // par --scale-factor, dont PDF.js déduit aussi la taille de la couche ; l'étirement horizontal (--scale-x) est un
+  // rapport, indépendant de l'échelle. Vider puis refaire les couches de 200 pages figeait l'onglet plus d'une seconde.
   useEffect(() => {
-    if (!visible) textRef.current?.replaceChildren();
+    const textDiv = textRef.current;
+    if (!visible && textDiv && baseWidthRef.current) textDiv.style.setProperty("--scale-factor", String(width / baseWidthRef.current));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seulement au changement de largeur, pas quand la page s'éloigne
   }, [width]);
 

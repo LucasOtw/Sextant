@@ -294,6 +294,10 @@ mark[data-highlight] {
   z-index: 2;
   /* La couche est transparente hors surlignage : multipliée au canevas, l'encre reste noire et seul le papier jaunit. */
   mix-blend-mode: multiply;
+  /* Couches gardées de toutes les pages lues (A11Y-22) : hors de l'écran, leurs milliers de fragments sont exclus du
+     calcul des styles et de la mise en page (plein écran, rotation, thème), mais restent dans l'arbre d'accessibilité et
+     trouvables par Ctrl+F. Taille fixée par PDF.js (largeur et hauteur de la page) : aucune taille intrinsèque à deviner. */
+  content-visibility: auto;
   /* Variables attendues par PDF.js 6 (reprises de web/pdf_viewer.css) : taille et étirement des fragments. */
   --user-unit: 1;
   --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
