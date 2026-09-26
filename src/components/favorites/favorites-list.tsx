@@ -421,7 +421,7 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
     >
       <article
         className={cn(
-          "relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5",
+          "relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5",
           manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28",
         )}
       >

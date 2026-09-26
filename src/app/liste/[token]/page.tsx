@@ -95,7 +95,7 @@ export default async function SharedListPage({ params }: Props) {
           <ul className="mt-6 flex flex-col gap-3">
             {list.articles.map((a) => (
               <li key={a.id}>
-                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
+                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
                   <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                     <Badge variant="secondary">{typeLabel(a.type)}</Badge>
                     {a.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}

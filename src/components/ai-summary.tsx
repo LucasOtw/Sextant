@@ -147,5 +147,5 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
 }
 
 function Dot({ delay }: { delay: number }) {
-  return <span className="size-1 animate-bounce rounded-full bg-current" style={{ animationDelay: `${delay}ms` }} />;
+  return <span className="size-1 motion-safe:animate-bounce rounded-full bg-current" style={{ animationDelay: `${delay}ms` }} />;
 }

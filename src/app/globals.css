@@ -249,7 +249,17 @@ mark[data-highlight] {
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
+  /* Trait sous le passage : un repère qui ne tient pas qu'à la couleur (≥ 3:1 en clair comme en sombre, A11Y-31). */
+  box-shadow: inset 0 -2px 0 var(--highlight-foreground);
+  -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
+}
+/* Couleurs forcées (Windows) : le surlignage système, opaque, à la place du jaune translucide. */
+@media (forced-colors: active) {
+  mark[data-highlight] {
+    background: Mark;
+    color: MarkText;
+  }
 }
 
 /* Passage cité dans une carte : un trait de surligneur sous la ligne, qui suit les retours à la ligne. */
@@ -336,6 +346,8 @@ mark[data-highlight] {
 .textLayer .hl {
   /* Jaune fixe : le papier du PDF est blanc quel que soit le thème. */
   background: oklch(0.92 0.17 96);
+  /* Trait sous le fragment, comme sur le résumé : le passage se repère sans compter sur la seule couleur (A11Y-31). */
+  box-shadow: inset 0 -2px 0 oklch(0.6 0.13 80);
   border-radius: 2px;
 }
 
