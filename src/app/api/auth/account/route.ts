@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { forgetRevocationCheck, requireStrictUser, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
+import { deleteAccountData } from "@/lib/account";
+import { requireStrictUser, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
-import { deleteAllKeys } from "@/lib/api-keys";
-import { detachAuthor, refreshFeedbackList, withdrawVotes } from "@/lib/feedback";
+import { refreshFeedbackList } from "@/lib/feedback";
 import { logError } from "@/lib/log";
 import { setSessionHint } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
 
 /**
- * Supprime le compte de l'utilisateur connecté : données Firestore puis compte Firebase Auth. Exige une connexion
- * Google de moins de 10 minutes (SEC-09) : un cookie de session copié ne suffit pas à détruire un compte.
+ * Supprime le compte de l'utilisateur connecté : données Firestore puis compte Firebase Auth (`deleteAccountData`,
+ * lib/account.ts). Exige une connexion Google de moins de 10 minutes (SEC-09) : un cookie de session copié ne suffit
+ * pas à détruire un compte.
  */
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
@@ -23,21 +23,7 @@ export async function DELETE(req: Request) {
   if (!isRecentLogin(user)) return reauthRequired();
 
   try {
-    const db = await adminDb();
-    // Les liens de partage vivent hors de users/{uid} : on les supprime d'abord, puis tout le reste du compte.
-    const shares = await db.collection("shares").where("uid", "==", user.uid).get();
-    if (!shares.empty) {
-      const batch = db.batch();
-      shares.docs.forEach((d) => batch.delete(d.ref));
-      await batch.commit();
-    }
-    await deleteAllKeys(user.uid);
-    await detachAuthor(user.uid);
-    // Avant l'effacement de users/{uid}, qui contient la liste des votes : sinon ils resteraient comptés (SEC-14).
-    await withdrawVotes(user.uid);
-    await db.recursiveDelete(db.doc(`users/${user.uid}`));
-    await (await adminAuth()).deleteUser(user.uid);
-    forgetRevocationCheck(user.uid);
+    await deleteAccountData(user.uid);
   } catch (e) {
     logError("auth.account.DELETE", e);
     // Des votes ont pu être retirés avant l'échec : la liste publique est relue quand même.

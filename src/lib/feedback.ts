@@ -66,6 +66,26 @@ export async function userFeedbackVotes(uid: string): Promise<string[]> {
   return snap.docs.map((d) => d.id);
 }
 
+/**
+ * Export des données du compte (RGPD art. 15 et 20) : les sujets publiés par l'utilisateur, du plus récent au plus
+ * ancien. Pas d'`orderBy` dans la requête : il exigerait un index composite ; l'égalité seule est déjà servie
+ * (cf. `detachAuthor`), et un utilisateur publie au plus quelques sujets par heure.
+ */
+export async function listFeedbackByAuthor(uid: string): Promise<FeedbackItem[]> {
+  const db = await adminDb();
+  const snap = await db.collection("feedback").where("authorUid", "==", uid).get();
+  return snap.docs.map((d) => toItem(d.id, d.data())).sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+/** Export : les votes de l'utilisateur avec leur date (que `userFeedbackVotes` ne lit pas, à cause de `select()`). */
+export async function listFeedbackVotesForExport(uid: string): Promise<{ id: string; createdAt: string | null }[]> {
+  const db = await adminDb();
+  const snap = await db.collection(`users/${uid}/feedbackVotes`).get();
+  return snap.docs
+    .map((d) => ({ id: d.id, createdAt: (d.get("createdAt") as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null }))
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
 /** Crée un sujet ; son auteur vote d'office pour lui. */
 export async function createFeedback(uid: string, input: { kind: FeedbackKind; title: string; description: string }): Promise<FeedbackItem> {
   const db = await adminDb();

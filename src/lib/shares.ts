@@ -44,6 +44,17 @@ export async function revokeShare(uid: string, collectionId: string): Promise<vo
   });
 }
 
+/** Export des données du compte : les liens de partage actifs, avec la liste visée et leur date de création. */
+export async function listSharesForExport(uid: string): Promise<{ token: string; collectionId: string; createdAt: string | null }[]> {
+  const db = await adminDb();
+  const snap = await db.collection("shares").where("uid", "==", uid).get();
+  return snap.docs.map((d) => ({
+    token: d.id,
+    collectionId: String(d.get("collectionId") ?? ""),
+    createdAt: (d.get("createdAt") as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null,
+  }));
+}
+
 export interface SharedList {
   name: string;
   description: string;

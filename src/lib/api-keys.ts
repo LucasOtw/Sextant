@@ -33,6 +33,22 @@ export async function listKeys(uid: string): Promise<ApiKeyInfo[]> {
 }
 
 /**
+ * Export des données du compte : chaque clé sans son empreinte (identifiant du document), qui suffirait à la
+ * reconnaître. `createdBySessionAt` = date de la connexion Google de la session qui l'a créée (`sessionAuthTime`).
+ */
+export async function listKeysForExport(uid: string): Promise<{ name: string; prefix: string; createdAt: string | null; lastUsedAt: string | null; createdBySessionAt: string | null }[]> {
+  const db = await adminDb();
+  const snap = await db.collection("apiKeys").where("uid", "==", uid).get();
+  return snap.docs
+    .map((d) => {
+      const { name, prefix, createdAt, lastUsedAt } = toInfo(d.id, d.data());
+      const session = d.get("sessionAuthTime");
+      return { name, prefix, createdAt, lastUsedAt, createdBySessionAt: typeof session === "number" && Number.isFinite(session) ? new Date(session * 1000).toISOString() : null };
+    })
+    .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+}
+
+/**
  * Crée une clé et la renvoie en clair, une seule fois. `sessionAuthTime` (claim `auth_time` de la session qui la crée)
  * rattache la clé à cette session : une révocation postérieure à cette connexion la refuse, même si la clé a été écrite
  * après la révocation par une instance dont l'état du compte mémorisé était encore l'ancien.
