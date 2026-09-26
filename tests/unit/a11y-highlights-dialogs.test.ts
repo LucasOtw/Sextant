@@ -97,7 +97,12 @@ describe("« Mes surlignages » : boutons d'ajout stables au premier surlignage"
     let resolve: (value: Response) => void = () => undefined;
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((r) => (resolve = r))));
     await render(
-      createElement(HighlightsProvider, { enabled: true, snapshot: makeSnapshot(), initial: [], children: createElement(ArticleHighlights, { abstract: "Open science matters. It helps.", lang: "en" }) }),
+      createElement(
+        HighlightsProvider,
+        // Les enfants passent en troisième argument ; le type de Props les exige aussi dans l'objet.
+        { enabled: true, snapshot: makeSnapshot(), initial: [] } as unknown as React.ComponentProps<typeof HighlightsProvider>,
+        createElement(ArticleHighlights, { abstract: "Open science matters. It helps.", lang: "en" }),
+      ),
     );
     const manual = button("Ajouter une citation à la main")!;
     const picker = button("Surligner des phrases du résumé")!;
