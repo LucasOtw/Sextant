@@ -38,7 +38,7 @@ describe("durées de conservation (lib/retention.ts, NEW-14)", () => {
 });
 
 // Route de la tâche planifiée : secret, durées et mode à blanc. La purge elle-même est testée sur émulateur.
-const retention = vi.hoisted(() => ({ RETENTION: { inactiveAccountMonths: null as number | null, unusedKeyMonths: null as number | null } }));
+const retention = vi.hoisted(() => ({ RETENTION: { inactiveAccountMonths: null as number | null, unusedKeyMonths: null as number | null, messageMonths: null as number | null } }));
 const account = vi.hoisted(() => ({ purgeInactive: vi.fn() }));
 const feedback = vi.hoisted(() => ({ refreshFeedbackList: vi.fn() }));
 vi.mock("@/lib/retention", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/retention")>()), RETENTION: retention.RETENTION }));

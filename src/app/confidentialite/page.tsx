@@ -19,6 +19,7 @@ export default function PrivacyPage() {
   // qu'une durée vaut null, le texte s'en tient à « tant que le compte existe » (aucun emplacement à compléter en ligne).
   const accountMonths = validMonths(RETENTION.inactiveAccountMonths);
   const keyMonths = validMonths(RETENTION.unusedKeyMonths);
+  const messageMonths = validMonths(RETENTION.messageMonths);
 
   return (
     <ProsePage
@@ -35,10 +36,11 @@ export default function PrivacyPage() {
       <h2>Sans compte : ce qui reste dans votre navigateur</h2>
       <p>Ces informations sont enregistrées localement, sur votre appareil, et ne sont pas conservées par Sextant :</p>
       <ul>
-        <li>votre préférence d'affichage clair ou sombre, et le fait d'avoir lu le message d'accueil ;</li>
+        <li>votre préférence d'affichage clair ou sombre, et le fait d'avoir lu le message d'accueil et l'annonce des assistants IA ;</li>
         <li>la liste des derniers articles consultés (« Consultés récemment ») ;</li>
         <li>les suggestions que vous avez écartées dans « Pour vous » (leurs identifiants servent aussi au calcul, voir ci-dessous) ;</li>
-        <li>brièvement, l'article que vous vouliez enregistrer au moment de vous connecter, pour l'ajouter une fois connecté (10 minutes au plus).</li>
+        <li>brièvement, l'article que vous vouliez enregistrer au moment de vous connecter, pour l'ajouter une fois connecté (10 minutes au plus) ;</li>
+        <li>le temps de l'onglet seulement, les condensés IA que vous avez déjà demandés, pour ne pas les redemander (ils disparaissent à la fermeture de l'onglet).</li>
       </ul>
       <p>
         Pour calculer « Pour vous », votre navigateur envoie au serveur de Sextant, dans l'adresse de la requête, les identifiants
@@ -92,8 +94,9 @@ export default function PrivacyPage() {
       <p>
         Depuis « Mon compte », vous pouvez créer des clés personnelles pour donner à un assistant IA de votre choix (Claude, ChatGPT…)
         un accès en lecture seule à votre bibliothèque : favoris, listes, citations et notes. Sextant ne conserve que l'empreinte de chaque
-        clé (jamais la clé elle-même), son nom et ses dates de création et de dernière utilisation, ainsi que, dans votre profil, la date
-        du dernier usage d'une de vos clés, qui reste connue après la révocation de la clé. Ce que vous consultez ainsi est
+        clé (jamais la clé entière), ses dix premiers caractères pour que vous la reconnaissiez, son nom, ses dates de création et de
+        dernière utilisation, et la date de la connexion Google depuis laquelle elle a été créée (la clé est révoquée avec cette session),
+        ainsi que, dans votre profil, la date du dernier usage d'une de vos clés, qui reste connue après la révocation de la clé. Ce que vous consultez ainsi est
         transmis à l'assistant que vous avez branché et relève alors de sa propre politique de confidentialité. Une clé se révoque à tout
         moment ; toutes sont supprimées avec le compte.
         {keyMonths && (
@@ -109,12 +112,36 @@ export default function PrivacyPage() {
         liste partagée qui enfreint la loi peut nous être signalé : voir <Link href="/mentions-legales#signaler">Signaler un contenu</Link>.
       </p>
 
+      <h2>Signalements et messages</h2>
+      <p>
+        Quand vous nous écrivez, pour signaler un contenu (lien « Signaler ») ou pour toute autre demande, nous recevons ce que contient
+        votre courriel : votre adresse e-mail, le nom que vous indiquez, votre message et, pour un signalement, l'adresse du contenu
+        signalé. Ces données servent uniquement à traiter votre signalement ou votre demande et à vous répondre.
+      </p>
+      <ul>
+        <li>
+          <strong>Base légale</strong> : pour un signalement, l'obligation légale de traiter les signalements de contenus illicites et
+          d'informer leur auteur de la suite donnée (règlement sur les services numériques, art. 16 ; RGPD art. 6.1.c) ; pour les autres
+          messages, notre intérêt légitime à répondre aux personnes qui nous écrivent (RGPD art. 6.1.f).
+        </li>
+        <li>
+          <strong>Durée</strong> : ces messages restent dans la messagerie de l'éditeur
+          {messageMonths ? <>, au plus {retentionLabel(messageMonths)} après la fin de l'échange</> : <> jusqu'à ce qu'il les supprime ; aucune suppression automatique n'est prévue</>}.
+        </li>
+        <li>
+          <strong>Destinataires</strong> : l'éditeur seul, et le fournisseur de sa messagerie, qui héberge la boîte de réception. Ils ne
+          sont pas enregistrés dans Sextant ni rattachés à un compte.
+        </li>
+      </ul>
+
       <h2>Services tiers et sous-traitants</h2>
       <ul>
         <li>
           <strong>Vercel</strong> (États-Unis) héberge le site et exécute son serveur à Paris. Comme tout hébergeur, il conserve pour une durée limitée des
           journaux techniques (adresse IP, pages demandées, navigateur) à des fins de sécurité ; Sextant ne les exploite pas. Le serveur garde aussi,
-          quelques minutes et en mémoire seulement, un compteur par adresse IP ou par compte pour limiter les abus.
+          en mémoire seulement, jamais sur disque, un compteur par adresse IP ou par compte pour limiter les abus : tant que le serveur reçoit
+          des requêtes, il est effacé au plus tard une minute après la fin de sa période de comptage (une heure au plus) ; sinon, il
+          disparaît à l'arrêt de l'instance serveur.
         </li>
         <li>
           <strong>Google Firebase</strong> (connexion et base de données). Les données d'identification peuvent être traitées hors de l'Union
@@ -154,8 +181,10 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Accès et portabilité</strong> : « Télécharger mes données », sur la page « Mon compte », fournit un fichier JSON avec tout ce que
-          Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA, favoris, listes et liens de partage, citations,
-          notes, clés d'assistant IA (sans leur empreinte), sujets publiés et votes sur « Bugs et idées ».
+          Sextant conserve pour vous : profil et dates de création, de dernière connexion et de dernier usage d'une clé d'assistant IA, favoris
+          et dernier favori retiré, listes et liens de partage, citations, notes, clés d'assistant IA (sans leur empreinte, avec leurs premiers
+          caractères et la date de la connexion depuis laquelle elles ont été créées), sujets publiés et votes sur « Bugs et idées ». Les
+          messages que vous nous avez envoyés n'y figurent pas : ils sont dans notre messagerie, pas dans Sextant.
         </li>
         <li><strong>Rectification</strong> : vos favoris, listes, citations et notes se modifient directement dans Sextant ; votre nom et votre photo viennent de votre compte Google.</li>
         <li><strong>Effacement</strong> : « Supprimer mon compte » efface tout, immédiatement et sans nous solliciter.</li>
