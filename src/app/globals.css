@@ -130,15 +130,17 @@
   --brand-surface: #27346F;
   --brand-foreground: #EEF1FB;
   --overlay: rgb(0 0 0 / 0.6);
-  --disabled: #1B2130;
+  /* Plein désactivé : garde sa forme partout (1,45:1 fond, 1,32:1 carte, 1,24:1 fenêtre) ; libellé à 3,46:1. */
+  --disabled: #2A3142;
   --disabled-foreground: #7C8496;
   --destructive: oklch(0.704 0.191 22.216);
   --oa: #12352A;
   --oa-foreground: #8FDDB5; /* 8,40:1 */
   /* Filets opaques : un blanc translucide variait selon la surface. */
   --border: #262C3A;
-  --input: #1E2433;
-  /* 4,58:1 fond, 4,17:1 carte. */
+  /* Contour des boutons outline (dark:border-input) : 1,66:1 fond, 1,51:1 carte, 1,41:1 fenêtre. */
+  --input: #333A4B;
+  /* Contour des champs : 4,58:1 fond, 4,17:1 carte. */
   --input-border: #767D8E;
   --ring: #8FA1EA; /* 7,60:1 ; le #3E54B8 du clair tomberait à 2,85:1 */
   --elevation-float: 0 12px 32px -12px oklch(0 0 0 / 0.6);
