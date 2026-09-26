@@ -4,6 +4,7 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "rea
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist";
 import { AlertTriangleIcon, ChevronDownIcon, HighlighterIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
+import { DialogContainerContext } from "@/components/highlights/dialog-container";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { cleanSelectionText, readSelection, SELECTION_STATUS, SelectionButton } from "@/components/highlights/selection-button";
 import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
@@ -35,13 +36,15 @@ interface LayoutProps {
   originalUrl: string;
   /** PDF embarquable par le lecteur du navigateur si le relais échoue (https, hôte public), sinon null : lien seul. */
   embedUrl: string | null;
+  /** Langue de l'article (attribut `lang` des phrases proposées et des passages). */
+  lang?: string;
 }
 
 /**
  * Lecteur à gauche, « Mes surlignages » à droite (défilable) ; sur mobile, la liste se replie au-dessus du lecteur.
  * « Plein écran » passe le lecteur en plein écran (API du navigateur, ou repli fixe quand elle manque, iPhone par exemple).
  */
-export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
+export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) {
   const { highlights } = useHighlights();
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
@@ -105,27 +108,30 @@ export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
 
   const fallback = full && !nativeFullscreen;
   return (
-    <div ref={wrapRef} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
-      {!full && (
-        <div className="lg:hidden">
-          <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
-            Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
-            <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
-          </Button>
+    // En plein écran natif, seul le conteneur s'affiche : les fenêtres des surlignages y sont montées, pas dans <body>.
+    <DialogContainerContext.Provider value={full ? wrapRef : undefined}>
+      <div ref={wrapRef} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
+        {!full && (
+          <div className="lg:hidden">
+            <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
+              Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
+              <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
+            </Button>
+          </div>
+        )}
+        <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", (!open || full) && "hidden", full && "lg:hidden")}>
+          <ArticleHighlights compact lang={lang} onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
+        </aside>
+        <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
+          <div className="mb-3 flex justify-end">
+            <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()}>
+              {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
+            </Button>
+          </div>
+          <PdfReader url={url} originalUrl={originalUrl} embedUrl={embedUrl} lang={lang} />
         </div>
-      )}
-      <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", (!open || full) && "hidden", full && "lg:hidden")}>
-        <ArticleHighlights compact onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
-      </aside>
-      <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
-        <div className="mb-3 flex justify-end">
-          <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()}>
-            {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
-          </Button>
-        </div>
-        <PdfReader url={url} originalUrl={originalUrl} embedUrl={embedUrl} />
       </div>
-    </div>
+    </DialogContainerContext.Provider>
   );
 }
 
@@ -245,11 +251,21 @@ interface ReaderProps {
   url: string;
   originalUrl: string;
   embedUrl: string | null;
+  lang?: string;
+}
+
+/**
+ * Connexion demandée depuis le lecteur : la fenêtre de connexion est montée dans <body>, invisible en plein écran natif.
+ * On quitte d'abord le plein écran.
+ */
+async function signInOutOfFullscreen(requestSignIn: () => void) {
+  if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
+  requestSignIn();
 }
 
 /** Affiche le PDF page par page (PDF.js) avec une couche texte sélectionnable ; une sélection propose « Surligner ». */
-export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
-  const { highlights, add } = useHighlights();
+export function PdfReader({ url, originalUrl, embedUrl, lang }: ReaderProps) {
+  const { enabled, highlights, add, requestSignIn } = useHighlights();
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -438,6 +454,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
 
   async function save() {
     if (!selection) return;
+    if (!enabled) return void signInOutOfFullscreen(requestSignIn);
     setBusy(true);
     const created = await add({ source: "pdf", text: selection.text, page: selection.page, prefix: "", suffix: "", note: "" });
     setBusy(false);
@@ -457,7 +474,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
     setPicker({ page, input, text: "", sentences: null, error: null });
     try {
       const text = pdfPageText((await (await doc.getPage(page)).getTextContent()).items);
-      if (run === pickerLoad.current) setPicker({ page, input, text, sentences: splitSentences(text), error: null });
+      if (run === pickerLoad.current) setPicker({ page, input, text, sentences: splitSentences(text, lang ?? "fr"), error: null });
     } catch {
       if (run === pickerLoad.current) setPicker({ page, input, text: "", sentences: [], error: "Le texte de cette page n'a pas pu être lu." });
     }
@@ -547,7 +564,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner, ou choisissez des phrases.</p>
-            <Button variant="outline" size="sm" className="bg-card" onClick={() => void loadPickerPage(currentPage())}>
+            <Button variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(currentPage()) : signInOutOfFullscreen(requestSignIn))}>
               <HighlighterIcon /> Surligner des phrases
             </Button>
           </div>
@@ -588,6 +605,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans « Mes citations », avec leur page."
           sentences={picker?.sentences ?? null}
           error={picker?.error}
+          lang={lang}
           isHighlighted={(s) => isAlreadyHighlighted(s.text, (byPage.get(picker?.page ?? 0) ?? NO_HIGHLIGHTS).map((h) => h.text))}
           onSave={savePicked}
         >

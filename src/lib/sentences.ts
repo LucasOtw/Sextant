@@ -77,6 +77,14 @@ export function isAlreadyHighlighted(sentence: string, passages: readonly string
 }
 
 /**
+ * Phrases cochées pas encore retenues, dans l'ordre. Après un enregistrement partiel (un passage refusé), la fenêtre
+ * reste ouverte avec les phrases déjà enregistrées cochées : les renvoyer créerait des doublons.
+ */
+export function pendingIndexes(checked: Iterable<number>, sentences: readonly Sentence[], isHighlighted: (sentence: Sentence) => boolean): number[] {
+  return [...new Set(checked)].filter((i) => i >= 0 && i < sentences.length && !isHighlighted(sentences[i])).sort((a, b) => a - b);
+}
+
+/**
  * Texte d'une page PDF tel que le voit le marquage (`markSpans`) : fragments non vides, espaces normalisés, joints par
  * une espace. Une phrase prise dans ce texte est donc toujours retrouvée dans la couche texte de la page.
  */

@@ -4,7 +4,8 @@ import { useState } from "react";
 import { HighlighterIcon, Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import type { Sentence } from "@/lib/sentences";
+import { useDialogContainer } from "@/components/highlights/dialog-container";
+import { pendingIndexes, type Sentence } from "@/lib/sentences";
 
 interface Props {
   open: boolean;
@@ -30,9 +31,10 @@ interface Props {
  * (Tab, Espace) et lues par les lecteurs d'écran. Des phrases qui se suivent forment un seul passage.
  */
 export function SentencePickerDialog({ open, onOpenChange, title, description, ...rest }: Props) {
+  const container = useDialogContainer();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92dvh] min-w-0 overflow-y-auto sm:max-w-xl">
+      <DialogContent container={container} className="max-h-[92dvh] min-w-0 overflow-y-auto sm:max-w-xl">
         <DialogTitle className="title-display text-2xl">{title}</DialogTitle>
         <DialogDescription className="text-[0.9375rem] text-muted-foreground">{description}</DialogDescription>
         {/* Monté à l'ouverture seulement : les cases repartent décochées à chaque fois. */}
@@ -62,11 +64,14 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
     });
   }
 
+  // Seules les phrases pas encore retenues partent : après un enregistrement partiel, les autres restent cochées.
+  const pending = sentences ? pendingIndexes(checked, sentences, isHighlighted) : [];
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (checked.size === 0 || busy) return;
+    if (pending.length === 0 || busy) return;
     setBusy(true);
-    const ok = await onSave([...checked]);
+    const ok = await onSave(pending);
     setBusy(false);
     if (ok) onClose();
   }
@@ -113,8 +118,8 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
       )}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
-        <Button type="submit" disabled={busy || checked.size === 0}>
-          {busy ? <Loader2Icon className="animate-spin" /> : <HighlighterIcon />} Surligner{checked.size > 0 && ` (${checked.size})`}
+        <Button type="submit" disabled={busy || pending.length === 0}>
+          {busy ? <Loader2Icon className="animate-spin" /> : <HighlighterIcon />} Surligner{pending.length > 0 && ` (${pending.length})`}
         </Button>
       </div>
     </form>

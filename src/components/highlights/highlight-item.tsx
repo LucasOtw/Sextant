@@ -24,10 +24,12 @@ interface Props {
   compact?: boolean;
   /** Longue liste (/citations) : la carte hors de l'écran n'est ni mise en page ni peinte (PERF-11). */
   deferPaint?: boolean;
+  /** Langue de l'article (A11Y-04) : posée sur un passage pris dans le résumé ou le PDF, pas sur une saisie à la main. */
+  lang?: string;
 }
 
 /** Un passage retenu : la citation au surligneur, sa source, une note modifiable, copier avec la référence, supprimer. */
-export function HighlightItem({ highlight: h, retracted = false, onNote, onDelete, onGoToPage, compact = false, deferPaint = false }: Props) {
+export function HighlightItem({ highlight: h, retracted = false, onNote, onDelete, onGoToPage, compact = false, deferPaint = false, lang }: Props) {
   const { copied, copy: copyText } = useCopy();
   const [note, setNote] = useState(h.note);
   const [editing, setEditing] = useState(false);
@@ -87,7 +89,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
 
   return (
     <li className={cn("rounded-xl bg-card ring-1 ring-foreground/10 transition-shadow hover:shadow-sm", compact ? "p-3.5" : "p-4 sm:p-5", deferPaint && "[contain-intrinsic-size:auto_160px] [content-visibility:auto]")}>
-      <blockquote className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-[0.9375rem]")}>
+      <blockquote lang={h.source === "manual" ? undefined : lang} className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-[0.9375rem]")}>
         <QuoteIcon className="absolute left-0 top-[0.35em] size-3.5 text-highlight-foreground" aria-hidden />
         {/* Le repli porte sur un bloc ; le trait de surligneur reste sur le texte en ligne, fragment par fragment. */}
         <div id={passageId} className={cn("whitespace-pre-line", long && !expanded && "line-clamp-6")}>
@@ -129,7 +131,9 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
       ) : h.note ? (
         // La note est du texte, lu comme tel ; « Modifier la note » est un bouton à part, dans la barre d'actions. Dans le
         // nom d'un bouton, une note (jusqu'à 1 000 caractères) serait masquée par son aria-label ou interminable (A11Y-06).
-        <p className="mt-2 pl-6 text-sm whitespace-pre-line wrap-break-word text-foreground">
+        // À la souris, un clic sur la note l'ouvre aussi en édition, comme avant ; au clavier, c'est le bouton.
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- raccourci souris : « Modifier la note » reste l'accès clavier et lecteur d'écran, un rôle de bouton ferait lire la note comme son nom.
+        <p onClick={startEditing} className="mt-2 cursor-text pl-6 text-sm whitespace-pre-line wrap-break-word text-foreground">
           <span className="sr-only">Votre note : </span>
           {h.note}
         </p>

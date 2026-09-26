@@ -10,6 +10,7 @@ import { ManualCitationDialog } from "@/components/highlights/manual-citation-di
 import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
 import { isAlreadyHighlighted, passagesFrom, splitSentences } from "@/lib/sentences";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
+import { cn } from "cn";
 
 interface Props {
   /** Barre latérale du lecteur : plus dense, et la page d'un surlignage fait défiler le PDF. */
@@ -81,19 +82,21 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
           {where ? `Sélectionnez un passage ${where} pour le surligner, ou notez une citation à la main.` : "Notez vos citations à la main : le résumé et le texte intégral ne sont pas disponibles ici."} Elles sont gardées avec leur source, sur tous vos appareils.{" "}
           <button type="button" onClick={requestSignIn} className="text-accent-brand underline underline-offset-3">Se connecter</button>
         </p>
-      ) : highlights.length === 0 ? (
-        <div className="mt-3 flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] text-muted-foreground">
-          <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. {howTo}</p>
-          {addButton}
-        </div>
       ) : (
         <>
-          <ul ref={listRef} className="mt-3 flex flex-col gap-2">
-            {highlights.map((h) => (
-              <HighlightItem key={h.id} highlight={h} retracted={retracted} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} onGoToPage={onGoToPage} compact={compact} />
-            ))}
-          </ul>
-          <div className="mt-3">{addButton}</div>
+          {highlights.length > 0 && (
+            <ul ref={listRef} className="mt-3 flex flex-col gap-2">
+              {highlights.map((h) => (
+                <HighlightItem key={h.id} highlight={h} retracted={retracted} lang={lang} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} onGoToPage={onGoToPage} compact={compact} />
+              ))}
+            </ul>
+          )}
+          {/* Même élément, à la même place, avec ou sans passage : au premier surlignage, les boutons ne sont pas
+              remplacés et la fenêtre qui se ferme leur rend le focus (sinon il tomberait sur <body>). */}
+          <div className={cn("mt-3", highlights.length === 0 && "flex flex-col items-start gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] text-muted-foreground")}>
+            {highlights.length === 0 && <p className="flex items-start gap-2"><QuoteIcon className="mt-0.5 size-4 shrink-0" aria-hidden /> Aucun passage retenu pour cet article. {howTo}</p>}
+            {addButton}
+          </div>
         </>
       )}
       <ManualCitationDialog open={manual} onOpenChange={setManual} />

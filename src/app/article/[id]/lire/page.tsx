@@ -8,7 +8,7 @@ import { ReaderLayout } from "@/components/highlights/pdf-reader";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, titleLang, workTitle } from "@/lib/format";
+import { contentLang, embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, titleLang, workTitle } from "@/lib/format";
 import { listHighlights } from "@/lib/highlights";
 import { getWork, OpenAlexError, shortId, type Work } from "@/lib/openalex";
 import { logError, recover } from "@/lib/log";
@@ -60,7 +60,7 @@ export default async function ReaderPage({ params }: Props) {
         </ExternalLink>
       </div>
       <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initial}>
-        <ReaderLayout url={`/api/pdf?work=${wid}`} originalUrl={oa.url} embedUrl={embeddablePdfUrl(work)} />
+        <ReaderLayout url={`/api/pdf?work=${wid}`} originalUrl={oa.url} embedUrl={embeddablePdfUrl(work)} lang={contentLang(work.language)} />
       </HighlightsProvider>
     </div>
   );

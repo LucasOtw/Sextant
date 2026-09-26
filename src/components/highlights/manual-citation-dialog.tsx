@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useDialogContainer } from "@/components/highlights/dialog-container";
 import { useHighlights } from "@/components/highlights/highlights-provider";
 import { MAX_HIGHLIGHT_TEXT, MAX_NOTE } from "@/lib/highlights-shared";
 
@@ -17,9 +18,10 @@ interface Props {
 
 /** Saisie d'une citation à la main : quand le PDF n'est pas libre, on garde quand même la trace du passage et de sa page. */
 export function ManualCitationDialog({ open, onOpenChange }: Props) {
+  const container = useDialogContainer();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent container={container} className="sm:max-w-lg">
         <DialogTitle className="title-display text-2xl">Ajouter une citation</DialogTitle>
         <DialogDescription className="text-[0.9375rem] text-muted-foreground">
           Recopiez le passage et indiquez la page : vous le retrouverez dans « Mes citations », avec sa référence.
