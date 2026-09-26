@@ -140,6 +140,14 @@ describe("place d'un favori retiré (« Annuler », NEW-8)", () => {
     expect(sanitizePlacement({ ...placement, addedAt: null }, NOW)?.addedAt).toBeNull();
   });
 
+  it("date avant l'an 1 (hors de la plage d'un Timestamp Firestore) = inconnue, au lieu d'une erreur 502", () => {
+    const placement = { index: null, lists: [] };
+    for (const addedAt of ["0000-12-31T00:00:00Z", "-001000-01-01T00:00:00Z"]) {
+      expect(sanitizePlacement({ ...placement, addedAt }, NOW)?.addedAt, addedAt).toBeNull();
+    }
+    expect(sanitizePlacement({ ...placement, addedAt: "0001-01-01T00:00:00Z" }, NOW)?.addedAt).toBe("0001-01-01T00:00:00.000Z");
+  });
+
   it("rang invalide de l'index = en dernier ; doublons de listes ignorés", () => {
     for (const index of [-1, 1.5, "2", null, 1000]) expect(sanitizePlacement({ addedAt: null, index, lists: [] }, NOW)?.index).toBeNull();
     expect(sanitizePlacement({ addedAt: null, index: 0, lists: [{ id: "a", index: 1 }, { id: "a", index: 4 }] }, NOW)?.lists).toEqual([{ id: "a", index: 1 }]);

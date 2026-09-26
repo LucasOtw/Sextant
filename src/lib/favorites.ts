@@ -235,8 +235,8 @@ export async function removeFavorite(uid: string, id: string): Promise<FavoriteP
 const stringArray = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
 
 /**
- * « Annuler » après un retrait (NEW-8), en une transaction : le favori revient avec sa date d'ajout et son rang dans
- * l'index, puis à son rang dans chacune de ses listes qui existe encore. Le tableau `articleIds` est réécrit : un
+ * « Annuler » après un retrait (NEW-8), en une transaction : le favori revient avec sa date d'ajout (s'il vient d'être
+ * retiré, sinon celle du serveur) et son rang dans l'index, puis à son rang dans chacune de ses listes qui existe encore. Le tableau `articleIds` est réécrit : un
  * `arrayUnion` le remettrait en dernier. Une liste qui le contient déjà (rangé entre-temps) ou pleine n'est pas touchée.
  * Renvoie le favori et les listes modifiées, avec leur nouvel ordre.
  */
@@ -251,8 +251,13 @@ export async function restoreFavorite(
   const refs = placement.lists.map((l) => userRef.collection("collections").doc(l.id));
   return db.runTransaction(async (tx) => {
     // Toutes les lectures avant la première écriture (celles d'addFavoriteIn comprises).
-    const lists = refs.length ? await tx.getAll(...refs) : [];
-    const addedAt = await addFavoriteIn(tx, userRef, s, verified, { addedAt: placement.addedAt ? new Date(placement.addedAt) : null, index: placement.index });
+    const [user, ...lists] = await tx.getAll(userRef, ...refs);
+    // La date d'ajout d'origine n'est reprise que pour l'article retiré à l'instant (même identifiant, moins de
+    // RESTORE_WINDOW_MS) : la route ne sert pas d'ajout à date choisie pour un article qui n'a jamais été retiré.
+    const removed = user.get("lastRemovedFavorite") as { snapshot?: { id?: unknown }; at?: unknown } | undefined;
+    const removedAt = millisFromTimestamp(removed?.at);
+    const justRemoved = removed?.snapshot?.id === s.id && removedAt !== null && Date.now() - removedAt <= RESTORE_WINDOW_MS;
+    const addedAt = await addFavoriteIn(tx, userRef, s, verified, { addedAt: justRemoved && placement.addedAt ? new Date(placement.addedAt) : null, index: placement.index });
     const collections = lists.flatMap((list, i) => {
       const current = stringArray(list.get("articleIds"));
       if (!list.exists || current.includes(s.id) || current.length >= MAX_FAVORITES) return [];

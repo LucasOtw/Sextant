@@ -184,10 +184,13 @@ export interface FavoritePlacement {
   lists: { id: string; index: number }[];
 }
 
+/** Première date qu'un Timestamp Firestore accepte (0001-01-01) : avant, `Timestamp.fromDate` lève une exception. */
+const MIN_ADDED_AT = -62_135_596_800_000;
 const rank = (v: unknown) => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v < MAX_FAVORITES ? v : null);
 
 /**
- * Placement reçu du client, relu champ par champ : date valide ramenée au plus tard à `now` (sinon `null`), rangs
+ * Placement reçu du client, relu champ par champ : date valide ramenée au plus tard à `now`, et pas avant le 0001-01-01
+ * que Firestore accepte (sinon `null`), rangs
  * entiers bornés, listes au plus `MAX_COLLECTIONS`, identifiants de document valides et sans doublon. `null` : forme
  * inutilisable (la route répond 400). Rien de plus à vérifier : il ne place que les propres données de l'utilisateur.
  */
@@ -203,7 +206,8 @@ export function sanitizePlacement(input: unknown, now = Date.now()): FavoritePla
     if (!lists.some((x) => x.id === id)) lists.push({ id, index });
   }
   const at = typeof o.addedAt === "string" ? Date.parse(o.addedAt) : NaN;
-  return { addedAt: Number.isFinite(at) ? new Date(Math.min(at, now)).toISOString() : null, index: rank(o.index), lists };
+  const valid = Number.isFinite(at) && at >= MIN_ADDED_AT;
+  return { addedAt: valid ? new Date(Math.min(at, now)).toISOString() : null, index: rank(o.index), lists };
 }
 
 /** Copie du tableau avec `item` inséré à `index`, ramené dans les bornes (au-delà : en dernier). */

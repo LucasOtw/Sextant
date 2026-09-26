@@ -223,6 +223,32 @@ describe("favoris (transactions sur émulateur)", () => {
     expect(await userDoc(uid)).toMatchObject({ favoriteIds: ["W2", "W1"], favoritesCount: 2 });
   });
 
+  it("« Annuler » : date d'ajout fournie ignorée pour un article qui n'a pas été retiré à l'instant (date du serveur)", async () => {
+    const uid = newUid();
+    const db = await adminDb();
+    const old = "1970-01-01T00:00:00.000Z";
+    // Jamais retiré : la route ne sert pas d'ajout à date choisie.
+    const never = await restoreFavorite(uid, snap(1), true, { addedAt: old, index: null, lists: [] });
+    expect(never.favorite.addedAt).not.toBe(old);
+    expect(((await db.doc(`users/${uid}/favorites/W1`).get()).get("addedAt") as Timestamp).toMillis()).toBeGreaterThan(0);
+    // Un autre article vient d'être retiré : la date n'est pas reprise pour celui-ci.
+    await addFavorite(uid, snap(3));
+    await removeFavorite(uid, "W3");
+    const other = await restoreFavorite(uid, snap(2), true, { addedAt: old, index: null, lists: [] });
+    expect(other.favorite.addedAt).not.toBe(old);
+    // Retrait trop ancien (au-delà de RESTORE_WINDOW_MS) : date du serveur aussi.
+    await addFavorite(uid, snap(4));
+    await removeFavorite(uid, "W4");
+    await db.doc(`users/${uid}`).set({ lastRemovedFavorite: { at: Timestamp.fromMillis(Date.now() - RESTORE_WINDOW_MS - 60_000) } }, { merge: true });
+    const late = await restoreFavorite(uid, snap(4), true, { addedAt: old, index: null, lists: [] });
+    expect(late.favorite.addedAt).not.toBe(old);
+    // Retiré à l'instant : la date d'origine est reprise.
+    await addFavorite(uid, snap(5));
+    await removeFavorite(uid, "W5");
+    const back = await restoreFavorite(uid, snap(5), true, { addedAt: "2025-01-02T03:04:05.000Z", index: null, lists: [] });
+    expect(back.favorite.addedAt).toBe("2025-01-02T03:04:05.000Z");
+  });
+
   it("« Annuler » sans date connue : date posée par le serveur, en dernier dans l'index", async () => {
     const uid = newUid();
     await addFavorite(uid, snap(1));
