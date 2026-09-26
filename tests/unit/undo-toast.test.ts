@@ -64,14 +64,35 @@ describe("undoToast : retour du focus", () => {
     const { h1, h2, undo } = page();
     undoToast("Historique effacé.", () => {});
     h2.focus();
+    // Sonner appelle onDismiss au clic sur la croix, avant de retirer le toast : le bouton a encore le focus.
     undo.focus();
-    undo.remove();
     sonner.last!.onDismiss();
+    undo.remove();
     await frame();
     expect(document.activeElement).toBe(h2);
     h1.focus();
     sonner.last!.onDismiss();
     await frame();
     expect(document.activeElement).toBe(h1);
+  });
+
+  it("clic sans focus (Safari, Firefox macOS, iOS) : focus resté sur <body>, aucun focus() appelé", async () => {
+    const { h2, undo } = page();
+    const field = document.createElement("input");
+    document.querySelector("main")!.append(field);
+    const onUndo = vi.fn(() => undo.closest("li")!.remove());
+    undoToast("Retiré de vos favoris.", onUndo, undefined, () => h2);
+    // Champ de filtre focalisé bien avant, puis quitté : il devient le repli.
+    field.focus();
+    field.blur();
+    expect(document.activeElement).toBe(document.body);
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    sonner.last!.action.onClick({});
+    sonner.last!.onDismiss();
+    await frame();
+    expect(onUndo).toHaveBeenCalledOnce();
+    expect(focus).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(document.body);
+    focus.mockRestore();
   });
 });

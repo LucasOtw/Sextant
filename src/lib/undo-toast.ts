@@ -31,11 +31,16 @@ function trackFocus() {
  * Alt+T) que lorsque la liste perd le focus ou se démonte : si un autre toast reste affiché ou arrive (« Favori
  * rétabli », une seconde suppression), le bouton retiré laissait le focus sur <body>, et Sonner le reprenait plus tard,
  * n'importe où. Retirer le focus du bouton pendant qu'il existe encore déclenche tout de suite ce retour.
+ * Renvoie `true` si le focus était bien dans les notifications (action au clavier) : seul ce cas appelle un retour du
+ * focus. Un clic sous Safari, Firefox macOS ou iOS ne focalise pas le bouton (le focus reste sur <body>) : le repli
+ * enverrait alors le focus sur un champ quitté depuis longtemps (filtre, recherche qui rouvre ses suggestions, note).
  */
-function leaveToaster() {
-  if (typeof document === "undefined") return;
+function leaveToaster(): boolean {
+  if (typeof document === "undefined") return false;
   const active = document.activeElement;
-  if (active instanceof HTMLElement && active.closest(TOASTER)) active.blur();
+  if (!(active instanceof HTMLElement) || !active.closest(TOASTER)) return false;
+  active.blur();
+  return true;
 }
 
 /** Après le rendu : si le focus est resté sur <body> (élément d'origine retiré), le pose sur la cible de l'appelant ou le repli. */
@@ -50,8 +55,9 @@ function recoverFocus(restoreFocus?: () => HTMLElement | null) {
 
 /**
  * Toast d'une action réversible : « Annuler » pendant 10 s, bouton de fermeture, raccourci clavier annoncé. Après
- * « Annuler » ou la fermeture, le focus revient dans la page (A11Y-19) : à `restoreFocus()` si l'appelant en donne
- * une, sinon au dernier élément focalisé hors des notifications.
+ * « Annuler » ou la fermeture depuis le clavier (focus dans les notifications), le focus revient dans la page
+ * (A11Y-19) : à `restoreFocus()` si l'appelant en donne une, sinon au dernier élément focalisé hors des notifications.
+ * Après un clic qui ne focalise pas le bouton (Safari, Firefox macOS, iOS), le focus n'est pas déplacé.
  */
 export function undoToast(message: string, onUndo: () => void, description?: ReactNode, restoreFocus?: () => HTMLElement | null) {
   trackFocus();
@@ -62,14 +68,13 @@ export function undoToast(message: string, onUndo: () => void, description?: Rea
     action: {
       label: "Annuler",
       onClick: () => {
-        leaveToaster();
+        const fromToaster = leaveToaster();
         onUndo();
-        recoverFocus(restoreFocus);
+        if (fromToaster) recoverFocus(restoreFocus);
       },
     },
     onDismiss: () => {
-      leaveToaster();
-      recoverFocus(restoreFocus);
+      if (leaveToaster()) recoverFocus(restoreFocus);
     },
   });
 }
