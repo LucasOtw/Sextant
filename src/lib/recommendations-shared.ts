@@ -1,5 +1,6 @@
 /** « Pour vous » : ce que renvoie /api/recommendations, et les préférences locales (articles écartés). */
 import type { Work } from "@/lib/openalex";
+import { readStoredJson, removeStored, writeStored } from "@/lib/client/storage";
 
 export interface RecommendationSeed {
   id: string;
@@ -21,38 +22,20 @@ export const RECO_LIMITS = { seen: 12, fav: 30, hide: 200 } as const;
 export const HIDDEN_KEY = "sextant:reco-hidden";
 
 export function readHidden(): string[] {
-  try {
-    const raw = localStorage.getItem(HIDDEN_KEY);
-    const list = raw ? (JSON.parse(raw) as unknown) : [];
-    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
+  const list = readStoredJson(HIDDEN_KEY);
+  return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
 }
 
 export function hideRecommendation(id: string) {
-  try {
-    const list = [id, ...readHidden().filter((x) => x !== id)].slice(0, RECO_LIMITS.hide);
-    localStorage.setItem(HIDDEN_KEY, JSON.stringify(list));
-  } catch {
-    /* stockage indisponible */
-  }
+  writeStored(HIDDEN_KEY, JSON.stringify([id, ...readHidden().filter((x) => x !== id)].slice(0, RECO_LIMITS.hide)));
 }
 
 export function unhideRecommendation(id: string) {
-  try {
-    localStorage.setItem(HIDDEN_KEY, JSON.stringify(readHidden().filter((x) => x !== id)));
-  } catch {
-    /* stockage indisponible */
-  }
+  writeStored(HIDDEN_KEY, JSON.stringify(readHidden().filter((x) => x !== id)));
 }
 
 export function clearHidden() {
-  try {
-    localStorage.removeItem(HIDDEN_KEY);
-  } catch {
-    /* stockage indisponible */
-  }
+  removeStored(HIDDEN_KEY);
 }
 
 /** Phrase « pourquoi » d'une suggestion. */

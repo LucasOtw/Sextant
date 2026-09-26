@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { readStored, writeStored } from "@/lib/client/storage";
 
 interface Props {
   workId: string;
@@ -41,14 +42,11 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
   }, [state.status]);
 
   async function run() {
-    try {
-      const kept = sessionStorage.getItem(storageKey(model, workId));
-      if (kept) {
-        setState({ status: "done", text: kept });
-        return;
-      }
-    } catch {
-      /* stockage indisponible : on demande au serveur */
+    // Stockage indisponible : readStored renvoie null, on demande au serveur.
+    const kept = readStored(storageKey(model, workId), "session");
+    if (kept) {
+      setState({ status: "done", text: kept });
+      return;
     }
     setState({ status: "loading" });
     try {
@@ -61,11 +59,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       const data = (await res.json().catch(() => ({}))) as { summary?: string; error?: string };
       if (res.ok && data.summary) {
         setState({ status: "done", text: data.summary });
-        try {
-          sessionStorage.setItem(storageKey(model, workId), data.summary);
-        } catch {
-          /* stockage plein ou indisponible : sans effet */
-        }
+        writeStored(storageKey(model, workId), data.summary, "session");
         return;
       }
       setState({ status: "error", message: data.error ?? UNAVAILABLE });

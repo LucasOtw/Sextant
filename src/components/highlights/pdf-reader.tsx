@@ -11,6 +11,7 @@ import { SentencePickerDialog } from "@/components/highlights/sentence-picker-di
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useClientValue } from "@/hooks/use-client-value";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
@@ -49,16 +50,15 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  /** API Fullscreen disponible ? Décidé après le montage (le rendu serveur ne doit pas en dépendre). */
-  const [nativeFullscreen, setNativeFullscreen] = useState(true);
+  /** API Fullscreen disponible ? Supposée présente au rendu serveur, vérifiée au navigateur (QUAL-31). */
+  const fullscreenApi = useClientValue(() => typeof document.documentElement.requestFullscreen === "function", true);
+  /** Demande acceptée sans bascule, ou refusée : repli fixe pour le reste de la visite. */
+  const [fullscreenRefused, setFullscreenRefused] = useState(false);
+  const nativeFullscreen = fullscreenApi && !fullscreenRefused;
 
   useEffect(() => {
     const onChange = () => setFull(Boolean(document.fullscreenElement));
     document.addEventListener("fullscreenchange", onChange);
-    if (typeof document.documentElement.requestFullscreen !== "function") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- capacité du navigateur, connue seulement côté client
-      setNativeFullscreen(false);
-    }
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
@@ -101,7 +101,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
       } catch {
         /* refusé : repli */
       }
-      setNativeFullscreen(false);
+      setFullscreenRefused(true);
     }
     setFull(true);
   }

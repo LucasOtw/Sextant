@@ -1,4 +1,5 @@
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
+import { readStored, removeStored, writeStored } from "@/lib/client/storage";
 
 /**
  * Intention d'enregistrer un article pendant la connexion (clic sur un cœur sans compte) : gardée dans l'onglet
@@ -14,19 +15,11 @@ interface PendingFavorite {
 }
 
 export function writePendingFavorite(snapshot: FavoriteSnapshot) {
-  try {
-    sessionStorage.setItem(PENDING_FAVORITE_KEY, JSON.stringify({ snapshot, at: Date.now() } satisfies PendingFavorite));
-  } catch {
-    /* stockage indisponible */
-  }
+  writeStored(PENDING_FAVORITE_KEY, JSON.stringify({ snapshot, at: Date.now() } satisfies PendingFavorite), "session");
 }
 
 export function clearPendingFavorite() {
-  try {
-    sessionStorage.removeItem(PENDING_FAVORITE_KEY);
-  } catch {
-    /* rien */
-  }
+  removeStored(PENDING_FAVORITE_KEY, "session");
 }
 
 /**
@@ -34,11 +27,11 @@ export function clearPendingFavorite() {
  * illisible, intention de plus de 10 minutes ou sans identifiant.
  */
 export function readPendingFavorite(now = Date.now()): FavoriteSnapshot | null {
-  let pending: PendingFavorite | null = null;
+  const raw = readStored(PENDING_FAVORITE_KEY, "session");
+  if (!raw) return null;
+  removeStored(PENDING_FAVORITE_KEY, "session");
+  let pending: PendingFavorite | null;
   try {
-    const raw = sessionStorage.getItem(PENDING_FAVORITE_KEY);
-    if (!raw) return null;
-    sessionStorage.removeItem(PENDING_FAVORITE_KEY);
     pending = JSON.parse(raw) as PendingFavorite;
   } catch {
     return null;

@@ -3,6 +3,8 @@
  * site suit alors la préférence du système (A11Y-40). Le script d'avant l'affichage (lib/pre-hydration.ts) lit la même
  * clé pour poser la classe `dark` avant le premier rendu.
  */
+import { readStored, removeStored, writeStored } from "@/lib/client/storage";
+
 export type ThemePreference = "light" | "dark" | "system";
 
 export const THEME_STORAGE_KEY = "theme";
@@ -10,12 +12,8 @@ const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 /** Choix enregistré, « system » sans choix (ou stockage indisponible). */
 export function storedThemePreference(): ThemePreference {
-  try {
-    const t = localStorage.getItem(THEME_STORAGE_KEY);
-    return t === "light" || t === "dark" ? t : "system";
-  } catch {
-    return "system";
-  }
+  const t = readStored(THEME_STORAGE_KEY);
+  return t === "light" || t === "dark" ? t : "system";
 }
 
 function systemPrefersDark(): boolean {
@@ -30,12 +28,9 @@ function applyTheme(dark: boolean) {
 
 /** Enregistre le choix (ou l'efface pour « system ») et l'applique aussitôt. */
 export function setThemePreference(pref: ThemePreference) {
-  try {
-    if (pref === "system") localStorage.removeItem(THEME_STORAGE_KEY);
-    else localStorage.setItem(THEME_STORAGE_KEY, pref);
-  } catch {
-    /* stockage indisponible : le choix vaut pour la page ouverte */
-  }
+  // Stockage indisponible : le choix vaut pour la page ouverte.
+  if (pref === "system") removeStored(THEME_STORAGE_KEY);
+  else writeStored(THEME_STORAGE_KEY, pref);
   applyTheme(pref === "system" ? systemPrefersDark() : pref === "dark");
 }
 

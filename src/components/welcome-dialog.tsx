@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 // Import direct voulu, pas de dynamic() : la fenêtre doit s'afficher dès le premier rendu (cf. commit 0a474b8).
 import WelcomeDialogContent from "@/components/welcome-dialog-content";
 import { isQuietRoute } from "@/lib/quiet-routes";
+import { hasStored, writeStored } from "@/lib/client/storage";
 
 const KEY = "sextant:welcomed";
 
@@ -17,23 +18,14 @@ export function WelcomeDialog() {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (isQuietRoute(pathname)) return;
-    try {
-      if (!localStorage.getItem(KEY)) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- décision prise après lecture du stockage local
-        setOpen(true);
-      }
-    } catch {
-      /* stockage indisponible : on n'insiste pas */
-    }
+    // Déjà vu, ou stockage indisponible (null) : on n'insiste pas.
+    if (isQuietRoute(pathname) || hasStored(KEY) !== false) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- décision prise après lecture du stockage local ; l'ouverture reste acquise si la page suivante est « calme »
+    setOpen(true);
   }, [pathname]);
 
   function close() {
-    try {
-      localStorage.setItem(KEY, String(Date.now()));
-    } catch {
-      /* stockage indisponible */
-    }
+    writeStored(KEY, String(Date.now()));
     setOpen(false);
   }
 

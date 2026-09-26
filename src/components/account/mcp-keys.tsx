@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
+import { useClientValue } from "@/hooks/use-client-value";
 import { useCopy } from "@/hooks/use-copy";
 import { neighbourEquivalent } from "@/lib/focus";
 import { DATE_SHORT } from "@/lib/dates";
@@ -52,7 +53,8 @@ export function McpKeys() {
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
   const [reauth, setReauth] = useState(false);
-  const [origin, setOrigin] = useState("https://sextant-psi.vercel.app");
+  /** Origine de la page, pour l'adresse du connecteur : celle de production au rendu serveur (QUAL-31). */
+  const origin = useClientValue(() => window.location.origin, "https://sextant-psi.vercel.app");
   /** Clé dont la révocation attend confirmation (A11Y-24) : une clé révoquée ne se récupère pas. */
   const [revoking, setRevoking] = useState<ApiKeyInfo | null>(null);
   /** Ouverture de la confirmation, à part : le nom de la clé reste affiché pendant l'animation de fermeture. */
@@ -69,8 +71,6 @@ export function McpKeys() {
   const limitId = useId();
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- l'origine n'est connue qu'au navigateur
-    setOrigin(window.location.origin);
     fetch("/api/account/keys", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((d: { keys: ApiKeyInfo[] }) => setKeys(d.keys))

@@ -3,6 +3,7 @@
  * calculer « Pour vous », sans stockage applicatif côté serveur (SEC-18) ; l'historique lui-même reste sur l'appareil.
  */
 import { WORK_ID } from "@/lib/ids";
+import { readStoredJson, removeStored, writeStored } from "@/lib/client/storage";
 
 export interface RecentWork {
   id: string;
@@ -38,31 +39,18 @@ function isRecentWork(value: unknown): value is RecentWork {
 
 /** Liste validée élément par élément : `pushRecent` la réécrit à la consultation suivante, la corruption se répare seule. */
 export function readRecent(): RecentWork[] {
-  try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    const list: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list.filter(isRecentWork).slice(0, MAX) : [];
-  } catch {
-    return [];
-  }
+  const list = readStoredJson(RECENT_KEY);
+  return Array.isArray(list) ? list.filter(isRecentWork).slice(0, MAX) : [];
 }
 
 export function pushRecent(work: Omit<RecentWork, "viewedAt">) {
-  try {
-    const list = readRecent().filter((w) => w.id !== work.id);
-    list.unshift({ ...work, viewedAt: Date.now() });
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX)));
-  } catch {
-    /* stockage indisponible */
-  }
+  const list = readRecent().filter((w) => w.id !== work.id);
+  list.unshift({ ...work, viewedAt: Date.now() });
+  writeStored(RECENT_KEY, JSON.stringify(list.slice(0, MAX)));
 }
 
 export function clearRecent() {
-  try {
-    localStorage.removeItem(RECENT_KEY);
-  } catch {
-    /* stockage indisponible */
-  }
+  removeStored(RECENT_KEY);
 }
 
 /**
@@ -70,12 +58,7 @@ export function clearRecent() {
  * (elles restent en tête), sans doublon.
  */
 export function restoreRecent(previous: RecentWork[]) {
-  try {
-    const current = readRecent();
-    const ids = new Set(current.map((w) => w.id));
-    const list = [...current, ...previous.filter((w) => !ids.has(w.id))].slice(0, MAX);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
-  } catch {
-    /* stockage indisponible */
-  }
+  const current = readRecent();
+  const ids = new Set(current.map((w) => w.id));
+  writeStored(RECENT_KEY, JSON.stringify([...current, ...previous.filter((w) => !ids.has(w.id))].slice(0, MAX)));
 }
