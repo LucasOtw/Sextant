@@ -45,6 +45,16 @@ export async function revokeShare(uid: string, collectionId: string): Promise<vo
   });
 }
 
+/** Suppression du compte : tous ses liens de partage (hors de `users/{uid}`, donc pas effacés avec lui). Rejouable. */
+export async function deleteAllShares(uid: string): Promise<void> {
+  const db = await adminDb();
+  const shares = await db.collection("shares").where("uid", "==", uid).get();
+  if (shares.empty) return;
+  const batch = db.batch();
+  shares.docs.forEach((d) => batch.delete(d.ref));
+  await batch.commit();
+}
+
 /** Export des données du compte : les liens de partage actifs, avec la liste visée et leur date de création. */
 export async function listSharesForExport(uid: string): Promise<{ token: string; collectionId: string; createdAt: string | null }[]> {
   const db = await adminDb();

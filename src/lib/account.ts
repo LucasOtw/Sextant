@@ -1,34 +1,110 @@
 import "server-only";
-import type { DocumentReference, Firestore, WriteBatch } from "firebase-admin/firestore";
+import type { DocumentReference, DocumentSnapshot, Firestore, WriteBatch } from "firebase-admin/firestore";
+import type { DecodedIdToken } from "firebase-admin/auth";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { millisFromTimestamp } from "@/lib/firebase/decode";
+import { dateFromTimestamp, millisFromTimestamp } from "@/lib/firebase/decode";
 import { forgetRevocationCheck } from "@/lib/auth";
 import { deleteAllKeys } from "@/lib/api-keys";
 import { detachAuthor, withdrawVotes } from "@/lib/feedback";
 import { logError } from "@/lib/log";
 import { isKeyUnused, lastActivity, monthsBefore, validMonths } from "@/lib/retention";
+import { deleteAllShares } from "@/lib/shares";
+
+/**
+ * Module de compte (QUAL-23) : profil `users/{uid}`, suppression du compte et purge des comptes inactifs. Les routes et
+ * les pages passent par lui, jamais directement par `users/{uid}`.
+ *
+ * Données rattachées à un compte, à tenir à jour ici (suppression), dans l'export (api/account/export) et dans la
+ * politique de confidentialité :
+ * - `users/{uid}` : profil (email, name, picture, createdAt, lastLoginAt, lastKeyUsedAt), `favoriteIds`,
+ *   `favoritesCount`, `lastRemovedFavorite` ;
+ * - ses sous-collections : `favorites`, `collections`, `highlights`, `notes`, `feedbackVotes` ;
+ * - hors de `users/{uid}` : `shares` (champ `uid`), `apiKeys` (champ `uid`), `feedback` (champ `authorUid`) ;
+ * - le compte Firebase Authentication.
+ */
+
+/** Le document `users/{uid}`, lu une fois par la page « Mon compte » et par l'export. */
+export async function readProfile(uid: string): Promise<DocumentSnapshot> {
+  return (await adminDb()).doc(`users/${uid}`).get();
+}
+
+/**
+ * Date d'inscription : celle du profil, sinon celle de Firebase Auth (profil sans date, écriture de connexion ratée).
+ * Inconnue : null, jamais d'erreur (un échec de Firebase Auth est journalisé).
+ */
+export async function accountCreatedAt(uid: string, profile: DocumentSnapshot): Promise<Date | null> {
+  const stored = dateFromTimestamp(profile.get("createdAt"));
+  if (stored) return stored;
+  try {
+    const creationTime = (await (await adminAuth()).getUser(uid)).metadata.creationTime;
+    const d = creationTime ? new Date(creationTime) : null;
+    return d && !Number.isNaN(d.getTime()) ? d : null;
+  } catch (e) {
+    logError("account.createdAt", e);
+    return null;
+  }
+}
+
+/**
+ * Profil minimal, créé ou rafraîchi à chaque connexion (une seule écriture). Un profil non écrit ne bloque pas la
+ * connexion (le cookie suffit), mais la panne est journalisée.
+ */
+export async function recordLogin(decoded: DecodedIdToken): Promise<void> {
+  const db = await adminDb();
+  const { FieldValue, Timestamp } = await import("firebase-admin/firestore");
+  // Date d'inscription : celle de Firebase Auth, identique à chaque connexion. La réécrire ne change donc rien, et
+  // un profil créé avant ce correctif retrouve sa vraie date à la connexion suivante.
+  const creationTime = await (await adminAuth())
+    .getUser(decoded.uid)
+    .then((u) => u.metadata.creationTime)
+    .catch((e) => {
+      logError("session.getUser", e);
+      return undefined;
+    });
+  const createdAt = creationTime ? new Date(creationTime) : null;
+  await db
+    .doc(`users/${decoded.uid}`)
+    .set(
+      {
+        email: decoded.email ?? null,
+        name: decoded.name ?? null,
+        picture: decoded.picture ?? null,
+        lastLoginAt: FieldValue.serverTimestamp(),
+        ...(createdAt && !Number.isNaN(createdAt.getTime()) ? { createdAt: Timestamp.fromDate(createdAt) } : {}),
+      },
+      { merge: true },
+    )
+    .catch((e) => logError("session.profile", e));
+}
 
 /**
  * Efface un compte : liens de partage (hors de `users/{uid}`), clés d'assistant IA, rattachement des sujets « Bugs et
  * idées », votes (retirés des compteurs), puis `users/{uid}` et tout ce qu'il contient, et enfin le compte Firebase Auth.
  * Commun à « Supprimer mon compte » (DELETE /api/auth/account) et à la purge des comptes inactifs (NEW-14).
- * Chaque étape peut être rejouée après un échec : aucune ne compte deux fois. Le cache de /retours n'est pas vidé
- * ici : c'est à l'appelant (`refreshFeedbackList`), une fois pour toutes les suppressions.
+ * Chaque étape peut être rejouée après un échec : aucune ne compte deux fois. Un échec est journalisé ici, avec
+ * l'étape en cause, puis relancé. Le cache de /retours n'est pas vidé ici : c'est à l'appelant
+ * (`refreshFeedbackList`), une fois pour toutes les suppressions.
  */
 export async function deleteAccountData(uid: string): Promise<void> {
-  const db = await adminDb();
-  const shares = await db.collection("shares").where("uid", "==", uid).get();
-  if (!shares.empty) {
-    const batch = db.batch();
-    shares.docs.forEach((d) => batch.delete(d.ref));
-    await batch.commit();
+  let step = "shares";
+  try {
+    await deleteAllShares(uid);
+    step = "apiKeys";
+    await deleteAllKeys(uid);
+    step = "feedback.author";
+    await detachAuthor(uid);
+    // Avant l'effacement de users/{uid}, qui contient la liste des votes : sinon ils resteraient comptés (SEC-14).
+    step = "feedback.votes";
+    await withdrawVotes(uid);
+    step = "users";
+    const db = await adminDb();
+    await db.recursiveDelete(db.doc(`users/${uid}`));
+    step = "auth";
+    await (await adminAuth()).deleteUser(uid);
+  } catch (e) {
+    logError("account.delete", e, { step });
+    throw e;
   }
-  await deleteAllKeys(uid);
-  await detachAuthor(uid);
-  // Avant l'effacement de users/{uid}, qui contient la liste des votes : sinon ils resteraient comptés (SEC-14).
-  await withdrawVotes(uid);
-  await db.recursiveDelete(db.doc(`users/${uid}`));
-  await (await adminAuth()).deleteUser(uid);
   forgetRevocationCheck(uid);
 }
 
@@ -154,9 +230,9 @@ export async function purgeInactive(o: PurgeOptions): Promise<PurgeReport> {
     try {
       await deleteAccountData(uid);
       report.accounts++;
-    } catch (e) {
-      // Un compte en échec n'arrête pas la purge : il sera repris au passage suivant (chaque étape est rejouable).
-      logError("retention.deleteAccount", e);
+    } catch {
+      // Un compte en échec (journalisé par deleteAccountData) n'arrête pas la purge : il sera repris au passage
+      // suivant (chaque étape est rejouable).
       report.failed++;
     }
   }

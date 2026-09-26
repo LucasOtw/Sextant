@@ -3,13 +3,12 @@ import { requireStrictUser } from "@/lib/auth";
 import { overLimit, PRIVATE, serverError, tooMany } from "@/lib/api/guard";
 import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { accountCreatedAt, readProfile } from "@/lib/account";
 import { isoFromTimestamp as iso } from "@/lib/firebase/decode";
 import { listHighlights } from "@/lib/highlights";
 import { listKeysForExport } from "@/lib/api-keys";
 import { listFeedbackByAuthor, listFeedbackVotesForExport } from "@/lib/feedback";
 import { listAllNotes } from "@/lib/notes";
-import { logError } from "@/lib/log";
 import { listSharesForExport } from "@/lib/shares";
 
 export const runtime = "nodejs";
@@ -26,9 +25,8 @@ export async function GET() {
   if (!ok) return denied;
   if (overLimit("export", user.uid)) return tooMany();
   try {
-    const db = await adminDb();
     const [profileSnap, favorites, lists, highlights, notes, keys, published, votes, shares] = await Promise.all([
-      db.doc(`users/${user.uid}`).get(),
+      readProfile(user.uid),
       listFavorites(user.uid),
       listCollections(user.uid),
       listHighlights(user.uid),
@@ -40,15 +38,7 @@ export async function GET() {
       listSharesForExport(user.uid),
     ]);
     // Repli sur Firebase Auth quand le profil n'a pas de date d'inscription : la donnée exportée reste exacte.
-    const createdAt =
-      iso(profileSnap.get("createdAt")) ??
-      (await (await adminAuth())
-        .getUser(user.uid)
-        .then((u) => (u.metadata.creationTime ? new Date(u.metadata.creationTime).toISOString() : null))
-        .catch((e) => {
-          logError("export.getUser", e);
-          return null;
-        }));
+    const createdAt = (await accountCreatedAt(user.uid, profileSnap))?.toISOString() ?? null;
     // Dernier favori retiré, gardé pour « Annuler » (lib/favorites.ts) : remplacé au retrait suivant.
     const removed = profileSnap.get("lastRemovedFavorite") as { snapshot?: unknown; at?: unknown } | undefined;
     const data = {

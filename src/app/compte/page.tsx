@@ -8,8 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
 import { McpKeys } from "@/components/account/mcp-keys";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { dateFromTimestamp } from "@/lib/firebase/decode";
+import { accountCreatedAt, readProfile } from "@/lib/account";
 import { logError } from "@/lib/log";
 import { countFavorites } from "@/lib/favorites";
 import { countCollections } from "@/lib/collections";
@@ -19,22 +18,15 @@ import { initialsOf } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
 
-async function memberSince(uid: string, userDoc: Promise<DocumentSnapshot>): Promise<string | null> {
+/** « Membre depuis le … » : date d'inscription (lib/account, repli sur Firebase Auth) ; illisible : rien d'affiché. */
+async function memberSince(uid: string, profile: Promise<DocumentSnapshot>): Promise<string | null> {
   try {
-    const snap = await userDoc;
-    // Repli sur Firebase Auth : un profil sans date (écriture de connexion ratée) garde sa vraie date d'inscription.
-    const d = dateFromTimestamp(snap.get("createdAt")) ?? (await authCreationDate(uid));
+    const d = await accountCreatedAt(uid, await profile);
     return d ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d) : null;
   } catch (e) {
     logError("compte.memberSince", e);
     return null;
   }
-}
-
-async function authCreationDate(uid: string): Promise<Date | null> {
-  const creationTime = (await (await adminAuth()).getUser(uid)).metadata.creationTime;
-  const d = creationTime ? new Date(creationTime) : null;
-  return d && !Number.isNaN(d.getTime()) ? d : null;
 }
 
 /** Un compteur illisible s'affiche « — » (et se journalise) plutôt que « 0 », qui ferait croire la bibliothèque vide. */
@@ -51,7 +43,7 @@ export default async function AccountPage() {
   if (!user) redirect("/");
 
   // `users/{uid}` lu une seule fois : il porte à la fois la date d'inscription et le compteur de favoris.
-  const userDoc = adminDb().then((db) => db.doc(`users/${user.uid}`).get());
+  const userDoc = readProfile(user.uid);
   const [since, favoritesCount, collectionsCount, highlightsCount, notesCount] = await Promise.all([
     memberSince(user.uid, userDoc),
     countOrNull("compte.countFavorites", userDoc.then((snap) => countFavorites(user.uid, snap))),

@@ -21,9 +21,11 @@ Section maintenue à la main, hors du bloc ci-dessus (régénéré par `next dev
 - Firestore n'est lu et écrit que par le serveur (SDK Admin) ; `firestore.rules` ferme tout au client.
 - Compteurs, votes, liens de partage, plafonds : dans une transaction (`db.runTransaction`), rejouable sans double compte.
   Chaque transaction a son test dans `tests/emulator/`.
-- Données rattachées à un compte hors de `users/{uid}` (ex. `shares`, `apiKeys`, `feedback.authorUid`) : les ajouter à
-  `deleteAccountData` (`src/lib/account.ts`), à l'export RGPD (`src/app/api/account/export/route.ts`) et à la politique
-  de confidentialité.
+- `users/{uid}` n'est jamais lu ni écrit depuis `src/app` : profil et dates par `src/lib/account.ts`, compteurs et
+  index par leur module (`favorites.ts`, `collections.ts`, `api-keys.ts`) (QUAL-23).
+- Données rattachées à un compte (ex. `shares`, `apiKeys`, `feedback.authorUid`) : les ajouter à la liste en tête de
+  `src/lib/account.ts`, à `deleteAccountData`, à l'export RGPD (`src/app/api/account/export/route.ts`) et à la
+  politique de confidentialité.
 
 ## Routes API
 - Garde standard d'une écriture, dans cet ordre : `rejectCrossSite(req) ?? rejectLargeBody(req, n)` (`lib/security.ts`),

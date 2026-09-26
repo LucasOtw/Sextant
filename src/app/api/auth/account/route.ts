@@ -3,7 +3,6 @@ import { deleteAccountData } from "@/lib/account";
 import { isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
 import { requireUser } from "@/lib/api/guard";
 import { refreshFeedbackList } from "@/lib/feedback";
-import { logError } from "@/lib/log";
 import { setSessionHint } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
@@ -20,9 +19,8 @@ export async function DELETE(req: Request) {
 
   try {
     await deleteAccountData(user.uid);
-  } catch (e) {
-    logError("auth.account.DELETE", e);
-    // Des votes ont pu être retirés avant l'échec : la liste publique est relue quand même.
+  } catch {
+    // Échec déjà journalisé, avec l'étape en cause, par deleteAccountData. Des votes ont pu être retirés avant l'échec : la liste publique est relue quand même.
     refreshFeedbackList("auth.account.invalidate");
     return NextResponse.json({ error: "La suppression a échoué, réessayez." }, { status: 500 });
   }
