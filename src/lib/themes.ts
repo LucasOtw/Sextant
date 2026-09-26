@@ -1,3 +1,5 @@
+import { shortId } from "@/lib/ids";
+
 /**
  * Thématiques mises en avant. Chaque entrée pointe vers un "field" OpenAlex
  * (26 au total) — on en expose une sélection lisible, en français.
@@ -56,4 +58,29 @@ export function themeCanonical(slug: string, page: number | undefined, topic?: s
   if (page && page > 1) params.set("page", String(page));
   const query = params.toString();
   return query ? `/theme/${slug}?${query}` : `/theme/${slug}`;
+}
+
+/**
+ * Métadonnées d'une page de thème : titre (sans le numéro de page), description et adresse canonique. Filtrée par un
+ * sujet (?topic), la page est canonique d'elle-même (`themeCanonical`) : elle porte alors le nom du sujet dans son
+ * titre et sa description, sans quoi ses pages seraient des doublons de celles du thème pour les moteurs.
+ * `topics` : les sujets du domaine (ceux des pastilles) ; `null` si la liste n'a pas pu être lue (OpenAlex en panne),
+ * la canonique garde alors le sujet. Sujet absent de la liste (hors du domaine) : canonique vers le thème.
+ */
+export function themePageMeta(
+  theme: Theme,
+  page: number | undefined,
+  topic: string | undefined,
+  topics: readonly { id: string; display_name: string }[] | null,
+): { name: string; description: string; canonical: string } {
+  const base = { name: theme.name, description: themeMetaDescription(theme) };
+  if (!topic) return { ...base, canonical: themeCanonical(theme.slug, page) };
+  if (topics === null) return { ...base, canonical: themeCanonical(theme.slug, page, topic) };
+  const topicName = topics.find((t) => shortId(t.id) === topic)?.display_name.trim();
+  if (!topicName) return { ...base, canonical: `/theme/${theme.slug}` };
+  return {
+    name: `${topicName} — ${theme.name}`,
+    description: `Les articles les plus cités sur « ${topicName} » (${theme.name}), et une recherche limitée à ce sujet.`,
+    canonical: themeCanonical(theme.slug, page, topic),
+  };
 }

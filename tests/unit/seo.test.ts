@@ -4,7 +4,7 @@ import { HTML_LIMITED_BOTS, NEXT_HTML_LIMITED_BOTS } from "@/lib/html-bots";
 import { articleMetaDescription, metaDescription } from "@/lib/format";
 import { sitemapEntries } from "@/lib/sitemap";
 import { SITE } from "@/lib/site";
-import { THEMES, themeCanonical, themeMetaDescription } from "@/lib/themes";
+import { THEMES, themeCanonical, themeMetaDescription, themePageMeta } from "@/lib/themes";
 import { parseSearchParams } from "@/lib/search-params";
 import robots from "@/app/robots";
 import { makeWork } from "../fixtures";
@@ -94,6 +94,26 @@ describe("pages de thème (QUAL-18)", () => {
     expect(canonical({ topic: "T10028" })).toBe("/theme/informatique?topic=T10028");
     expect(canonical({ topic: "T10028", page: "3", sort: "recent" })).toBe("/theme/informatique?topic=T10028&page=3");
     expect(canonical({ topic: "../x", page: "2" })).toBe("/theme/informatique?page=2");
+  });
+
+  it("page d'un sujet : titre et description propres au sujet (pas des doublons du thème) ; sujet hors du domaine → canonique du thème", () => {
+    const theme = THEMES.find((t) => t.slug === "informatique")!;
+    const topics = [{ id: "https://openalex.org/T10028", display_name: "Topic Modeling" }, { id: "https://openalex.org/T10001", display_name: "Autre" }];
+    const meta = (sp: Record<string, string>, list: typeof topics | null = topics) => {
+      const { page, topic } = parseSearchParams(sp);
+      return themePageMeta(theme, page, topic, list);
+    };
+    const plain = meta({});
+    expect(plain).toEqual({ name: "Informatique", description: themeMetaDescription(theme), canonical: "/theme/informatique" });
+    const onTopic = meta({ topic: "T10028", page: "3" });
+    expect(onTopic.name).toBe("Topic Modeling — Informatique");
+    expect(onTopic.description).toContain("« Topic Modeling » (Informatique)");
+    expect(onTopic.description).not.toBe(plain.description);
+    expect(onTopic.canonical).toBe("/theme/informatique?topic=T10028&page=3");
+    // Sujet absent des sujets du domaine : la page n'est pas déclarée comme distincte.
+    expect(meta({ topic: "T99999", page: "2" })).toEqual({ ...plain, canonical: "/theme/informatique" });
+    // Liste des sujets indisponible (OpenAlex en panne) : canonique inchangée, nom du thème.
+    expect(meta({ topic: "T10028" }, null)).toEqual({ ...plain, canonical: "/theme/informatique?topic=T10028" });
   });
 });
 
