@@ -6,8 +6,8 @@
  * surprise, passer l'en-tête en `Content-Security-Policy` dans src/proxy.ts.
  *
  * Deux variantes (PERF-01) :
- * - pages rendues à la demande : nonce par requête (src/proxy.ts), que Next pose sur ses propres scripts — désactivé
- *   par défaut (CSP_NONCE=1) : sur Vercel avec Turbopack, Next ne propage pas le nonce (vercel/next.js#96063) ;
+ * - pages rendues à la demande : nonce par requête (src/proxy.ts), que Next pose sur ses propres scripts (CSP_NONCE=0
+ *   pour le couper si une montée de Next casse sa propagation) ;
  * - pages en cache (STATIC_PAGES) : rendues une fois pour tous, sans nonce possible. La politique, posée par
  *   next.config.ts, admet alors les scripts en ligne ('unsafe-inline') : ce sont ceux de Next et le script d'avant
  *   hydratation, sur des pages sans contenu venu d'un utilisateur. À trancher avant le passage en mode bloquant :
