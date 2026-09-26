@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireStrictUser } from "@/lib/auth";
 import { createFeedback, refreshFeedbackList } from "@/lib/feedback";
-import { sanitizeFeedback } from "@/lib/feedback-shared";
+import { MIN_FEEDBACK_TITLE, sanitizeFeedback } from "@/lib/feedback-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 import { logError } from "@/lib/log";
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Corps invalide." }, { status: 400 });
   }
   const input = sanitizeFeedback(body);
-  if (!input) return NextResponse.json({ error: "Choisissez Bug ou Idée et donnez un titre d'au moins 5 caractères." }, { status: 400 });
+  if (!input) return NextResponse.json({ error: `Choisissez Bug ou Idée et donnez un titre d'au moins ${MIN_FEEDBACK_TITLE} caractères.` }, { status: 400 });
   try {
     const item = await createFeedback(user.uid, input);
     refreshFeedbackList("feedback.invalidate");

@@ -18,9 +18,9 @@ export function Pagination({ page, perPage, total, hrefFor }: Props) {
 
   const link = (p: number, label: string, icon: React.ReactNode, disabled: boolean) =>
     disabled ? (
-      // Lien inactif exposé comme tel (aria-disabled) : les lecteurs d'écran l'annoncent « indisponible », et un
-      // composant inactif est exempté du contraste minimal (WCAG 1.4.3), d'où l'opacité réduite.
-      <span role="link" aria-disabled="true" className={cn(buttonVariants({ variant: "outline" }), "pointer-events-none opacity-50")}>
+      // Lien inactif exposé comme tel (aria-disabled) : les lecteurs d'écran l'annoncent « indisponible ». Texte en
+      // muted-foreground plutôt qu'en opacité réduite : lisible (5,6:1 en clair, 7,6:1 en sombre, A11Y-25).
+      <span role="link" aria-disabled="true" className={cn(buttonVariants({ variant: "outline" }), "pointer-events-none text-muted-foreground")}>
         {icon}
         {label}
       </span>

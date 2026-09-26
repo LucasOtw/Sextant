@@ -17,7 +17,6 @@ interface Props {
   /** Paramètres à conserver (sujet, citations…) lors d'une nouvelle recherche. */
   hidden?: Record<string, string | undefined>;
   className?: string;
-  autoFocus?: boolean;
 }
 
 type Item =
@@ -29,7 +28,7 @@ function normalize(s: string) {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
-export function SearchBox({ defaultValue = "", size = "compact", hidden, className, autoFocus }: Props) {
+export function SearchBox({ defaultValue = "", size = "compact", hidden, className }: Props) {
   const router = useRouter();
   const listId = useId();
   const [query, setQuery] = useState(defaultValue);
@@ -157,8 +156,6 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             type="search"
             name="q"
             value={query}
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- décidé par l'appelant (seul appelant : l'accueil, cf. A11Y-27).
-            autoFocus={autoFocus}
             onChange={(e) => {
               setQuery(e.target.value);
               setActive(-1);

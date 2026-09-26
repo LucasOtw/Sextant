@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useCopy } from "@/hooks/use-copy";
 import { Textarea } from "@/components/ui/textarea";
 import { citationBlock, MAX_NOTE, sourceLabel, type Highlight } from "@/lib/highlights-shared";
+import { excerpt } from "@/lib/labels";
 import { cn } from "cn";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
@@ -142,8 +143,9 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
             <PenLineIcon /> Modifier la note
           </Button>
         )}
-        <Button variant="ghost" size="sm" onClick={copy} aria-label={`Copier le passage « ${h.text.slice(0, 40)}… » avec sa référence`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
-        <Button variant="ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${h.text.slice(0, 40)}… »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
+        {/* Le nom commence par le texte visible et suit « Copié » (A11Y-26) ; l'annonce de la copie vient de useCopy. */}
+        <Button variant="ghost" size="sm" onClick={copy} aria-label={copied ? "Copié" : `Copier avec la référence : « ${excerpt(h.text)} »`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
+        <Button variant="ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
       </div>
     </li>
   );

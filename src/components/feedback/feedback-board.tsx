@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { BugIcon, ChevronUpIcon, LightbulbIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { feedbackOrder, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { announce } from "@/lib/announce";
 import { cn } from "cn";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
@@ -214,11 +217,24 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
-  const valid = title.trim().length >= 5;
+  /** Envoi tenté avec un titre trop court : l'indication passe en erreur (A11Y-21). */
+  const [showError, setShowError] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const length = feedbackTitleLength(title);
+  const valid = length >= MIN_FEEDBACK_TITLE;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!valid || busy) return;
+    if (busy) return;
+    // « Publier » reste actif : un bouton grisé ne dirait pas pourquoi. Le refus est expliqué sous le champ, qui reprend le focus.
+    if (!valid) {
+      // Rendu immédiat : le champ doit porter l'erreur (aria-invalid, indication) quand il reçoit le focus.
+      flushSync(() => setShowError(true));
+      // Déjà dans le champ (Entrée) : le focus ne bouge pas, l'indication ne serait pas relue, on l'annonce.
+      if (document.activeElement === titleRef.current) announce(feedbackTitleHint(length, true));
+      else titleRef.current?.focus();
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/feedback", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, title, description }) });
@@ -257,28 +273,38 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
           </button>
         ))}
       </div>
-      <Input
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'un formulaire que l'utilisateur vient d'ouvrir : le focus y est attendu.
-        autoFocus
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        maxLength={MAX_FEEDBACK_TITLE}
-        placeholder={kind === "bug" ? "Ex. Le PDF ne s'affiche pas sur iPhone" : "Ex. Exporter une liste au format RIS"}
-        aria-label="Titre"
-        className="h-10 text-base md:text-base"
-      />
-      <Textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        maxLength={MAX_FEEDBACK_DESCRIPTION}
-        rows={4}
-        placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil (facultatif)" : "À quoi ça vous servirait (facultatif)"}
-        aria-label="Description"
-        className="text-base md:text-[15px]"
-      />
+      <Field label="Titre" hint={feedbackTitleHint(length, showError && !valid)} invalid={showError && !valid}>
+        {(control) => (
+          <Input
+            {...control}
+            ref={titleRef}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'un formulaire que l'utilisateur vient d'ouvrir : le focus y est attendu.
+            autoFocus
+            aria-required="true"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={MAX_FEEDBACK_TITLE}
+            placeholder={kind === "bug" ? "Ex. Le PDF ne s'affiche pas sur iPhone" : "Ex. Exporter une liste au format RIS"}
+            className="h-10 text-base md:text-base"
+          />
+        )}
+      </Field>
+      <Field label="Description" optional>
+        {(control) => (
+          <Textarea
+            {...control}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={MAX_FEEDBACK_DESCRIPTION}
+            rows={4}
+            placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil" : "À quoi ça vous servirait"}
+            className="text-base md:text-[15px]"
+          />
+        )}
+      </Field>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
-        <Button type="submit" disabled={!valid || busy}>{busy && <Loader2Icon className="animate-spin" />} Publier</Button>
+        <Button type="submit" disabled={busy}>{busy && <Loader2Icon className="animate-spin" />} Publier</Button>
       </div>
     </form>
   );

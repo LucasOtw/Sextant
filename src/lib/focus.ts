@@ -92,3 +92,29 @@ export function recoveryTarget(
   const row = rows[last.row] ?? rows[last.row - 1];
   return (row ? equivalentIn(row, last.key) : null) ?? fallback?.() ?? null;
 }
+
+/**
+ * Vrai si `el` reçoit de la saisie (champ texte, zone de texte, contenu éditable) : une fenêtre qui s'ouvrirait d'elle-même
+ * à ce moment volerait les frappes (A11Y-28). Cases, boutons radio, boutons et curseurs ne comptent pas.
+ */
+export function isTypingTarget(el: Element | null): boolean {
+  if (!el || !(el instanceof HTMLElement)) return false;
+  if (el.isContentEditable) return true;
+  if (el instanceof HTMLTextAreaElement) return !el.readOnly && !el.disabled;
+  if (!(el instanceof HTMLInputElement) || el.readOnly || el.disabled) return false;
+  return !/^(button|checkbox|color|file|hidden|image|radio|range|reset|submit)$/.test(el.type);
+}
+
+/**
+ * Avant de retirer la ligne de `el` (confirmation dans une fenêtre, où le focus n'est plus dans la liste) : son
+ * équivalent dans la ligne suivante, sinon la précédente ; null si elle est seule ou si `el` n'est pas dans la liste.
+ * Sert de `finalFocus` à la fenêtre, qui rendrait sinon le focus à un bouton disparu (A11Y-24).
+ */
+export function neighbourEquivalent(container: HTMLElement | null, rowSelector: string, el: HTMLElement | null): HTMLElement | null {
+  if (!container || !el) return null;
+  const f = captureListFocus(container, rowSelector, el);
+  if (!f) return null;
+  const rows = [...container.querySelectorAll(rowSelector)];
+  const row = rows[f.row + 1] ?? rows[f.row - 1];
+  return row ? equivalentIn(row, f.key) : null;
+}

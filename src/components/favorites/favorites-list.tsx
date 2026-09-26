@@ -20,6 +20,7 @@ import { bibtexAll, fileSlug, type Favorite } from "@/lib/favorites-shared";
 import { ShareDialog } from "@/components/collections/share-dialog";
 import { ShowMore, useRevealFocus } from "@/components/show-more";
 import { formatCount, typeLabel } from "@/lib/format";
+import { moveLabel } from "@/lib/labels";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 import { cn } from "cn";
@@ -317,7 +318,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             )}
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label="Renommer ou supprimer la liste" />}>
+            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label={`Gérer la liste ${collection.name}`} />}>
               <SettingsIcon /> Gérer
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -424,16 +425,6 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
           manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28",
         )}
       >
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
-          {manualOrder && (
-            <>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Monter dans la liste" data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Descendre dans la liste" data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
-            </>
-          )}
-          <CollectionPicker snapshot={f} />
-          <FavoriteButton snapshot={f} initialActive />
-        </div>
         <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
           <Badge variant="secondary">{typeLabel(f.type)}</Badge>
           {f.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
@@ -443,6 +434,17 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <h3 className="title-display text-xl leading-snug">
           <Link href={`/article/${f.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{f.title}</Link>
         </h3>
+        {/* Actions après le titre dans le DOM (le focus et le lecteur d'écran découvrent l'article d'abord), en haut à droite à l'écran (A11Y-23). */}
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+          {manualOrder && (
+            <>
+              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("up", f.title)} data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
+              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("down", f.title)} data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
+            </>
+          )}
+          <CollectionPicker snapshot={f} />
+          <FavoriteButton snapshot={f} initialActive />
+        </div>
         <p className="text-[15px] text-muted-foreground">
           {f.authors}{f.venue && <> · <span className="italic">{f.venue}</span></>}{f.year && <> · {f.year}</>}
         </p>

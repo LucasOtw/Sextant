@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useHighlights } from "@/components/highlights/highlights-provider";
@@ -48,11 +49,36 @@ function Form({ onClose }: { onClose: () => void }) {
 
   return (
     <form onSubmit={submit} className="mt-2 flex flex-col gap-3">
-      {/* eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'une fenêtre que l'utilisateur vient d'ouvrir : le focus y est attendu. */}
-      <Textarea autoFocus value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit(); }} maxLength={MAX_HIGHLIGHT_TEXT} rows={5} placeholder="Le passage, tel qu'il apparaît dans l'article…" aria-label="Passage" className="text-base md:text-base" />
-      <div className="flex gap-3">
-        <Input value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="Page" aria-label="Page" className="h-10 w-28 text-base md:text-base" />
-        <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Note pour vous (facultatif)" aria-label="Note" className="h-10 flex-1 text-base md:text-base" />
+      <Field label="Passage">
+        {(control) => (
+          <Textarea
+            {...control}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'une fenêtre que l'utilisateur vient d'ouvrir : le focus y est attendu.
+            autoFocus
+            aria-required="true"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit();
+            }}
+            maxLength={MAX_HIGHLIGHT_TEXT}
+            rows={5}
+            placeholder="Le passage, tel qu'il apparaît dans l'article…"
+            className="text-base md:text-base"
+          />
+        )}
+      </Field>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Field label="Page" optional className="shrink-0 sm:w-36">
+          {(control) => (
+            <Input {...control} value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" placeholder="Ex. 12" className="h-10 w-28 text-base sm:w-full md:text-base" />
+          )}
+        </Field>
+        <Field label="Note" optional className="min-w-0 flex-1">
+          {(control) => (
+            <Input {...control} value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Pour vous" className="h-10 text-base md:text-base" />
+          )}
+        </Field>
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>

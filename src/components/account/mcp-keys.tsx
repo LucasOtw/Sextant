@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CheckIcon, CopyIcon, KeyRoundIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { useCopy } from "@/hooks/use-copy";
-import { useFocusRecovery } from "@/hooks/use-focus-recovery";
+import { neighbourEquivalent } from "@/lib/focus";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
@@ -53,10 +54,20 @@ export function McpKeys() {
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
   const [reauth, setReauth] = useState(false);
   const [origin, setOrigin] = useState("https://sextant-psi.vercel.app");
-  /** Clé révoquée sous le focus : « Révoquer » de la suivante, sinon de la précédente, sinon le champ « Nom de la clé » (A11Y-19). */
+  /** Clé dont la révocation attend confirmation (A11Y-24) : une clé révoquée ne se récupère pas. */
+  const [revoking, setRevoking] = useState<ApiKeyInfo | null>(null);
+  /** Ouverture de la confirmation, à part : le nom de la clé reste affiché pendant l'animation de fermeture. */
+  const [confirming, setConfirming] = useState(false);
   const listRef = useRef<HTMLUListElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  useFocusRecovery(listRef, ":scope > li", () => nameRef.current);
+  /** Bouton « Révoquer » qui a ouvert la confirmation. */
+  const revokeFrom = useRef<HTMLElement | null>(null);
+  /**
+   * Où rendre le focus à la fermeture de la confirmation : null (annulation) rend la main au bouton d'origine ; après une
+   * révocation, « Révoquer » de la clé suivante, sinon de la précédente, sinon le champ « Nom de la clé » (A11Y-19).
+   */
+  const focusAfter = useRef<HTMLElement | null>(null);
+  const limitId = useId();
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- l'origine n'est connue qu'au navigateur
@@ -101,6 +112,14 @@ export function McpKeys() {
     }
   }
 
+  function confirmRevoke() {
+    const k = revoking;
+    if (!k) return;
+    focusAfter.current = neighbourEquivalent(listRef.current, ":scope > li", revokeFrom.current) ?? nameRef.current;
+    setConfirming(false);
+    void revoke(k);
+  }
+
   const endpoint = `${origin}/api/mcp`;
   const full = keys !== null && keys.length >= MAX_API_KEYS;
 
@@ -125,7 +144,18 @@ export function McpKeys() {
                   {" · "}{k.lastUsedAt ? `utilisée le ${DATE.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" data-focus-key="revoke" onClick={() => void revoke(k)} aria-label={`Révoquer la clé ${k.name}`}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive"
+                data-focus-key="revoke"
+                onClick={(e) => {
+                  revokeFrom.current = e.currentTarget;
+                  setRevoking(k);
+                  setConfirming(true);
+                }}
+                aria-label={`Révoquer la clé ${k.name}`}
+              >
                 <Trash2Icon /> Révoquer
               </Button>
             </li>
@@ -134,18 +164,23 @@ export function McpKeys() {
       ) : null}
 
       <form
-        className="flex flex-col gap-2 sm:flex-row"
+        className="flex flex-col gap-2 sm:flex-row sm:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           if (!busy && !full) void create();
         }}
       >
-        <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} maxLength={MAX_API_KEY_NAME} placeholder="Nom de la clé (ex. Claude sur mon Mac)" aria-label="Nom de la clé" className="h-10 flex-1 text-base md:text-base" />
-        <Button type="submit" className="h-10" disabled={busy || full}>
+        <Field label="Nom de la clé" optional className="flex-1">
+          {(control) => (
+            <Input {...control} ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} maxLength={MAX_API_KEY_NAME} placeholder="Ex. Claude sur mon Mac" className="h-10 text-base md:text-base" />
+          )}
+        </Field>
+        {/* Bouton grisé à la limite : la raison lui est reliée (A11Y-21). */}
+        <Button type="submit" className="h-10" disabled={busy || full} aria-describedby={full ? limitId : undefined}>
           {busy ? <Loader2Icon className="animate-spin" /> : <PlusIcon />} Créer une clé
         </Button>
       </form>
-      {full && <p className="text-sm text-muted-foreground">Limite de {MAX_API_KEYS} clés atteinte : révoquez-en une pour en créer une autre.</p>}
+      {full && <p id={limitId} className="text-sm text-muted-foreground">Limite de {MAX_API_KEYS} clés atteinte : révoquez-en une pour en créer une autre.</p>}
 
       <details className="text-sm">
         <summary className="font-medium">Comment brancher Sextant à mon assistant ?</summary>
@@ -161,6 +196,29 @@ export function McpKeys() {
         description="Par sécurité, créer une clé demande une connexion Google récente : une clé donne accès à votre bibliothèque tant qu'elle n'est pas révoquée."
         onConfirmed={() => void create()}
       />
+
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent
+          className="sm:max-w-sm"
+          finalFocus={() => {
+            const target = focusAfter.current;
+            focusAfter.current = null;
+            return target?.isConnected ? target : true;
+          }}
+        >
+          <DialogTitle className="title-display text-2xl">Révoquer « {revoking?.name} » ?</DialogTitle>
+          <DialogDescription className="text-[15px] text-muted-foreground">
+            L'assistant qui utilise cette clé perdra immédiatement l'accès à votre bibliothèque. Il faudra créer une nouvelle clé et
+            reconfigurer le connecteur.
+          </DialogDescription>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirming(false)}>Annuler</Button>
+            <Button variant="destructive" onClick={confirmRevoke}>
+              <Trash2Icon /> Révoquer la clé
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
         <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">

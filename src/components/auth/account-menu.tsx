@@ -40,10 +40,12 @@ export default function AccountMenu({ user }: { user: ClientUser }) {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuGroup>
-          {/* L'identité mène à la page du compte. */}
-          <DropdownMenuItem render={<Link href="/compte" />} className="flex-col items-start gap-0 py-1.5" aria-label="Mon compte">
+          {/* L'identité mène à la page du compte. Son nom est le texte affiché (nom, e-mail), pas « Mon compte », que porte
+              déjà l'entrée suivante : la commande vocale « cliquer Lucas » fonctionne, et rien n'est lu deux fois (A11Y-26). */}
+          <DropdownMenuItem render={<Link href="/compte" />} className="flex-col items-start gap-0 py-1.5">
             <span className="w-full truncate font-medium text-foreground">{user.name ?? "Mon compte"}</span>
             {user.email && <span className="w-full truncate text-xs font-normal text-muted-foreground">{user.email}</span>}
+            <span className="sr-only">, page du compte</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

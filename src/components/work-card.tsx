@@ -39,11 +39,6 @@ export function WorkCard({ work, variant = "list" }: Props) {
         compact ? "h-full" : "sm:p-5",
       )}
     >
-      {favorites && (
-        <div className="absolute right-3 top-3 z-10">
-          <FavoriteButton snapshot={snapshotFromWork(work)} />
-        </div>
-      )}
       <div className={cn("flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground", favorites && "pr-10")}>
         <Badge variant="secondary">{typeLabel(work.type)}</Badge>
         {work.open_access.is_oa && (
@@ -61,6 +56,12 @@ export function WorkCard({ work, variant = "list" }: Props) {
           {workTitle(work)}
         </Link>
       </h3>
+      {/* Le cœur suit le titre dans le DOM (on sait de quel article il s'agit avant d'y arriver), en haut à droite à l'écran (A11Y-23). */}
+      {favorites && (
+        <div className="absolute right-3 top-3 z-10">
+          <FavoriteButton snapshot={snapshotFromWork(work)} />
+        </div>
+      )}
 
       <p className="text-[15px] text-muted-foreground">
         {formatAuthors(work, compact ? 2 : 3)}
