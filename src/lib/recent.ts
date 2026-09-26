@@ -2,7 +2,7 @@
  * Historique local des articles consultés (localStorage). Les identifiants sont envoyés à /api/recommendations pour
  * calculer « Pour vous », sans stockage applicatif côté serveur (SEC-18) ; l'historique lui-même reste sur l'appareil.
  */
-import { WORK_ID } from "@/lib/favorites-shared";
+import { WORK_ID } from "@/lib/ids";
 
 export interface RecentWork {
   id: string;

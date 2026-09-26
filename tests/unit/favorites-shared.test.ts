@@ -1,19 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fileSlug, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork, WORK_ID } from "@/lib/favorites-shared";
+import { fileSlug, sameSnapshot, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork } from "@/lib/favorites-shared";
 import { makeSnapshot, makeWork } from "../fixtures";
-
-describe("WORK_ID (identifiant d'article accepté par les routes)", () => {
-  it.each(["W1", "W4200000001", `W${"9".repeat(31)}`])("accepte %s", (id) => {
-    expect(WORK_ID.test(id)).toBe(true);
-  });
-
-  it.each(["", "W", "w123", "A123", "W12a", "W123 ", " W123", "../W1", "W1/notes", `W${"9".repeat(32)}`, "https://openalex.org/W1"])(
-    "refuse %j",
-    (id) => {
-      expect(WORK_ID.test(id)).toBe(false);
-    },
-  );
-});
 
 describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
   it("garde un instantané valide tel quel", () => {

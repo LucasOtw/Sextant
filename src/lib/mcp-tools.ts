@@ -11,7 +11,8 @@ import { findHighlights, listHighlights } from "@/lib/highlights";
 import { getNote, listNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
 import { fold } from "@/lib/list-filter";
-import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, shortId, type Work } from "@/lib/openalex";
+import { BATCH_WORK_ID, shortId } from "@/lib/ids";
+import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, type Work } from "@/lib/openalex";
 import { SITE } from "@/lib/site";
 
 /**
@@ -29,7 +30,7 @@ const MAX_ARTICLE_HIGHLIGHTS = 200;
 const MCP_SCAN_MAX = 600;
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
-const articleId = z.string().regex(/^W\d{2,15}$/i, "Identifiant OpenAlex attendu, par exemple W2741809807").describe("Identifiant OpenAlex de l'article (W…)");
+const articleId = z.string().regex(new RegExp(BATCH_WORK_ID.source, "i"), "Identifiant OpenAlex attendu, par exemple W2741809807").describe("Identifiant OpenAlex de l'article (W…)");
 
 type Ctx = { http?: { authInfo?: { extra?: Record<string, unknown> } } };
 

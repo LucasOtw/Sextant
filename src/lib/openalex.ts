@@ -7,7 +7,7 @@ import "server-only";
  * Un `mailto` (OPENALEX_MAILTO) identifie poliment l'application.
  */
 
-import { shortId } from "@/lib/ids";
+import { shortId, WORK_ID } from "@/lib/ids";
 import { safeHttpUrl } from "@/lib/text";
 
 const BASE = "https://api.openalex.org";
@@ -346,7 +346,7 @@ const OR_FILTER_MAX = 100;
  * Une requête par lot de 100 (seuls les rétractés reviennent, d'où `select=id`), mise en cache une heure.
  */
 export async function getRetractedIds(ids: string[]): Promise<Set<string>> {
-  const unique = [...new Set(ids.map((id) => shortId(id).toUpperCase()).filter((id) => /^W\d+$/.test(id)))];
+  const unique = [...new Set(ids.map((id) => shortId(id).toUpperCase()).filter((id) => WORK_ID.test(id)))];
   const lots: string[][] = [];
   for (let i = 0; i < unique.length; i += OR_FILTER_MAX) lots.push(unique.slice(i, i + OR_FILTER_MAX));
   const pages = await Promise.all(

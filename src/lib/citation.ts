@@ -1,9 +1,11 @@
 /**
  * Références bibliographiques (APA 7, BibTeX, appel de citation court) : un seul module pour tous les écrans (QUAL-02).
  * La fiche article, les favoris, les listes (privées et partagées), les citations surlignées et les outils MCP citent
- * donc un même article de la même façon. Module pur, sans aucun import : utilisable côté client comme côté serveur,
- * et hors de tout cycle (format.ts et favorites-shared.ts en dépendent, jamais l'inverse).
+ * donc un même article de la même façon. Module pur, qui n'importe que lib/ids (lui-même sans dépendance) : utilisable
+ * côté client comme côté serveur, et hors de tout cycle (format.ts et favorites-shared.ts en dépendent, jamais l'inverse).
  */
+
+import { doiPath } from "@/lib/ids";
 
 /** Volume, numéro et pages d'une publication (OpenAlex `biblio`) ; les quatre clés sont toujours présentes. */
 export interface Biblio {
@@ -101,7 +103,7 @@ function bibtexEntry(s: CitationSource, key: string, retracted: boolean): string
   if (b?.volume) lines.push(`  volume = {${bibField(b.volume)}},`);
   if (b?.issue) lines.push(`  number = {${bibField(b.issue)}},`);
   if (b?.firstPage) lines.push(`  pages = {${bibField(b.firstPage)}${b.lastPage ? `--${bibField(b.lastPage)}` : ""}},`);
-  if (s.doi) lines.push(`  doi = {${s.doi.replace(/^https?:\/\/doi\.org\//, "")}},`);
+  if (s.doi) lines.push(`  doi = {${doiPath(s.doi)}},`);
   if (retracted) lines.push(`  note = {${RETRACTED_BIBTEX_NOTE}},`);
   lines.push("}");
   return lines.join("\n");

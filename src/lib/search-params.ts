@@ -1,3 +1,4 @@
+import { AUTHOR_ID, normalizeId, TOPIC_ID, WORK_ID } from "@/lib/ids";
 import type { SearchParams } from "@/lib/openalex";
 
 /** Paramètres d'URL de la recherche : extraits de `components/results.tsx` pour être testés sans React. */
@@ -24,15 +25,9 @@ export const LANGUAGES = [
   { value: "it", label: "Italien" },
 ] as const;
 
-/** Identifiants OpenAlex courts attendus dans l'URL : sujet `T…`, article `W…`, auteur `A…`. */
-const TOPIC_ID = /^T\d{1,15}$/i;
-const WORK_ID = /^W\d{1,15}$/i;
-const AUTHOR_ID = /^A\d{1,15}$/i;
-
-/** L'identifiant en majuscules s'il a la forme attendue, sinon undefined (le filtre est ignoré). */
+/** Identifiant OpenAlex court attendu dans l'URL (sujet `T…`, article `W…`, auteur `A…`), en majuscules ; sinon undefined (le filtre est ignoré). */
 function openAlexId(v: string | undefined, re: RegExp): string | undefined {
-  const id = v?.trim();
-  return id && re.test(id) ? id.toUpperCase() : undefined;
+  return normalizeId(v, re) ?? undefined;
 }
 
 function oneOf(v: string | undefined, options: readonly { value: string }[]): string | undefined {

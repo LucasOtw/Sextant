@@ -10,7 +10,8 @@ import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { snapshotFromWork } from "@/lib/favorites-shared";
 import { contentLang, embeddablePdfUrl, openAccessPdfUrls, openAccessUrl, titleLang, workTitle } from "@/lib/format";
 import { listHighlights } from "@/lib/highlights";
-import { getWork, OpenAlexError, shortId, type Work } from "@/lib/openalex";
+import { normalizeWorkId, shortId } from "@/lib/ids";
+import { getWork, OpenAlexError, type Work } from "@/lib/openalex";
 import { logError, recover } from "@/lib/log";
 import { ExternalLink } from "@/components/external-link";
 
@@ -20,7 +21,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
+  if (!normalizeWorkId(id)) return { title: "Article introuvable", robots: { index: false } };
   const work = await getWork(id).catch(() => null);
   return { title: work ? `Lire · ${workTitle(work)}` : "Lecteur", robots: { index: false } };
 }
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 /** Lecteur PDF intégré : uniquement pour une version en accès ouvert connue d'OpenAlex ; sinon retour à la fiche. */
 export default async function ReaderPage({ params }: Props) {
   const { id } = await params;
-  if (!/^W\d+$/i.test(id)) notFound();
+  if (!normalizeWorkId(id)) notFound();
   // Session vérifiée pendant la lecture d'OpenAlex, pas après (PERF-09).
   const sessionUserP = isAuthEnabled() ? getCurrentUser() : Promise.resolve(null);
   let work: Work | null;

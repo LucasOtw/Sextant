@@ -85,7 +85,14 @@ describe("POST /api/summary", () => {
 
   it("refuse un identifiant invalide avant toute lecture", async () => {
     expect((await post("../W1")).status).toBe(400);
+    // Plus de 15 chiffres : OpenAlex mettrait 10 à 20 s à répondre (QUAL-14).
+    expect((await post(`W${"9".repeat(20)}`)).status).toBe(400);
     expect(summaries.readStoredSummary).not.toHaveBeenCalled();
+  });
+
+  it("identifiant en minuscules : normalisé, même entrée de cache que la majuscule (QUAL-14)", async () => {
+    expect((await post(id.toLowerCase())).status).toBe(200);
+    expect(summaries.readStoredSummary).toHaveBeenCalledWith("ministral-8b-latest", expect.any(Number), id);
   });
 });
 

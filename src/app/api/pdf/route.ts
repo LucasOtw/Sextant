@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { WORK_ID } from "@/lib/favorites-shared";
+import { WORK_ID } from "@/lib/ids";
 import { isPublicPdfUrl, openAccessPdfUrls } from "@/lib/format";
 import { fetchPublic } from "@/lib/public-fetch";
 import { getWork } from "@/lib/openalex";

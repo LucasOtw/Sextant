@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { type CollectionPatch, CollectionNotFoundError, CollectionOrderError, deleteCollection, updateCollection } from "@/lib/collections";
-import { MAX_FAVORITES, WORK_ID } from "@/lib/favorites-shared";
+import { MAX_FAVORITES } from "@/lib/favorites-shared";
+import { DOC_ID, WORK_ID } from "@/lib/ids";
 import { sanitizeCollectionDescription, sanitizeCollectionName } from "@/lib/collections-shared";
 
 export const runtime = "nodejs";
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -14,7 +14,7 @@ async function guard(req: Request, ctx: Ctx) {
   const { user, refused } = await requireUser(req, { bucket: "collections", maxBody: 16_384 });
   if (refused) return { refused };
   const { id } = await ctx.params;
-  if (!ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
+  if (!DOC_ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
   return { user, id };
 }
 

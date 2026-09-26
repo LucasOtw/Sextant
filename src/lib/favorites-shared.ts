@@ -1,5 +1,5 @@
 import type { Work } from "@/lib/openalex";
-import { shortId } from "@/lib/ids";
+import { shortId, WORK_ID } from "@/lib/ids";
 import type { Biblio, CitationSource } from "@/lib/citation";
 import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { cleanText } from "@/lib/text";
@@ -78,9 +78,6 @@ export function sameIdSet(current: ReadonlySet<string>, next: readonly string[])
   if (current.size !== next.length) return false;
   return next.every((id) => current.has(id));
 }
-/** Identifiant OpenAlex d'un article (W + chiffres), borné. */
-export const WORK_ID = /^W\d{1,31}$/;
-
 /** Auteurs gardés au plus dans un instantané. */
 const MAX_SNAPSHOT_AUTHORS = 50;
 

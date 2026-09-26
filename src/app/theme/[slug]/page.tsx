@@ -5,6 +5,7 @@ import { SearchBox } from "@/components/search-box";
 import { Results, SkipToResults } from "@/components/results";
 import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Badge } from "@/components/ui/badge";
+import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
 import { THEMES, themeBySlug, themeCanonical, themeMetaDescription } from "@/lib/themes";
 import { cn } from "cn";
@@ -71,7 +72,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
           // Le sujet actif est exposé (aria-current) avec l'effet du lien, qui retire le filtre : la couleur seule ne le dit pas (A11Y-37).
           <div role="group" aria-label="Filtrer par sujet" className="flex flex-wrap gap-1.5 pt-1">
             {topics.map((t) => {
-              const id = t.id.replace(/^.*\//, "");
+              const id = shortId(t.id);
               const active = search.topic === id;
               return (
                 <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined}>

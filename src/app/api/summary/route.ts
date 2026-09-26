@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { activeProvider, AiError, completeOpenAiCompatible, modelFor, type AiCompletion } from "@/lib/ai";
-import { WORK_ID } from "@/lib/favorites-shared";
+import { normalizeWorkId } from "@/lib/ids";
 import { abstractFromInvertedIndex, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { logError } from "@/lib/log";
 import { getWork, type Work } from "@/lib/openalex";
@@ -58,8 +58,9 @@ export async function POST(req: Request) {
   } catch {
     /* corps invalide */
   }
-  const id = typeof bodyId === "string" ? bodyId.toUpperCase() : "";
-  if (!WORK_ID.test(id)) {
+  // Identifiant normalisé (majuscules) : « w123 » et « W123 » partagent la même entrée de cache (QUAL-14).
+  const id = normalizeWorkId(typeof bodyId === "string" ? bodyId : null);
+  if (!id) {
     return NextResponse.json({ error: "Identifiant d'article invalide." }, { status: 400 });
   }
 

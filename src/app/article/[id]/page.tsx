@@ -43,7 +43,8 @@ import {
   venueName,
   workTitle,
 } from "@/lib/format";
-import { getWork, getWorksByIds, getWorksBySameTopic, OpenAlexError, shortId, type Work } from "@/lib/openalex";
+import { doiPath, normalizeWorkId, shortId } from "@/lib/ids";
+import { getWork, getWorksByIds, getWorksBySameTopic, OpenAlexError, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
@@ -58,7 +59,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   // Même contrôle que la page : un identifiant mal formé (« W…?per-page=1 ») ne doit pas emprunter le titre d'un vrai article.
-  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
+  if (!normalizeWorkId(id)) return { title: "Article introuvable", robots: { index: false } };
   let work: Awaited<ReturnType<typeof getWork>>;
   try {
     work = await getWork(id);
@@ -84,7 +85,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
-  if (!/^W\d+$/i.test(id)) notFound();
+  const requestedId = normalizeWorkId(id);
+  if (!requestedId) notFound();
   // Lectures personnelles (cœur, surlignages, note) lancées en même temps qu'OpenAlex, pas après (PERF-09) : le
   // chemin critique d'un connecté devient max(OpenAlex, session + Firestore). Un anonyme ne lit rien.
   const sessionUserP = isAuthEnabled() ? getCurrentUser() : Promise.resolve(null);
@@ -94,7 +96,6 @@ export default async function ArticlePage({ params }: Props) {
       listHighlights(uid, wid).catch(recover("article.highlights", [])),
       getNote(uid, wid).catch(recover("article.note", null)),
     ]);
-  const requestedId = id.toUpperCase();
   const personalP = sessionUserP.then((u) => (u ? personal(u.uid, requestedId) : null));
   let work: Work | null;
   try {
@@ -183,7 +184,7 @@ export default async function ArticlePage({ params }: Props) {
             <Stat label="DOI">
               <ExternalLink href={doiUrl} className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
-                {(work.doi ?? doiUrl).replace(/^https?:\/\/doi\.org\//i, "")}
+                {doiPath(work.doi ?? doiUrl)}
               </ExternalLink>
             </Stat>
           )}
@@ -220,7 +221,7 @@ export default async function ArticlePage({ params }: Props) {
               </p>
             </div>
             <ExternalLink
-              href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, "") : workTitle(work))}`}
+              href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? doiPath(work.doi) : workTitle(work))}`}
               className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
             >
               <SearchIcon /> Chercher une version libre

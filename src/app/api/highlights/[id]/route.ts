@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
+import { DOC_ID } from "@/lib/ids";
 import { deleteHighlight, HighlightNotFoundError, updateHighlightNote } from "@/lib/highlights";
 import { cleanText, MAX_NOTE } from "@/lib/highlights-shared";
 
 export const runtime = "nodejs";
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -12,7 +12,7 @@ async function guard(req: Request, ctx: Ctx) {
   const { user, refused } = await requireUser(req, { bucket: "highlights", maxBody: 16_384 });
   if (refused) return { refused };
   const { id } = await ctx.params;
-  if (!ID.test(id)) return { refused: NextResponse.json({ error: "Surlignage invalide." }, { status: 400 }) };
+  if (!DOC_ID.test(id)) return { refused: NextResponse.json({ error: "Surlignage invalide." }, { status: 400 }) };
   return { user, id };
 }
 

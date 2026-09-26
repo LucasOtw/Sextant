@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { verifiedSnapshot } from "@/lib/favorites";
-import { WORK_ID } from "@/lib/favorites-shared";
+import { WORK_ID } from "@/lib/ids";
 import { createHighlight, HighlightsLimitError, listHighlights } from "@/lib/highlights";
 import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, tooLong } from "@/lib/highlights-shared";
 
