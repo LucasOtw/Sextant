@@ -2,7 +2,7 @@ import { after, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
 import { forgetRevocationCheck, requireStrictUser, isAuthEnabled, SESSION_COOKIE } from "@/lib/auth";
 import { deleteAllKeys } from "@/lib/api-keys";
-import { rateLimit } from "@/lib/rate-limit";
+import { overLimit, PRIVATE, tooMany } from "@/lib/api/guard";
 import { rejectCrossSite } from "@/lib/security";
 import { logError } from "@/lib/log";
 import { setSessionHint } from "@/lib/session-shared";
@@ -26,7 +26,7 @@ export async function DELETE(req: Request) {
   if (!isAuthEnabled()) return NextResponse.json({ error: "Comptes désactivés." }, { status: 503 });
   const { ok, user, refused: denied } = await requireStrictUser();
   if (!ok) return denied;
-  if (!rateLimit(`sessions-revoke:${user.uid}`, 3, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (overLimit("sessions-revoke", user.uid)) return tooMany();
   try {
     await (await adminAuth()).revokeRefreshTokens(user.uid);
   } catch (e) {
@@ -43,7 +43,7 @@ export async function DELETE(req: Request) {
     // Nouvel essai après la réponse : l'utilisateur ne peut plus le relancer lui-même (son cookie est révoqué).
     after(() => deleteAllKeys(user.uid).catch((err) => logError("auth.sessions.deleteKeys.retry", err)));
   }
-  const res = NextResponse.json(keysPending ? { ok: true, keysPending: true } : { ok: true }, { headers: { "cache-control": "private, no-store" } });
+  const res = NextResponse.json(keysPending ? { ok: true, keysPending: true } : { ok: true }, { headers: PRIVATE });
   res.cookies.set(SESSION_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
   setSessionHint(res, "off");
   return res;

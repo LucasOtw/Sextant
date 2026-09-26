@@ -4,7 +4,7 @@ import { makeWork } from "../fixtures";
 /**
  * Condensé IA (PERF-15) : cache Firestore simulé, modèle simulé, jamais le vrai service ni la vraie base.
  */
-const ai = vi.hoisted(() => ({ activeProvider: vi.fn(), modelFor: vi.fn(), completeOpenAiCompatible: vi.fn() }));
+const ai = vi.hoisted(() => ({ activeProvider: vi.fn(), modelFor: vi.fn(), completeOpenAiCompatible: vi.fn(), generate: vi.fn() }));
 const summaries = vi.hoisted(() => ({ readStoredSummary: vi.fn(), storeSummary: vi.fn() }));
 const openalex = vi.hoisted(() => ({ getWork: vi.fn() }));
 vi.mock("@/lib/ai", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/ai")>()), ...ai }));
@@ -34,6 +34,8 @@ describe("POST /api/summary", () => {
     id = `W42000000${10 + ++n}`;
     ai.activeProvider.mockReturnValue("mistral");
     ai.modelFor.mockReturnValue("ministral-8b-latest");
+    // Point d'entrée unique de lib/ai (QUAL-22) : délègue ici au fournisseur compatible OpenAI simulé.
+    ai.generate.mockImplementation((provider, system, user) => ai.completeOpenAiCompatible(provider, system, user));
     ai.completeOpenAiCompatible.mockResolvedValue({ text: "**Question** posée\n- Méthode", complete: true, finish: "stop" });
     summaries.readStoredSummary.mockResolvedValue(null);
     openalex.getWork.mockResolvedValue(makeWork({ abstract_inverted_index: { Un: [0], résumé: [1], original: [2] } }));
@@ -85,7 +87,14 @@ describe("POST /api/summary", () => {
 
   it("refuse un identifiant invalide avant toute lecture", async () => {
     expect((await post("../W1")).status).toBe(400);
+    // Plus de 15 chiffres : OpenAlex mettrait 10 à 20 s à répondre (QUAL-14).
+    expect((await post(`W${"9".repeat(20)}`)).status).toBe(400);
     expect(summaries.readStoredSummary).not.toHaveBeenCalled();
+  });
+
+  it("identifiant en minuscules : normalisé, même entrée de cache que la majuscule (QUAL-14)", async () => {
+    expect((await post(id.toLowerCase())).status).toBe(200);
+    expect(summaries.readStoredSummary).toHaveBeenCalledWith("ministral-8b-latest", expect.any(Number), id);
   });
 });
 

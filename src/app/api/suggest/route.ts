@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { shortId, VERIFIED_TYPES, withCredentials } from "@/lib/openalex";
 import { logError } from "@/lib/log";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 
 export interface Suggestion {
   id: string;
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   const q = new URL(req.url).searchParams.get("q")?.trim().slice(0, 200) ?? "";
   if (q.length < 2) return NextResponse.json({ results: [] });
   // Une frappe = une requête : la limite laisse large à un humain et freine un script (limite par instance).
-  if (!rateLimit(`suggest:${clientIp(req)}`, 120, 60_000)) return NextResponse.json({ results: [], error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (overLimit("suggest", clientIp(req))) return NextResponse.json({ results: [], error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
   const url = new URL("https://api.openalex.org/autocomplete/works");
   url.searchParams.set("q", q);

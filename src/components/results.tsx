@@ -6,8 +6,9 @@ import { SearchFilters } from "@/components/search-filters";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkipLink } from "@/components/skip-link";
+import { formatInteger } from "@/lib/format";
 import { OpenAlexError, searchWorks, type SearchParams } from "@/lib/openalex";
-import { buildHref, resultsMessage, type RawSearchParams } from "@/lib/search-params";
+import { buildHref, lastPageOf, resultsMessage, type RawSearchParams } from "@/lib/search-params";
 
 interface Props {
   base: string;
@@ -53,16 +54,21 @@ async function List({ base, sp, params }: Props) {
   try {
     page = await searchWorks(params);
   } catch (e) {
+    // Une clé par réponse : « Réessayer » mène à la même adresse (même clé de Suspense), et un nouvel échec rendrait
+    // le même message dans le même composant, sans nouvelle annonce ni retour du focus. Remonté, le message est relu et
+    // le lien remplacé rend le focus au message.
+    const attempt = crypto.randomUUID();
     if (e instanceof OpenAlexError && e.isRateLimited) {
       return (
         <Empty
+          key={attempt}
           title="OpenAlex est très sollicité en ce moment."
           hint="Notre source limite temporairement les recherches. Réessayez dans une minute, les résultats reviendront."
           retryHref={buildHref(base, sp, {})}
         />
       );
     }
-    return <Empty title="La recherche a échoué." hint="OpenAlex ne répond pas pour le moment. Réessayez dans quelques instants." retryHref={buildHref(base, sp, {})} />;
+    return <Empty key={attempt} title="La recherche a échoué." hint="OpenAlex ne répond pas pour le moment. Réessayez dans quelques instants." retryHref={buildHref(base, sp, {})} />;
   }
 
   if (page.results.length === 0) {
@@ -72,13 +78,16 @@ async function List({ base, sp, params }: Props) {
   const total = page.meta.count;
   const current = params.page ?? 1;
   const perPage = params.perPage ?? 20;
+  const last = lastPageOf(total, perPage);
   return (
     <div className="flex flex-col gap-3">
       <ResultsStatus message={resultsMessage(total, current, perPage, params.q)} />
       {/* Titre de la liste, focalisable : cible du focus après un changement de page (sinon renvoyé sur la page, A11Y-12). */}
       <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-[0.9375rem] font-normal text-muted-foreground outline-none">
-        {new Intl.NumberFormat("fr-FR").format(total)} résultat{total > 1 ? "s" : ""}
+        {formatInteger(total)} résultat{total > 1 ? "s" : ""}
         {params.q && <> pour « {params.q} »</>}
+        {/* Lu quand le titre prend le focus après la pagination, à la place d'une annonce qui répéterait le nombre. */}
+        {last > 1 && <span className="sr-only">, page {current} sur {formatInteger(last)}</span>}
       </h2>
       <ul className="flex flex-col gap-3">
         {page.results.map((w, i) => (

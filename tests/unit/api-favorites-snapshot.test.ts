@@ -15,16 +15,17 @@ const auth = vi.hoisted(() => {
   return a;
 });
 const openalex = vi.hoisted(() => ({ getWork: vi.fn() }));
-const store = vi.hoisted(() => ({ addFavorite: vi.fn(), addToCollection: vi.fn(), storedCheck: vi.fn() }));
+const store = vi.hoisted(() => ({ addFavorite: vi.fn(), addToCollection: vi.fn(), storedCheck: vi.fn(), removeFavorite: vi.fn(), restoreFavorite: vi.fn() }));
 
 vi.mock("@/lib/auth", () => auth);
 vi.mock("@/lib/openalex", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/openalex")>()), getWork: openalex.getWork }));
-vi.mock("@/lib/favorites", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/favorites")>()), addFavorite: store.addFavorite, storedCheck: store.storedCheck }));
+vi.mock("@/lib/favorites", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/favorites")>()), addFavorite: store.addFavorite, storedCheck: store.storedCheck, removeFavorite: store.removeFavorite, restoreFavorite: store.restoreFavorite }));
 vi.mock("@/lib/collections", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/collections")>()), addToCollection: store.addToCollection }));
 
 const { checkSnapshot, verifiedSnapshot } = await import("@/lib/favorites");
 const favoritesRoute = await import("@/app/api/favorites/route");
 const collectionItemsRoute = await import("@/app/api/collections/[id]/articles/route");
+const restoreRoute = await import("@/app/api/favorites/restore/route");
 
 const forged = makeSnapshot({
   title: "Titre inventé‮ par une liste partagée",
@@ -48,6 +49,7 @@ beforeEach(() => {
   auth.getCurrentUserStrict.mockResolvedValue({ uid: `u${++n}`, email: null, name: null, picture: null, authTime: 0 });
   store.addFavorite.mockImplementation(async (_uid: string, s: unknown) => s);
   store.addToCollection.mockImplementation(async (_uid: string, _id: string, s: unknown) => ({ article: s }));
+  store.restoreFavorite.mockImplementation(async (_uid: string, s: unknown) => ({ favorite: s, collections: [] }));
   // Aucun instantané déjà stocké, sauf mention contraire.
   store.storedCheck.mockResolvedValue(null);
 });
@@ -137,5 +139,45 @@ describe("routes d'ajout : l'instantané stocké vient d'OpenAlex", () => {
     const res = await collectionItemsRoute.POST(post("/api/collections/liste1/articles", forged), { params: Promise.resolve({ id: "liste1" }) });
     expect(res.status).toBe(201);
     expect(store.addToCollection.mock.calls[0][2].title).toBe("Open access and citation advantage");
+  });
+});
+
+describe("« Annuler » un retrait (NEW-8)", () => {
+  const placement = { addedAt: "2025-01-02T03:04:05.000Z", index: 2, lists: [{ id: "liste1", index: 0 }] };
+
+  it("DELETE /api/favorites renvoie la place du favori retiré", async () => {
+    store.removeFavorite.mockResolvedValue(placement);
+    const req = new Request(`https://sextant.test/api/favorites?id=${forged.id}`, { method: "DELETE", headers: { origin: "https://sextant.test", host: "sextant.test" } });
+    const res = await favoritesRoute.DELETE(req);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, restore: placement });
+  });
+
+  it("POST /api/favorites/restore : instantané reconstruit depuis OpenAlex, place relue, une seule écriture", async () => {
+    openalex.getWork.mockResolvedValue(makeWork());
+    const res = await restoreRoute.POST(post("/api/favorites/restore", { snapshot: forged, placement: { ...placement, addedAt: "2999-01-01T00:00:00.000Z", extra: 1 } }));
+    expect(res.status).toBe(201);
+    const [uid, stored, verified, used] = store.restoreFavorite.mock.calls[0];
+    expect(uid).toBe(`u${n}`);
+    expect(stored.title).toBe("Open access and citation advantage");
+    expect(verified).toBe(true);
+    // Date future ramenée à maintenant, champ inconnu écarté.
+    expect(Date.parse(used.addedAt)).toBeLessThanOrEqual(Date.now());
+    expect(used).toEqual({ addedAt: used.addedAt, index: 2, lists: [{ id: "liste1", index: 0 }] });
+  });
+
+  it("POST /api/favorites/restore : 400 pour une place ou un article invalide, 404 pour un article inconnu", async () => {
+    expect((await restoreRoute.POST(post("/api/favorites/restore", { snapshot: forged, placement: { lists: [{ id: "a/b", index: 0 }] } }))).status).toBe(400);
+    expect((await restoreRoute.POST(post("/api/favorites/restore", { snapshot: { id: "x" }, placement }))).status).toBe(400);
+    expect((await restoreRoute.POST(post("/api/favorites/restore", forged))).status).toBe(400);
+    openalex.getWork.mockResolvedValue(null);
+    expect((await restoreRoute.POST(post("/api/favorites/restore", { snapshot: forged, placement }))).status).toBe(404);
+    expect(store.restoreFavorite).not.toHaveBeenCalled();
+  });
+
+  it("POST /api/favorites/restore : même garde que les autres écritures (autre site refusé)", async () => {
+    const req = new Request("https://sextant.test/api/favorites/restore", { method: "POST", headers: { "content-type": "application/json", origin: "https://ailleurs.example", host: "sextant.test" }, body: JSON.stringify({ snapshot: forged, placement }) });
+    expect((await restoreRoute.POST(req)).status).toBe(403);
+    expect(store.restoreFavorite).not.toHaveBeenCalled();
   });
 });

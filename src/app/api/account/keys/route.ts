@@ -1,23 +1,20 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, requireStrictUser, isRecentLogin, reauthRequired, recheckSession } from "@/lib/auth";
+import { isRecentLogin, reauthRequired, recheckSession } from "@/lib/auth";
+import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { ApiKeysLimitError, createKey, listKeys } from "@/lib/api-keys";
 import { MAX_API_KEY_NAME } from "@/lib/api-keys-shared";
-import { cleanText } from "@/lib/highlights-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { cleanText } from "@/lib/text";
 import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
-const PRIVATE = { "cache-control": "private, no-store" };
 
-export async function GET() {
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+export async function GET(req: Request) {
+  const { user, refused } = await requireUser(req, { read: true });
+  if (refused) return refused;
   try {
     return NextResponse.json({ keys: await listKeys(user.uid) }, { headers: PRIVATE });
   } catch (e) {
-    logError("account.keys.GET", e);
-    return NextResponse.json({ error: "Clés indisponibles." }, { status: 502 });
+    return serverError("account.keys.GET", e, "Clés indisponibles.");
   }
 }
 
@@ -26,11 +23,8 @@ export async function GET() {
  * moins de 10 minutes (SEC-09) : une clé survit à la session, un cookie copié ne doit pas suffire à en fabriquer une.
  */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 4_096);
+  const { user, refused } = await requireUser(req, { bucket: "keys", maxBody: 4_096 });
   if (refused) return refused;
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return denied;
-  if (!rateLimit(`keys:${user.uid}`, 10, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   if (!isRecentLogin(user)) return reauthRequired();
   // État du compte relu sans le cache de l'instance : une révocation faite ailleurs il y a moins de 5 minutes compte
   // déjà (un getUser par création de clé). La clé est de toute façon rattachée à la session (sessionAuthTime).
@@ -52,7 +46,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ key, info }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof ApiKeysLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
-    logError("account.keys.POST", e);
-    return NextResponse.json({ error: "La clé n'a pas pu être créée." }, { status: 502 });
+    return serverError("account.keys.POST", e, "La clé n'a pas pu être créée.");
   }
 }

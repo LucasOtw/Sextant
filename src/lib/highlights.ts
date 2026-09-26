@@ -2,13 +2,12 @@ import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
 import { MAX_HIGHLIGHTS, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
-import type { FavoriteSnapshot } from "@/lib/favorites-shared";
+import { snapshotForStorage, snapshotFromData } from "@/lib/favorites-shared";
+import { isoFromTimestamp } from "@/lib/firebase/decode";
 
 /** `users/{uid}/highlights/{id}` : passage, page, note, source, contexte, article dénormalisé, date. Écrit côté serveur seulement. */
 
 function toHighlight(data: Record<string, unknown>, id: string): Highlight {
-  const ts = data.createdAt as { toDate?: () => Date } | undefined;
-  const article = (data.article ?? {}) as Partial<FavoriteSnapshot>;
   return {
     id,
     workId: String(data.workId ?? ""),
@@ -18,20 +17,8 @@ function toHighlight(data: Record<string, unknown>, id: string): Highlight {
     source: (data.source as Highlight["source"]) ?? "manual",
     prefix: String(data.prefix ?? ""),
     suffix: String(data.suffix ?? ""),
-    article: {
-      id: String(article.id ?? data.workId ?? ""),
-      title: String(article.title ?? ""),
-      authors: String(article.authors ?? ""),
-      authorNames: Array.isArray(article.authorNames) ? article.authorNames : [],
-      venue: article.venue ?? null,
-      year: article.year ?? null,
-      doi: article.doi ?? null,
-      type: String(article.type ?? "article"),
-      isOa: Boolean(article.isOa),
-      citedByCount: Number(article.citedByCount ?? 0),
-      topic: article.topic ?? null,
-    },
-    createdAt: ts?.toDate?.().toISOString() ?? null,
+    article: snapshotFromData(data.article, String(data.workId ?? "")),
+    createdAt: isoFromTimestamp(data.createdAt),
   };
 }
 
@@ -71,7 +58,7 @@ export async function createHighlight(uid: string, input: HighlightInput): Promi
   await db.runTransaction(async (tx) => {
     const n = (await tx.get(col.count())).data().count;
     if (n >= MAX_HIGHLIGHTS) throw new HighlightsLimitError(`Limite de ${MAX_HIGHLIGHTS} surlignages atteinte.`);
-    tx.set(ref, { ...input, workId: input.article.id, createdAt: FieldValue.serverTimestamp() });
+    tx.set(ref, { ...input, article: snapshotForStorage(input.article), workId: input.article.id, createdAt: FieldValue.serverTimestamp() });
   });
   return { ...input, id: ref.id, workId: input.article.id, createdAt: new Date().toISOString() };
 }

@@ -17,6 +17,9 @@ function sameSecret(given: string, expected: string): boolean {
   return timingSafeEqual(h(given), h(expected));
 }
 
+/** Seuls paramètres de requête acceptés : tout autre nom est refusé. */
+const ALLOWED_PARAMS = new Set(["dryRun", "accountMonths", "keyMonths"]);
+
 /**
  * Durée passée en paramètre d'un essai à blanc : absente → undefined (la durée de lib/retention.ts s'applique),
  * illisible → null (requête refusée), sinon le nombre de mois.
@@ -33,8 +36,10 @@ function monthsParam(sp: URLSearchParams, name: string): number | null | undefin
  * configuré, la route refuse tout ; sans durée décidée, elle ne fait rien. `?dryRun=1` compte sans rien supprimer :
  * à lancer à la main avant la première vraie purge, qui est irréversible. En mode à blanc seulement, des durées
  * candidates peuvent être passées (`&accountMonths=36&keyMonths=12`) : l'essai se fait avant de les publier dans
- * lib/retention.ts, donc avant que la politique de confidentialité ne promette la purge. Hors mode à blanc, ces
- * paramètres sont ignorés : seules les durées publiées suppriment.
+ * lib/retention.ts, donc avant que la politique de confidentialité ne promette la purge. Une vraie purge ne part que
+ * d'une requête sans aucun de ces paramètres (celle de la tâche planifiée) : tout paramètre au nom inconnu (`dryrun`,
+ * `dry_run`…), toute autre valeur de `dryRun` (« true », « yes », « 0 »…) et toute durée candidate sans `dryRun=1`
+ * sont refusés (400), pour qu'un essai mal saisi ne supprime jamais rien avec les durées publiées.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -44,7 +49,18 @@ export async function GET(req: Request) {
   }
   const headers = { "cache-control": "private, no-store" };
   const sp = new URL(req.url).searchParams;
-  const dryRun = sp.get("dryRun") === "1";
+  // Avant tout : un nom mal saisi (`dryrun=1`, `dry_run=1`) serait ignoré et lancerait une vraie purge.
+  if ([...sp.keys()].some((k) => !ALLOWED_PARAMS.has(k))) {
+    return NextResponse.json({ error: "Paramètre inconnu : seuls dryRun, accountMonths et keyMonths sont acceptés." }, { status: 400, headers });
+  }
+  const rawDryRun = sp.get("dryRun");
+  if (rawDryRun !== null && rawDryRun !== "1") {
+    return NextResponse.json({ error: "Paramètre dryRun invalide : « 1 » pour un essai à blanc, absent pour la purge." }, { status: 400, headers });
+  }
+  const dryRun = rawDryRun === "1";
+  if (!dryRun && (sp.has("accountMonths") || sp.has("keyMonths"))) {
+    return NextResponse.json({ error: "Durées candidates acceptées en essai à blanc seulement (dryRun=1)." }, { status: 400, headers });
+  }
   // Purge activée = au moins une durée publiée dans lib/retention.ts (celle que lit la politique de confidentialité).
   const enabled = validMonths(RETENTION.inactiveAccountMonths) !== null || validMonths(RETENTION.unusedKeyMonths) !== null;
   let accountMonths = validMonths(RETENTION.inactiveAccountMonths);

@@ -1,15 +1,13 @@
-import { type FavoriteSnapshot, apaFromSnapshot, citeInline, sanitizeSnapshot } from "@/lib/favorites-shared";
-import { cleanText } from "@/lib/text";
-
-// Déplacé dans src/lib/text.ts (utilisé aussi par favorites-shared) ; réexporté pour les appelants existants.
-export { cleanText };
+import { citeInline, formatApa } from "@/lib/citation";
+import { type FavoriteSnapshot, sanitizeSnapshot } from "@/lib/favorites-shared";
+import { cleanText, tooLong } from "@/lib/text";
 
 /**
  * Surlignages : un passage retenu, rattaché à son article (`W…`), sa page, sa date et une note.
  * `prefix` / `suffix` = quelques caractères autour du passage, pour le retrouver dans le résumé même si le texte bouge.
  * L'article est dénormalisé (même instantané que les favoris) : la page « Mes citations » se rend sans appel OpenAlex.
  */
-export type HighlightSource = "abstract" | "pdf" | "manual";
+type HighlightSource = "abstract" | "pdf" | "manual";
 
 export interface HighlightInput {
   text: string;
@@ -30,15 +28,10 @@ export interface Highlight extends HighlightInput {
 export const MAX_HIGHLIGHTS = 2000;
 export const MAX_HIGHLIGHT_TEXT = 3000;
 export const MAX_NOTE = 1000;
-export const MAX_CONTEXT = 120;
-export const MAX_PAGE = 100_000;
+const MAX_CONTEXT = 120;
+const MAX_PAGE = 100_000;
 
 const SOURCES: HighlightSource[] = ["abstract", "pdf", "manual"];
-
-/** Le texte dépasse-t-il la borne (comptée en points de code) ? Sert à refuser plutôt que tronquer en silence. */
-export function tooLong(input: unknown, max: number): boolean {
-  return typeof input === "string" && Array.from(input).length > max;
-}
 
 export function sanitizePage(input: unknown): number | null {
   if (typeof input !== "number" || !Number.isFinite(input)) return null;
@@ -74,5 +67,5 @@ export function sourceLabel(h: Pick<Highlight, "source" | "page">): string {
 
 /** Le passage prêt à coller : citation entre guillemets, appel de citation, puis la référence complète. */
 export function citationBlock(h: Highlight, retracted = false): string {
-  return `« ${h.text} » ${citeInline(h.article, h.page)}\n\n${apaFromSnapshot(h.article, retracted)}`;
+  return `« ${h.text} » ${citeInline(h.article, h.page)}\n\n${formatApa(h.article, retracted)}`;
 }

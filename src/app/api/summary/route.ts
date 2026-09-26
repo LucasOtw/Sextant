@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { activeProvider, AiError, completeOpenAiCompatible, modelFor, type AiCompletion } from "@/lib/ai";
-import { WORK_ID } from "@/lib/favorites-shared";
+import { activeProvider, AiError, generate, modelFor } from "@/lib/ai";
+import { normalizeWorkId } from "@/lib/ids";
 import { abstractFromInvertedIndex, formatAuthors, venueName, workTitle } from "@/lib/format";
 import { logError } from "@/lib/log";
 import { getWork, type Work } from "@/lib/openalex";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 import { readStoredSummary, storeSummary } from "@/lib/summaries";
 
@@ -57,8 +58,9 @@ export async function POST(req: Request) {
   } catch {
     /* corps invalide */
   }
-  const id = typeof bodyId === "string" ? bodyId.toUpperCase() : "";
-  if (!WORK_ID.test(id)) {
+  // Identifiant normalisé (majuscules) : « w123 » et « W123 » partagent la même entrée de cache (QUAL-14).
+  const id = normalizeWorkId(typeof bodyId === "string" ? bodyId : null);
+  if (!id) {
     return NextResponse.json({ error: "Identifiant d'article invalide." }, { status: 400 });
   }
 
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
   // Condensé déjà enregistré par une autre instance ou un déploiement précédent (PERF-15). Une lecture par demande :
   // bornée par sa propre limite, large, pour ne pas ouvrir la base à des lectures sans fin.
   const ip = clientIp(req);
-  if (!rateLimit(`summary-read:${ip}`, 60, 60_000)) {
+  if (overLimit("summary-read", ip)) {
     return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
   }
   const stored = await readStoredSummary(model, PROMPT_VERSION, id);
@@ -80,7 +82,7 @@ export async function POST(req: Request) {
   }
 
   // Les caches ne coûtent rien au modèle ; la limite ne compte que les synthèses à générer (limite par instance, comme /api/pdf).
-  if (!rateLimit(`summary:${ip}`, 10, 60_000)) {
+  if (overLimit("summary", ip)) {
     return NextResponse.json({ error: "Trop de synthèses demandées, réessayez dans une minute." }, { status: 429 });
   }
 
@@ -108,7 +110,7 @@ export async function POST(req: Request) {
     .join("\n");
 
   try {
-    const { text: raw, complete, finish } = provider === "anthropic" ? await completeAnthropic(model, userContent) : await completeOpenAiCompatible(provider, SYSTEM, userContent);
+    const { text: raw, complete, finish } = await generate(provider, SYSTEM, userContent);
     const text = stripMarkdown(raw);
     // Seuls les succès complets sont gardés, jamais les erreurs : une panne passagère ne se fige pas, et un condensé
     // coupé par la limite de jetons, montré tel quel à ce visiteur, n'est servi ni aux autres ni aux déploiements suivants.
@@ -132,53 +134,4 @@ function stripMarkdown(text: string): string {
     .replace(/\*\*?([^*\n]+)\*\*?/g, "$1")
     .replace(/^\s*(?:[-*•]|\d+[.)])\s+/gm, "")
     .trim();
-}
-
-/**
- * Fournisseur de secours, inactif en production (Mistral) : le SDK n'est chargé qu'ici, à la demande, pour ne pas
- * alourdir chaque démarrage à froid de la route (PERF-20). Ses erreurs sont traduites en `AiError`, comme celles
- * des fournisseurs compatibles OpenAI.
- */
-async function completeAnthropic(model: string, userContent: string): Promise<AiCompletion> {
-  const { default: Anthropic } = await import("@anthropic-ai/sdk");
-  // Même borne que les fournisseurs compatibles OpenAI : le SDK attendrait sinon 10 min, avec deux relances.
-  const client = new Anthropic({ timeout: 20_000, maxRetries: 0 });
-  let response;
-  try {
-    response = await client.beta.messages.create({
-      model,
-      max_tokens: 1024,
-      system: SYSTEM,
-      output_config: { effort: "low" },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      messages: [{ role: "user", content: userContent }],
-    });
-  } catch (e) {
-    if (e instanceof Anthropic.AuthenticationError) {
-      logError("summary.anthropicKey", e);
-      throw new AiError("Clé API invalide côté serveur.", 500);
-    }
-    if (e instanceof Anthropic.RateLimitError) throw new AiError("Trop de demandes, réessayez dans un instant.", 429);
-    // Délai dépassé ou coupure réseau (sous-classes d'APIError sans statut HTTP).
-    if (e instanceof Anthropic.APIConnectionError) {
-      logError("summary.anthropic", e);
-      throw new AiError("Le service IA ne répond pas, réessayez.", 504);
-    }
-    if (e instanceof Anthropic.APIError) {
-      logError("summary.anthropic", e);
-      throw new AiError(`Erreur du service IA${e.status ? ` (${e.status})` : ""}.`, 502);
-    }
-    throw e;
-  }
-  if (response.stop_reason === "refusal") throw new AiError("Le modèle n'a pas pu résumer cet article.", 502);
-  const text = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-    .trim();
-  if (!text) throw new AiError("Réponse vide.", 502);
-  // Fin normale seulement : fin de tour ou séquence d'arrêt (jamais max_tokens, fenêtre de contexte, pause, refus).
-  const finish = response.stop_reason ?? null;
-  return { text, complete: finish === "end_turn" || finish === "stop_sequence", finish };
 }

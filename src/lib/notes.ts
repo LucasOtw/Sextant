@@ -1,7 +1,8 @@
 import "server-only";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
-import type { FavoriteSnapshot } from "@/lib/favorites-shared";
+import { snapshotForStorage, snapshotFromData, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { isoFromTimestamp } from "@/lib/firebase/decode";
 import { MAX_NOTES, type ArticleNote } from "@/lib/notes-shared";
 
 /** `users/{uid}/notes/{workId}` = { text, article, updatedAt }. Une note vide supprime le document. */
@@ -9,26 +10,7 @@ import { MAX_NOTES, type ArticleNote } from "@/lib/notes-shared";
 export class NotesLimitError extends Error {}
 
 function toNote(data: Record<string, unknown>, workId: string): ArticleNote {
-  const ts = data.updatedAt as { toDate?: () => Date } | undefined;
-  const a = (data.article ?? {}) as Partial<FavoriteSnapshot>;
-  return {
-    workId,
-    text: String(data.text ?? ""),
-    article: {
-      id: String(a.id ?? workId),
-      title: String(a.title ?? ""),
-      authors: String(a.authors ?? ""),
-      authorNames: Array.isArray(a.authorNames) ? a.authorNames : [],
-      venue: a.venue ?? null,
-      year: a.year ?? null,
-      doi: a.doi ?? null,
-      type: String(a.type ?? "article"),
-      isOa: Boolean(a.isOa),
-      citedByCount: Number(a.citedByCount ?? 0),
-      topic: a.topic ?? null,
-    },
-    updatedAt: ts?.toDate?.().toISOString() ?? null,
-  };
+  return { workId, text: String(data.text ?? ""), article: snapshotFromData(data.article, workId), updatedAt: isoFromTimestamp(data.updatedAt) };
 }
 
 export async function getNote(uid: string, workId: string): Promise<ArticleNote | null> {
@@ -89,8 +71,8 @@ export async function setNote(uid: string, article: FavoriteSnapshot, text: stri
       if (n >= MAX_NOTES) throw new NotesLimitError(`Limite de ${MAX_NOTES} notes atteinte : supprimez-en avant d'en écrire une nouvelle.`);
     }
     const keepStored = current.exists && !verified && current.get("article") !== undefined;
-    if (keepStored) stored = current.get("article") as FavoriteSnapshot;
-    tx.set(ref, { text, ...(keepStored ? {} : { article }), workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    if (keepStored) stored = snapshotFromData(current.get("article"), article.id);
+    tx.set(ref, { text, ...(keepStored ? {} : { article: snapshotForStorage(article) }), workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
   return { workId: article.id, text, article: stored ?? article, updatedAt: new Date().toISOString() };
 }

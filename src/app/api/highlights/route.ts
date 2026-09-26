@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, requireStrictUser } from "@/lib/auth";
+import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { verifiedSnapshot } from "@/lib/favorites";
-import { WORK_ID } from "@/lib/favorites-shared";
+import { WORK_ID } from "@/lib/ids";
 import { createHighlight, HighlightsLimitError, listHighlights } from "@/lib/highlights";
-import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, tooLong } from "@/lib/highlights-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
-import { logError } from "@/lib/log";
+import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput } from "@/lib/highlights-shared";
+import { tooLong } from "@/lib/text";
 
 export const runtime = "nodejs";
-const PRIVATE = { "cache-control": "private, no-store" };
-const tooMany = (uid: string) => !rateLimit(`highlights:${uid}`, 90, 60_000);
-const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
 
 /**
  * Surlignages d'un article (`?work=W…`), relus par la fiche à l'affichage : au retour arrière, Next réutilise la page
@@ -20,24 +15,19 @@ const TOO_MANY = () => NextResponse.json({ error: "Trop de requêtes, réessayez
 export async function GET(req: Request) {
   const work = new URL(req.url).searchParams.get("work") ?? "";
   if (!WORK_ID.test(work)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
-  const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
-  if (tooMany(user.uid)) return TOO_MANY();
+  const { user, refused } = await requireUser(req, { bucket: "highlights", read: true });
+  if (refused) return refused;
   try {
     return NextResponse.json({ highlights: await listHighlights(user.uid, work) }, { headers: PRIVATE });
   } catch (e) {
-    logError("highlights.GET", e, { work });
-    return NextResponse.json({ error: "Surlignages indisponibles." }, { status: 502 });
+    return serverError("highlights.GET", e, "Surlignages indisponibles.", { work });
   }
 }
 
 /** Enregistre un passage. Corps : { text, page?, note?, source, prefix?, suffix?, article }. */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 32_768);
+  const { user, refused } = await requireUser(req, { bucket: "highlights", maxBody: 32_768 });
   if (refused) return refused;
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return denied;
-  if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
   try {
     body = await req.json();
@@ -56,7 +46,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ highlight: await createHighlight(user.uid, { ...input, article }) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof HighlightsLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
-    logError("highlights.POST", e);
-    return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
+    return serverError("highlights.POST", e, "L'enregistrement a échoué.");
   }
 }

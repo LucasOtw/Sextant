@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { countDistinct, filterFolded, fold, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount } from "@/lib/list-filter";
+import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount } from "@/lib/list-filter";
+import { fold } from "@/lib/text";
 import { sameIdSet, sameSnapshot } from "@/lib/favorites-shared";
 import { sameCollections, type Collection } from "@/lib/collections-shared";
 import { makeSnapshot } from "../fixtures";

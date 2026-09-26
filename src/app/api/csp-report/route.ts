@@ -1,5 +1,6 @@
 import { summarizeCspReport } from "@/lib/csp";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
 import { rejectLargeBody } from "@/lib/security";
 
 export const runtime = "nodejs";
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const refused = rejectLargeBody(req, 16_384);
   if (refused) return new Response(null, { status: 413 });
   // Un navigateur envoie un rapport par violation : on en garde assez pour voir un motif, pas une rafale.
-  if (!rateLimit(`csp:${clientIp(req)}`, 20, 60_000)) return new Response(null, { status: 204 });
+  if (overLimit("csp", clientIp(req))) return new Response(null, { status: 204 });
   let body: unknown;
   try {
     body = JSON.parse((await req.text()).slice(0, 16_384));

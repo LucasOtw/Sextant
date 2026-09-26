@@ -5,8 +5,9 @@ import { SearchBox } from "@/components/search-box";
 import { Results, SkipToResults } from "@/components/results";
 import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Badge } from "@/components/ui/badge";
+import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
-import { THEMES, themeBySlug, themeCanonical, themeMetaDescription } from "@/lib/themes";
+import { themeBySlug, themePageMeta } from "@/lib/themes";
 import { cn } from "cn";
 import { recover } from "@/lib/log";
 
@@ -15,18 +16,19 @@ interface Props {
   searchParams: Promise<RawSearchParams>;
 }
 
-export function generateStaticParams() {
-  return THEMES.map((t) => ({ slug: t.slug }));
-}
+/** Nombre de sujets en pastilles : le même appel (mis en cache) sert la page et ses métadonnées. */
+const TOPICS_SHOWN = 14;
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const theme = themeBySlug((await params).slug);
-  const { page } = parseSearchParams(await searchParams);
+  const { page, topic } = parseSearchParams(await searchParams);
   // La page dans le titre : l'annonceur de routes de Next lit le nouveau titre à la pagination (A11Y-12).
-  const title = pagedTitle(theme?.name ?? "Thématique", page);
-  if (!theme) return { title };
-  // Description propre au thème (au lieu de celle du site, répétée sur les 16 pages) et adresse canonique (QUAL-18).
-  return { title, description: themeMetaDescription(theme), alternates: { canonical: themeCanonical(theme.slug, page) } };
+  if (!theme) return { title: pagedTitle("Thématique", page) };
+  // Page d'un sujet : son nom dans le titre et la description (liste des sujets en cache, la même que celle de la page).
+  const topics = topic ? await getTopicsForField(theme.fieldId, TOPICS_SHOWN).catch(recover("theme.topics.meta", null)) : [];
+  // Description propre au thème ou au sujet (au lieu de celle du site, répétée sur les 16 pages) et adresse canonique (QUAL-18).
+  const meta = themePageMeta(theme, page, topic, topics);
+  return { title: pagedTitle(meta.name, page), description: meta.description, alternates: { canonical: meta.canonical } };
 }
 
 export default async function ThemePage({ params, searchParams }: Props) {
@@ -45,7 +47,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
     filterDefaults = { sort: "cited", from: String(year - 1) };
   }
 
-  const topics = await getTopicsForField(theme.fieldId, 14).catch(recover("theme.topics", []));
+  const topics = await getTopicsForField(theme.fieldId, TOPICS_SHOWN).catch(recover("theme.topics", []));
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
@@ -71,7 +73,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
           // Le sujet actif est exposé (aria-current) avec l'effet du lien, qui retire le filtre : la couleur seule ne le dit pas (A11Y-37).
           <div role="group" aria-label="Filtrer par sujet" className="flex flex-wrap gap-1.5 pt-1">
             {topics.map((t) => {
-              const id = t.id.replace(/^.*\//, "");
+              const id = shortId(t.id);
               const active = search.topic === id;
               return (
                 <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined}>

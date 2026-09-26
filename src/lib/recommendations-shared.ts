@@ -1,5 +1,6 @@
 /** « Pour vous » : ce que renvoie /api/recommendations, et les préférences locales (articles écartés). */
 import type { Work } from "@/lib/openalex";
+import { readStoredJson, removeStored, writeStored } from "@/lib/client/storage";
 
 export interface RecommendationSeed {
   id: string;
@@ -12,42 +13,38 @@ export interface Recommendation {
   reason: { kind: "related" | "topic"; topic?: string; seeds: RecommendationSeed[] };
 }
 
+/**
+ * Identifiants envoyés à /api/recommendations, au plus : consultés, favoris, écartés. Le client coupe ses listes à ces
+ * bornes et la route n'en lit pas davantage : une seule valeur à changer pour les deux (QUAL-24).
+ */
+export const RECO_LIMITS = { seen: 12, fav: 30, hide: 200 } as const;
+
 export const HIDDEN_KEY = "sextant:reco-hidden";
-const MAX_HIDDEN = 200;
 
 export function readHidden(): string[] {
-  try {
-    const raw = localStorage.getItem(HIDDEN_KEY);
-    const list = raw ? (JSON.parse(raw) as unknown) : [];
-    return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
+  const list = readStoredJson(HIDDEN_KEY);
+  return Array.isArray(list) ? list.filter((x): x is string => typeof x === "string") : [];
 }
 
 export function hideRecommendation(id: string) {
-  try {
-    const list = [id, ...readHidden().filter((x) => x !== id)].slice(0, MAX_HIDDEN);
-    localStorage.setItem(HIDDEN_KEY, JSON.stringify(list));
-  } catch {
-    /* stockage indisponible */
-  }
+  writeStored(HIDDEN_KEY, JSON.stringify([id, ...readHidden().filter((x) => x !== id)].slice(0, RECO_LIMITS.hide)));
 }
 
 export function unhideRecommendation(id: string) {
-  try {
-    localStorage.setItem(HIDDEN_KEY, JSON.stringify(readHidden().filter((x) => x !== id)));
-  } catch {
-    /* stockage indisponible */
-  }
+  writeStored(HIDDEN_KEY, JSON.stringify(readHidden().filter((x) => x !== id)));
 }
 
 export function clearHidden() {
-  try {
-    localStorage.removeItem(HIDDEN_KEY);
-  } catch {
-    /* stockage indisponible */
-  }
+  removeStored(HIDDEN_KEY);
+}
+
+/**
+ * État de « Pour vous » après une réponse du serveur : affichée s'il reste des suggestions, ou si des suggestions ont
+ * été écartées sur cet appareil. Sans cela, une réponse vide (tout écarté, sur plusieurs rechargements) masquerait la
+ * section et avec elle « Réafficher les suggestions écartées », seul recours hors du toast « Annuler ».
+ */
+export function forYouStatus(items: number, hidden: number): "ready" | "hidden" {
+  return items > 0 || hidden > 0 ? "ready" : "hidden";
 }
 
 /** Phrase « pourquoi » d'une suggestion. */

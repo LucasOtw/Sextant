@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { isTypingTarget } from "@/lib/focus";
 import { isQuietRoute } from "@/lib/quiet-routes";
+import { hasStored, writeStored } from "@/lib/client/storage";
 
 const McpAnnouncementContent = dynamic(() => import("@/components/mcp-announcement-content"), { ssr: false });
 
@@ -29,11 +30,8 @@ export function McpAnnouncement() {
 
   useEffect(() => {
     if (pathname.startsWith("/compte") || isQuietRoute(pathname)) return;
-    try {
-      if (!localStorage.getItem(WELCOME_KEY) || localStorage.getItem(KEY)) return;
-    } catch {
-      return; /* stockage indisponible : on n'insiste pas */
-    }
+    // Accueil pas encore vu, annonce déjà vue, ou stockage indisponible (null) : on n'insiste pas.
+    if (hasStored(WELCOME_KEY) !== true || hasStored(KEY) !== false) return;
     const events = ["keydown", "input", "pointerdown"] as const;
     let cancelled = false;
     const timer = setTimeout(() => {
@@ -57,11 +55,7 @@ export function McpAnnouncement() {
   }, []);
 
   function close() {
-    try {
-      localStorage.setItem(KEY, String(Date.now()));
-    } catch {
-      /* stockage indisponible */
-    }
+    writeStored(KEY, String(Date.now()));
     setOpen(false);
   }
 

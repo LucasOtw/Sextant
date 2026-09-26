@@ -1,6 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { ResultsLink } from "@/components/results-status";
 import { buttonVariants } from "@/components/ui/button";
+import { formatInteger } from "@/lib/format";
 import { lastPageOf } from "@/lib/search-params";
 import { cn } from "cn";
 
@@ -36,7 +37,7 @@ export function Pagination({ page, perPage, total, hrefFor }: Props) {
     <nav aria-label="Pagination" className="flex items-center justify-between gap-4 pt-4">
       {link(page - 1, "Précédent", <ChevronLeftIcon />, page <= 1)}
       <span className="text-sm text-muted-foreground">
-        Page {page} sur {new Intl.NumberFormat("fr-FR").format(lastPage)}
+        Page {page} sur {formatInteger(lastPage)}
       </span>
       {link(page + 1, "Suivant", <ChevronRightIcon />, page >= lastPage)}
     </nav>

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { recordLogin } from "@/lib/account";
+import { adminAuth } from "@/lib/firebase/admin";
 import { getCurrentUser, isAuthEnabled, SESSION_COOKIE, SESSION_MAX_AGE_MS } from "@/lib/auth";
 import { WRONG_ACCOUNT } from "@/lib/reauth-shared";
 import { isExpectedAuthError, logError } from "@/lib/log";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { PRIVATE } from "@/lib/api/guard";
 import { setSessionHint, toClientUser } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
@@ -57,38 +59,12 @@ export async function POST(req: Request) {
       }
     }
     const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_MAX_AGE_MS });
-    const db = await adminDb();
-    const { FieldValue, Timestamp } = await import("firebase-admin/firestore");
-    // Date d'inscription : celle de Firebase Auth, identique à chaque connexion. La réécrire ne change donc rien, et
-    // un profil créé avant ce correctif retrouve sa vraie date à la connexion suivante.
-    const creationTime = await auth
-      .getUser(decoded.uid)
-      .then((u) => u.metadata.creationTime)
-      .catch((e) => {
-        logError("session.getUser", e);
-        return undefined;
-      });
-    const createdAt = creationTime ? new Date(creationTime) : null;
-
-    // Profil minimal, créé ou rafraîchi à chaque connexion (une seule écriture).
-    await db
-      .doc(`users/${decoded.uid}`)
-      .set(
-        {
-          email: decoded.email ?? null,
-          name: decoded.name ?? null,
-          picture: decoded.picture ?? null,
-          lastLoginAt: FieldValue.serverTimestamp(),
-          ...(createdAt && !Number.isNaN(createdAt.getTime()) ? { createdAt: Timestamp.fromDate(createdAt) } : {}),
-        },
-        { merge: true },
-      )
-      // Profil non écrit : la connexion reste valable (le cookie suffit), mais la panne doit se voir.
-      .catch((e) => logError("session.profile", e));
+    // Profil `users/{uid}` créé ou rafraîchi (lib/account) : un échec d'écriture ne bloque pas la connexion.
+    await recordLogin(decoded);
 
     // L'identité revient avec la réponse : l'en-tête passe à l'avatar sans autre requête (pages en cache, PERF-01).
     const user = toClientUser({ uid: decoded.uid, name: decoded.name ?? null, email: decoded.email ?? null, picture: decoded.picture ?? null });
-    const res = NextResponse.json({ ok: true, user }, { headers: { "cache-control": "private, no-store" } });
+    const res = NextResponse.json({ ok: true, user }, { headers: PRIVATE });
     res.cookies.set(SESSION_COOKIE, sessionCookie, { ...cookieOptions, maxAge: SESSION_MAX_AGE_MS / 1000 });
     setSessionHint(res, "on");
     return res;

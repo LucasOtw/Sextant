@@ -6,6 +6,7 @@ import Link from "next/link";
 import { BugIcon, ChevronUpIcon, LightbulbIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -15,11 +16,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { feedbackCounts, feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind, type FeedbackTotals } from "@/lib/feedback-shared";
 import { announce } from "@/lib/announce";
+import { api, errorMessage } from "@/lib/client/api";
 import { voteLabel } from "@/lib/labels";
 import { REPORT_SECTION, reportHref } from "@/lib/report";
 import { cn } from "cn";
+import { DATE_SHORT } from "@/lib/dates";
 
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 const SORTS = [
   { value: "votes", label: "Les plus votés" },
   { value: "recent", label: "Les plus récents" },
@@ -75,13 +77,12 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
     apply(!was, Math.max(0, item.votes + (was ? -1 : 1)));
     setPending((p) => new Set(p).add(item.id));
     try {
-      const res = await fetch(`/api/feedback/${item.id}/vote`, { method: "POST" });
-      const data = (await res.json().catch(() => ({}))) as { votes?: number; voted?: boolean; error?: string };
-      if (!res.ok || typeof data.votes !== "number") throw new Error(data.error ?? "Le vote n'a pas pu être enregistré.");
+      const data = await api<{ votes?: number; voted?: boolean }>(`/api/feedback/${item.id}/vote`, { method: "POST", fallback: "Le vote n'a pas pu être enregistré." });
+      if (typeof data.votes !== "number") throw new Error();
       apply(Boolean(data.voted), data.votes);
     } catch (e) {
       apply(was, item.votes);
-      toast.error(e instanceof Error ? e.message : "Le vote n'a pas pu être enregistré.");
+      toast.error(errorMessage(e, "Le vote n'a pas pu être enregistré."));
     } finally {
       setPending((p) => {
         const n = new Set(p);
@@ -137,11 +138,11 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
       {loadError && items.length === 0 ? (
         <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
       ) : shown.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center">
-          <p className="text-lg font-medium">{items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}</p>
-          <p className="mt-1 text-base text-muted-foreground">Un bug repéré, une idée qui vous manque ? Soyez le premier à la proposer.</p>
-          <Button variant="outline" className="mt-5 bg-card" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
-        </div>
+        <EmptyState
+          title={items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}
+          hint="Un bug repéré, une idée qui vous manque ? Soyez le premier à la proposer."
+          action={<Button variant="outline" className="mt-5 bg-card" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {shown.map((item) => (
@@ -207,7 +208,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
             {item.kind === "bug" ? <BugIcon aria-hidden /> : <LightbulbIcon aria-hidden />} {KIND_LABEL[item.kind]}
           </Badge>
           {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
-          {item.createdAt && <span className="text-xs text-muted-foreground">{DATE.format(new Date(item.createdAt))}</span>}
+          {item.createdAt && <span className="text-xs text-muted-foreground">{DATE_SHORT.format(new Date(item.createdAt))}</span>}
           {/* Nom accessible qui commence par le texte visible (WCAG 2.5.3) et dit quel sujet est visé. */}
           <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="ml-auto text-xs text-muted-foreground underline-offset-3 hover:text-foreground hover:underline">
             Signaler
@@ -269,14 +270,13 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
     }
     setBusy(true);
     try {
-      const res = await fetch("/api/feedback", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, title, description }) });
-      const data = (await res.json().catch(() => ({}))) as { item?: FeedbackItem; error?: string };
-      if (!res.ok || !data.item) throw new Error(data.error ?? "La publication a échoué.");
-      onCreated(data.item);
+      const { item } = await api<{ item?: FeedbackItem }>("/api/feedback", { method: "POST", json: { kind, title, description }, fallback: "La publication a échoué." });
+      if (!item) throw new Error();
+      onCreated(item);
       toast.success(kind === "bug" ? "Bug signalé, merci !" : "Idée publiée, merci !");
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "La publication a échoué.");
+      toast.error(errorMessage(err, "La publication a échoué."));
     } finally {
       setBusy(false);
     }

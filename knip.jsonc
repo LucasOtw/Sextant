@@ -1,0 +1,14 @@
+{
+  // Recherche du code mort (QUAL-28) : `npm run knip` (knip lancé par npx à une version figée, sans dépendance ajoutée au projet ; monter la version à la main).
+  // Les tests, leurs configurations et leurs modules de substitution sont des points d'entrée : un export qui ne sert
+  // qu'à un test n'est pas signalé.
+  "$schema": "https://unpkg.com/knip@6.38.0/schema-jsonc.json",
+  "entry": ["tests/unit/**/*.test.ts", "tests/emulator/**/*.ts", "tests/stubs/*.ts", "vitest.emulator.config.mts"],
+  // Relais exigé par components.json (aliases.utils) pour le CLI shadcn.
+  "ignore": ["src/lib/utils.ts"],
+  // API shadcn volontairement complète : sous-composants gardés même s'ils ne servent pas encore. Un composant
+  // entier jamais importé reste signalé.
+  "ignoreIssues": { "src/components/ui/**": ["exports", "types"] },
+  // Next résout « server-only » lui-même : le paquet npm est facultatif d'après sa documentation.
+  "ignoreDependencies": ["server-only"]
+}

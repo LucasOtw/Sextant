@@ -8,13 +8,17 @@ import {
   openAccessPdfUrls,
   openAccessUrl,
   publisherUrl,
-  RETRACTED_APA_SUFFIX,
-  toApa,
-  toBibtex,
   truncateWords,
 } from "@/lib/format";
+import { formatApa, formatBibtex, RETRACTED_APA_SUFFIX } from "@/lib/citation";
+import { citationFromWork } from "@/lib/favorites-shared";
+import type { Work } from "@/lib/openalex";
 import { safeHttpUrl } from "@/lib/text";
 import { location, makeWork } from "../fixtures";
+
+/** Références de la fiche article : le module de citation commun, sur la source tirée de la notice OpenAlex (QUAL-02). */
+const toApa = (w: Work) => formatApa(citationFromWork(w), Boolean(w.is_retracted));
+const toBibtex = (w: Work) => formatBibtex(citationFromWork(w), Boolean(w.is_retracted));
 
 describe("isPublicPdfUrl (garde SSRF du relais PDF)", () => {
   it.each([
@@ -190,7 +194,7 @@ describe("citations depuis un article OpenAlex", () => {
     const bib = toBibtex(makeWork({ title: "Coûts & bénéfices_100%", is_retracted: true }));
     expect(bib).toBe(
       [
-        "@article{piwowar2018cots,",
+        "@article{piwowar2018couts,", // QUAL-08 : « û » translittéré, plus supprimé
         "  title = {Coûts \\& bénéfices\\_100\\%},",
         "  author = {Heather Piwowar and Jason Priem},",
         "  year = {2018},",

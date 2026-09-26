@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { adminAuth, isAdminConfigured } from "@/lib/firebase/admin";
+import { hasFirebasePublicConfig } from "@/lib/firebase/config";
 import { accountState, forgetAccountState, type AccountState } from "@/lib/account-state";
 import { NextResponse } from "next/server";
 import { isExpectedAuthError, logError } from "@/lib/log";
@@ -37,10 +38,7 @@ export function reauthRequired(): NextResponse {
 
 /** Les comptes sont actifs si le client et le serveur sont configurés. */
 export function isAuthEnabled(): boolean {
-  return (
-    isAdminConfigured() &&
-    Boolean(process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID && process.env.NEXT_PUBLIC_FIREBASE_APP_ID)
-  );
+  return isAdminConfigured() && hasFirebasePublicConfig();
 }
 
 /**
@@ -127,14 +125,14 @@ export const readSessionWithReason = cache((): Promise<SessionRead> => readSessi
 export const getCurrentUserStrict = cache(async (): Promise<SessionUser | null> => (await readSessionStrictWithReason()).user);
 
 /** Lecture stricte avec la raison d'une absence d'utilisateur (même lecture que `getCurrentUserStrict`, mémorisée). */
-export const readSessionStrictWithReason = cache((): Promise<SessionRead> => readSession(true));
+const readSessionStrictWithReason = cache((): Promise<SessionRead> => readSession(true));
 
 /**
  * Réponse d'une écriture sans utilisateur strict : 503 si la vérification de la session est en panne (Firebase Auth
  * injoignable, clés publiques indisponibles), 401 sinon. Une panne ne doit pas se présenter comme « Non connecté » :
  * le client ouvrirait la fenêtre de connexion, et la victime d'un vol qui veut tout couper lirait un faux diagnostic.
  */
-export function strictRefusal(failure: SessionRead["failure"], message = "Non connecté."): NextResponse {
+function strictRefusal(failure: SessionRead["failure"], message = "Non connecté."): NextResponse {
   if (failure === "unavailable") {
     return NextResponse.json(
       { error: "Vérification de session momentanément impossible, réessayez." },

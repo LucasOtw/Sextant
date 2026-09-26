@@ -13,9 +13,15 @@ export interface Retention {
   inactiveAccountMonths: number | null;
   /** Clé d'assistant IA supprimée après ce nombre de mois sans usage (depuis sa création si elle n'a jamais servi). */
   unusedKeyMonths: number | null;
+  /**
+   * Signalements et messages reçus par courriel, gardés dans la messagerie de l'éditeur au plus ce nombre de mois après la
+   * fin de l'échange. Aucune purge automatique (ils ne sont pas dans Sextant) : l'éditeur les supprime lui-même. Tant
+   * qu'elle vaut `null`, la politique dit qu'aucune suppression automatique n'est prévue.
+   */
+  messageMonths: number | null;
 }
 
-export const RETENTION: Retention = { inactiveAccountMonths: null, unusedKeyMonths: null };
+export const RETENTION: Retention = { inactiveAccountMonths: null, unusedKeyMonths: null, messageMonths: null };
 
 /** Durée valide : nombre entier de mois, au moins 1. Toute autre valeur désactive la purge (échec prudent). */
 export function validMonths(months: number | null): number | null {

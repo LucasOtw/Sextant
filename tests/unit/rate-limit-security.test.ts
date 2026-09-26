@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { clientIp, rateLimit, sweepExpired } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
 
 describe("rateLimit", () => {
@@ -45,6 +45,35 @@ describe("rateLimit", () => {
     expect(rateLimit("test:actif", 1, 60_000)).toBe(false);
     expect(rateLimit("test:apres-menage", 1, 60_000)).toBe(false);
     expect(rateLimit("test:masse:0", 1, 1_000)).toBe(true);
+  });
+});
+
+describe("ménage des compteurs (durée annoncée par la politique de confidentialité)", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-26T12:00:00Z"));
+    sweepExpired(Date.now() + 24 * 3_600_000);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("sur une instance peu sollicitée, un compteur expiré est retiré à la requête suivante (une minute au plus après)", () => {
+    rateLimit("pdf-head:203.0.113.7", 60, 60_000);
+    vi.advanceTimersByTime(60_000);
+    // Une autre adresse passe : le compteur de 203.0.113.7, fenêtre terminée, disparaît sans attendre 10 000 clés.
+    rateLimit("pdf-head:198.51.100.2", 60, 60_000);
+    expect(sweepExpired(Date.now())).toBe(1);
+  });
+
+  it("un compteur d'une heure (feedback-post) reste le temps de sa fenêtre, puis part", () => {
+    rateLimit("feedback-post:uid", 5, 3_600_000);
+    vi.advanceTimersByTime(3_599_999);
+    rateLimit("pdf-head:x", 60, 60_000);
+    expect(sweepExpired(Date.now())).toBe(2);
+    vi.advanceTimersByTime(60_001);
+    rateLimit("pdf-head:y", 60, 60_000);
+    expect(sweepExpired(Date.now())).toBe(1);
   });
 });
 

@@ -1,23 +1,14 @@
 import { NextResponse } from "next/server";
-import { requireStrictUser, readSessionWithReason } from "@/lib/auth";
+import { readSessionWithReason } from "@/lib/auth";
+import { overLimit, PRIVATE, requireUser, serverError, TOO_MANY_MESSAGE } from "@/lib/api/guard";
 import { addFavorite, checkSnapshot, FavoritesLimitError, listFavoriteIds, removeFavorite, storedCheck } from "@/lib/favorites";
-import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
+import { sanitizeSnapshot } from "@/lib/favorites-shared";
+import { WORK_ID } from "@/lib/ids";
 import { listCollections } from "@/lib/collections";
 import { logError, recover } from "@/lib/log";
 import { readCookie, SESSION_COOKIE, SESSION_HINT_COOKIE, setSessionHint, toClientUser } from "@/lib/session-shared";
 
 export const runtime = "nodejs";
-
-const PRIVATE = { "cache-control": "private, no-store" };
-
-/** 90 requêtes par minute et par utilisateur : large pour un humain, bloquant pour une boucle. */
-function tooMany(uid: string) {
-  return !rateLimit(`favorites:${uid}`, 90, 60_000);
-}
-const TOO_MANY_MESSAGE = "Trop de requêtes, réessayez dans une minute.";
-const TOO_MANY = () => NextResponse.json({ error: TOO_MANY_MESSAGE }, { status: 429 });
 
 /**
  * Par défaut : les identifiants seulement (une lecture Firestore), ce qu'il faut pour les cœurs.
@@ -44,7 +35,7 @@ export async function GET(req: Request) {
     return res;
   }
   // L'identité accompagne aussi le 429 : sans elle, l'en-tête resterait sans menu (ni déconnexion, ni « Mon compte »).
-  if (tooMany(user.uid)) return NextResponse.json({ error: TOO_MANY_MESSAGE, user: toClientUser(user) }, { status: 429, headers: PRIVATE });
+  if (overLimit("favorites", user.uid)) return NextResponse.json({ error: TOO_MANY_MESSAGE, user: toClientUser(user) }, { status: 429, headers: PRIVATE });
   const params = new URL(req.url).searchParams;
   try {
     const withCollections = params.get("collections") === "1";
@@ -60,11 +51,8 @@ export async function GET(req: Request) {
 
 /** Ajoute (ou rafraîchit) un favori. Corps : l'instantané de l'article. */
 export async function POST(req: Request) {
-  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
+  const { user, refused } = await requireUser(req, { bucket: "favorites", maxBody: 16_384 });
   if (refused) return refused;
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return denied;
-  if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
   try {
     body = await req.json();
@@ -81,25 +69,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ favorite: await addFavorite(user.uid, checked.snapshot, checked.verified) }, { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
-    logError("favorites.POST", e);
-    return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
+    return serverError("favorites.POST", e, "L'enregistrement a échoué.");
   }
 }
 
-/** Retire un favori : `?id=W…`. */
+/** Retire un favori : `?id=W…`. `restore` : sa place d'avant le retrait, que « Annuler » renvoie à /api/favorites/restore. */
 export async function DELETE(req: Request) {
-  const refused = rejectCrossSite(req);
+  const { user, refused } = await requireUser(req, { bucket: "favorites" });
   if (refused) return refused;
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return denied;
-  if (tooMany(user.uid)) return TOO_MANY();
   const id = new URL(req.url).searchParams.get("id") ?? "";
   if (!WORK_ID.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });
   try {
-    await removeFavorite(user.uid, id);
-    return NextResponse.json({ ok: true }, { headers: PRIVATE });
+    return NextResponse.json({ ok: true, restore: await removeFavorite(user.uid, id) }, { headers: PRIVATE });
   } catch (e) {
-    logError("favorites.DELETE", e);
-    return NextResponse.json({ error: "La suppression a échoué." }, { status: 502 });
+    return serverError("favorites.DELETE", e, "La suppression a échoué.");
   }
 }

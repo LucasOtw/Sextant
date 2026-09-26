@@ -8,32 +8,26 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountActions } from "@/components/auth/account-actions";
 import { McpKeys } from "@/components/account/mcp-keys";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { accountCreatedAt, readProfile } from "@/lib/account";
 import { logError } from "@/lib/log";
 import { countFavorites } from "@/lib/favorites";
 import { countCollections } from "@/lib/collections";
 import { countHighlights } from "@/lib/highlights";
 import { countNotes } from "@/lib/notes";
+import { initialsOf } from "@/lib/format";
+import { DATE_LONG } from "@/lib/dates";
 
 export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
 
-async function memberSince(uid: string, userDoc: Promise<DocumentSnapshot>): Promise<string | null> {
+/** « Membre depuis le … » : date d'inscription (lib/account, repli sur Firebase Auth) ; illisible : rien d'affiché. */
+async function memberSince(uid: string, profile: Promise<DocumentSnapshot>): Promise<string | null> {
   try {
-    const snap = await userDoc;
-    const ts = snap.get("createdAt") as { toDate?: () => Date } | undefined;
-    // Repli sur Firebase Auth : un profil sans date (écriture de connexion ratée) garde sa vraie date d'inscription.
-    const d = ts?.toDate?.() ?? (await authCreationDate(uid));
-    return d ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d) : null;
+    const d = await accountCreatedAt(uid, await profile);
+    return d ? DATE_LONG.format(d) : null;
   } catch (e) {
     logError("compte.memberSince", e);
     return null;
   }
-}
-
-async function authCreationDate(uid: string): Promise<Date | null> {
-  const creationTime = (await (await adminAuth()).getUser(uid)).metadata.creationTime;
-  const d = creationTime ? new Date(creationTime) : null;
-  return d && !Number.isNaN(d.getTime()) ? d : null;
 }
 
 /** Un compteur illisible s'affiche « — » (et se journalise) plutôt que « 0 », qui ferait croire la bibliothèque vide. */
@@ -50,7 +44,7 @@ export default async function AccountPage() {
   if (!user) redirect("/");
 
   // `users/{uid}` lu une seule fois : il porte à la fois la date d'inscription et le compteur de favoris.
-  const userDoc = adminDb().then((db) => db.doc(`users/${user.uid}`).get());
+  const userDoc = readProfile(user.uid);
   const [since, favoritesCount, collectionsCount, highlightsCount, notesCount] = await Promise.all([
     memberSince(user.uid, userDoc),
     countOrNull("compte.countFavorites", userDoc.then((snap) => countFavorites(user.uid, snap))),
@@ -58,7 +52,7 @@ export default async function AccountPage() {
     countOrNull("compte.countHighlights", countHighlights(user.uid)),
     countOrNull("compte.countNotes", countNotes(user.uid)),
   ]);
-  const initials = (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
+  const initials = initialsOf(user);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
@@ -84,7 +78,7 @@ export default async function AccountPage() {
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Tile icon={<BookmarkIcon />} label="Favoris" value={favoritesCount === null ? "—" : String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
             <Tile icon={<FolderIcon />} label="Listes" value={collectionsCount === null ? "—" : String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
-            <Tile icon={<HighlighterIcon />} label="Citations" value={highlightsCount === null ? "—" : String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
+            <Tile icon={<HighlighterIcon />} label="Mes citations" value={highlightsCount === null ? "—" : String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
             <Tile icon={<NotebookPenIcon />} label="Notes" value={notesCount === null ? "—" : String(notesCount)} hint="Ce que vous retenez d'un article, sur sa fiche." />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>
@@ -101,9 +95,10 @@ export default async function AccountPage() {
             <div className="flex items-start gap-3">
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
               <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
-                Votre compte contient votre nom, votre e-mail et votre photo Google, les dates de création du compte et de dernière
-                connexion, et ce que vous enregistrez dans Sextant : favoris, listes et leurs liens de partage, citations, notes, clés
-                d'assistants IA, vos sujets et vos votes sur « Bugs et idées ». Aucun suivi. Détails dans la{" "}
+                Votre compte contient votre nom, votre e-mail et votre photo Google, les dates de création du compte, de dernière
+                connexion et de dernier usage d'une clé d'assistant IA, et ce que vous enregistrez dans Sextant : favoris, le dernier
+                favori retiré et les dates des favoris retirés récemment (pour « Annuler »), listes et leurs liens de partage, citations, notes, clés d'assistants IA, vos sujets et
+                vos votes sur « Bugs et idées ». Aucun suivi. Détails dans la{" "}
                 <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
               </p>
             </div>

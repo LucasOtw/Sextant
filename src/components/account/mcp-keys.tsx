@@ -9,10 +9,10 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
+import { useClientValue } from "@/hooks/use-client-value";
 import { useCopy } from "@/hooks/use-copy";
 import { neighbourEquivalent } from "@/lib/focus";
-
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
+import { DATE_SHORT } from "@/lib/dates";
 
 const COPY_FAILURE = "Presse-papiers indisponible : sélectionnez le texte pour le copier.";
 
@@ -53,7 +53,8 @@ export function McpKeys() {
   const [busy, setBusy] = useState(false);
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
   const [reauth, setReauth] = useState(false);
-  const [origin, setOrigin] = useState("https://sextant-psi.vercel.app");
+  /** Origine de la page, pour l'adresse du connecteur : celle de production au rendu serveur (QUAL-31). */
+  const origin = useClientValue(() => window.location.origin, "https://sextant-psi.vercel.app");
   /** Clé dont la révocation attend confirmation (A11Y-24) : une clé révoquée ne se récupère pas. */
   const [revoking, setRevoking] = useState<ApiKeyInfo | null>(null);
   /** Ouverture de la confirmation, à part : le nom de la clé reste affiché pendant l'animation de fermeture. */
@@ -70,8 +71,6 @@ export function McpKeys() {
   const limitId = useId();
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- l'origine n'est connue qu'au navigateur
-    setOrigin(window.location.origin);
     fetch("/api/account/keys", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error())))
       .then((d: { keys: ApiKeyInfo[] }) => setKeys(d.keys))
@@ -140,8 +139,8 @@ export function McpKeys() {
                 <p className="flex items-center gap-2 font-medium"><KeyRoundIcon className="size-4 text-accent-brand" aria-hidden /> {k.name}</p>
                 <p className="text-xs text-muted-foreground">
                   <code>{k.prefix}…</code>
-                  {k.createdAt && <> · créée le {DATE.format(new Date(k.createdAt))}</>}
-                  {" · "}{k.lastUsedAt ? `utilisée le ${DATE.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
+                  {k.createdAt && <> · créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
+                  {" · "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
               </div>
               <Button

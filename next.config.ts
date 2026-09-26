@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 import { buildCsp, STATIC_PAGES } from "./src/lib/csp";
 import { HTML_LIMITED_BOTS } from "./src/lib/html-bots";
+import { missingLegalIdentity } from "./src/lib/site";
+
+// Build de production Vercel sans éditeur ni adresse de contact réels (vides ou valeurs d'exemple) : avertissement bien
+// visible dans le journal de build, sans bloquer le déploiement (un correctif urgent doit pouvoir partir). Les pages
+// légales affichent alors « [à compléter] » et les liens « Signaler » mènent à la procédure des mentions légales.
+if (process.env.VERCEL_ENV === "production") {
+  const missing = missingLegalIdentity(process.env);
+  if (missing.length) console.warn(`⚠ Identité légale manquante ou d'exemple en production : ${missing.join(", ")} (voir .env.example).`);
+}
 
 /**
  * En-têtes de sécurité fixes (SEC-03, étape 1), sur tout le site sauf les pages d'aide Firebase relayées

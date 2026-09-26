@@ -7,14 +7,14 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_ARTICLE_NOTE, type ArticleNote as Note } from "@/lib/notes-shared";
+import { api, errorMessage, needsSignIn } from "@/lib/client/api";
+import { DATE_TIME } from "@/lib/dates";
 
 interface Props {
   enabled: boolean;
   snapshot: FavoriteSnapshot;
   initial: Note | null;
 }
-
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
 /** « Ma note » : un texte libre sur l'article, enregistré tout seul quelques instants après la frappe. */
 export function ArticleNote({ enabled, snapshot, initial }: Props) {
@@ -42,20 +42,18 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         const value = pending.current;
         setStatus("saving");
         try {
-          const res = await fetch(url, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: value, article: snapshot }) });
-          const data = (await res.json().catch(() => ({}))) as { note?: Note | null; error?: string };
-          if (res.status === 401) {
-            setSignIn(true);
-            setStatus("idle");
-            return;
-          }
-          if (!res.ok) throw new Error(data.error ?? "Échec.");
+          const data = await api<{ note?: Note | null }>(url, { method: "PUT", json: { text: value, article: snapshot } });
           sent.current = value;
           setSavedAt(data.note?.updatedAt ?? null);
           setStatus("saved");
         } catch (e) {
+          if (needsSignIn(e)) {
+            setSignIn(true);
+            setStatus("idle");
+            return;
+          }
           setStatus("error");
-          toast.error(e instanceof Error ? e.message : "La note n'a pas pu être enregistrée.");
+          toast.error(errorMessage(e, "La note n'a pas pu être enregistrée."));
           return;
         }
       }
@@ -169,7 +167,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
           {status === "saving" && <span className="flex items-center gap-1"><Loader2Icon className="size-3 animate-spin" aria-hidden /> Enregistrement…</span>}
           {status === "saved" && <span className="flex items-center gap-1"><CheckIcon className="size-3" aria-hidden /> Enregistré</span>}
           {status === "error" && <span className="text-destructive">Non enregistré</span>}
-          {status === "idle" && savedAt && <span>Modifié le {DATE.format(new Date(savedAt))}</span>}
+          {status === "idle" && savedAt && <span>Modifié le {DATE_TIME.format(new Date(savedAt))}</span>}
         </p>
       </div>
       <Textarea

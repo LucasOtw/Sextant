@@ -9,11 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HighlightItem } from "@/components/highlights/highlight-item";
+import { ArticleMeta } from "@/components/article-card";
+import { EmptyState } from "@/components/empty-state";
 import { ShowMore, useRevealFocus } from "@/components/show-more";
 import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
 import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { undoToast } from "@/lib/undo-toast";
+import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 interface Props {
@@ -24,9 +27,9 @@ interface Props {
   retracted?: string[];
 }
 
-async function jsonOrError(res: Response) {
-  const data = (await res.json().catch(() => ({}))) as { error?: string };
-  if (!res.ok) throw new Error(data.error ?? "Échec.");
+/** Échec d'une modification : une session expirée le dit (plutôt que le « Non connecté. » brut de la route). */
+function citationError(e: unknown, fallback: string): string {
+  return needsSignIn(e) ? "Votre session a expiré : reconnectez-vous pour modifier vos citations." : errorMessage(e, fallback);
 }
 
 const ALL = "__all__";
@@ -70,24 +73,23 @@ export function CitationsList({ initial, collections, loadError = false, retract
     const previous = items.find((h) => h.id === id)?.note ?? "";
     setItems((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
     try {
-      await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ note }) }));
+      await api(`/api/highlights/${id}`, { method: "PATCH", json: { note } });
       return true;
     } catch (e) {
       setItems((prev) => prev.map((h) => (h.id === id ? { ...h, note: previous } : h)));
-      toast.error(e instanceof Error ? e.message : "La note n'a pas pu être enregistrée.");
+      toast.error(citationError(e, "La note n'a pas pu être enregistrée."));
       return false;
     }
   }
 
   async function restore(removed: Highlight) {
     try {
-      const res = await fetch("/api/highlights", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix, article: removed.article }) });
-      const data = (await res.json().catch(() => ({}))) as { highlight?: Highlight; error?: string };
-      if (!res.ok || !data.highlight) throw new Error(data.error ?? "Échec.");
-      const created = data.highlight;
+      const { text, page, note, source, prefix, suffix, article } = removed;
+      const { highlight: created } = await api<{ highlight?: Highlight }>("/api/highlights", { method: "POST", json: { text, page, note, source, prefix, suffix, article } });
+      if (!created) throw new Error();
       setItems((prev) => [created, ...prev]);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "La citation n'a pas pu être rétablie.");
+      toast.error(citationError(e, "La citation n'a pas pu être rétablie."));
     }
   }
 
@@ -96,13 +98,13 @@ export function CitationsList({ initial, collections, loadError = false, retract
     const removed = previous.find((h) => h.id === id);
     setItems((prev) => prev.filter((h) => h.id !== id));
     try {
-      await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
+      await api(`/api/highlights/${id}`, { method: "DELETE" });
       if (removed) undoToast("Citation supprimée.", () => void restore(removed));
       else toast("Citation supprimée.");
       return true;
     } catch (e) {
       setItems(previous);
-      toast.error(e instanceof Error ? e.message : "La suppression a échoué.");
+      toast.error(citationError(e, "La suppression a échoué."));
       return false;
     }
   }
@@ -118,24 +120,26 @@ export function CitationsList({ initial, collections, loadError = false, retract
 
   if (loadError && items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <p className="text-lg font-medium">Vos citations sont indisponibles pour le moment.</p>
-        <p className="mt-1 text-base text-muted-foreground">Le service de stockage ne répond pas. Vos citations sont intactes, réessayez dans un instant.</p>
-      </div>
+      <EmptyState
+        title="Vos citations sont indisponibles pour le moment."
+        hint="Le service de stockage ne répond pas. Vos citations sont intactes, réessayez dans un instant."
+      />
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <p ref={countRef} tabIndex={-1} className="text-lg font-medium outline-none">Aucune citation pour l'instant.</p>
-        <p className="mt-1 text-base text-muted-foreground">
-          Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton « Surligner » apparaît. Le passage est gardé ici, avec l'article, la page et la date.
-        </p>
-        <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
-          <SearchIcon className="size-4" /> Lancer une recherche
-        </Link>
-      </div>
+      <EmptyState
+        titleRef={countRef}
+        focusableTitle
+        title="Aucune citation pour l'instant."
+        hint="Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton « Surligner » apparaît. Le passage est gardé ici, avec l'article, la page et la date."
+        action={
+          <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
+            <SearchIcon className="size-4" /> Lancer une recherche
+          </Link>
+        }
+      />
     );
   }
 
@@ -168,9 +172,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
               <h2 className="title-display text-xl leading-snug">
                 <Link href={`/article/${group[0].workId}`} className="hover:text-accent-brand">{a.title}</Link>
               </h2>
-              <p className="mt-1 text-[0.9375rem] text-muted-foreground">
-                {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
-              </p>
+              <ArticleMeta authors={a.authors} venue={a.venue} year={a.year} className="mt-1" />
               <ul className="mt-3 flex flex-col gap-2">
                 {group.map((h) => (
                   <HighlightItem key={h.id} highlight={h} retracted={retractedIds.has(h.workId)} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} deferPaint />

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getQualityWorksByIds, getRecentByTopic, getSeedMeta, type Work } from "@/lib/openalex";
-import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { overLimit } from "@/lib/api/guard";
+import { clientIp } from "@/lib/rate-limit";
+import { RECO_LIMITS } from "@/lib/recommendations-shared";
 import { interleaveRecommendations, parseIds, planRecommendations, seedWeights, topSeedIds } from "@/lib/recommendations-rank";
 import { logError, recover } from "@/lib/log";
 
@@ -44,11 +46,11 @@ function slim(w: Work): Work {
  * bord ne servirait de toute façon à personne d'autre : chaque combinaison seen/fav/hide est propre à un visiteur.
  */
 export async function GET(req: Request) {
-  if (!rateLimit(`reco:${clientIp(req)}`, 30, 60_000)) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
+  if (overLimit("reco", clientIp(req))) return NextResponse.json({ error: "Trop de requêtes." }, { status: 429 });
   const params = new URL(req.url).searchParams;
-  const seen = parseIds(params.get("seen"), 12);
-  const fav = parseIds(params.get("fav"), 30);
-  const hide = parseIds(params.get("hide"), 200);
+  const seen = parseIds(params.get("seen"), RECO_LIMITS.seen);
+  const fav = parseIds(params.get("fav"), RECO_LIMITS.fav);
+  const hide = parseIds(params.get("hide"), RECO_LIMITS.hide);
   const cache = { "cache-control": "private, max-age=300" };
   if (seen.length === 0 && fav.length === 0) return NextResponse.json({ items: [] }, { headers: cache });
 

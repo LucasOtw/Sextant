@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:emulator": "firebase emulators:exec --only firestore,auth --project demo-sextant 'vitest run -c vitest.emulator.config.mts'",
     "test:a11y": "playwright test tests/a11y.spec.ts",
+    "knip": "npx --yes knip@6.38.0",
     "postinstall": "node scripts/copy-pdfjs-assets.mjs"
   },
   "dependencies": {

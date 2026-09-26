@@ -3,9 +3,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { ArrowDownIcon, ArrowUpIcon, CopyIcon, DownloadIcon, FolderIcon, Link2Icon, LockOpenIcon, PencilIcon, PlusIcon, QuoteIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
-import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { ArrowDownIcon, ArrowUpIcon, FolderIcon, Link2Icon, PencilIcon, PlusIcon, RefreshCwIcon, SearchIcon, SettingsIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -14,16 +12,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CollectionDialog } from "@/components/collections/collection-dialog";
 import { CollectionPicker } from "@/components/collections/collection-picker";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
+import { ArticleBadges, ArticleMeta, ArticleTitle, CitationCount } from "@/components/article-card";
+import { BibtexActions } from "@/components/bibtex-actions";
+import { EmptyState } from "@/components/empty-state";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import type { Collection } from "@/lib/collections-shared";
-import { bibtexAll, fileSlug, type Favorite } from "@/lib/favorites-shared";
+import { fileSlug, type Favorite } from "@/lib/favorites-shared";
 import { ShareDialog } from "@/components/collections/share-dialog";
 import { ShowMore, useRevealFocus } from "@/components/show-more";
-import { formatCount, typeLabel } from "@/lib/format";
 import { moveLabel } from "@/lib/labels";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 import { cn } from "cn";
+import { DATE_SHORT } from "@/lib/dates";
 
 const SORTS = [
   { value: "added", label: "Ajout récent" },
@@ -32,8 +33,6 @@ const SORTS = [
   { value: "cited", label: "Citations" },
   { value: "title", label: "Titre" },
 ];
-
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
 /** Seules les premières cartes entrent en animation : au-delà, des centaines d'animations partiraient ensemble. */
 const ANIMATED_ROWS = 12;
@@ -152,6 +151,8 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const { containerRef: listRef, reveal } = useRevealFocus<HTMLUListElement>(":scope > li");
   /** Favori retiré sous le focus (cœur) : le cœur de l'article suivant, sinon du précédent, sinon le compteur (A11Y-19). */
   const countRef = useRef<HTMLParagraphElement>(null);
+  /** Suppression confirmée : la fenêtre rend le focus au compteur, pas au déclencheur disparu. */
+  const listDeleted = useRef(false);
   useFocusRecovery(listRef, ":scope > li", () => countRef.current);
   /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
   const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
@@ -188,34 +189,13 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
     (same ?? [...buttons].find((b) => !b.disabled))?.focus();
   });
 
-  async function copyBibtex() {
-    try {
-      await navigator.clipboard.writeText(bibtexAll(shown, retractedIds));
-      toast.success(`BibTeX copié : ${shown.length} référence${shown.length > 1 ? "s" : ""}.`);
-    } catch {
-      toast.error("Presse-papiers indisponible.");
-    }
-  }
-
-  function downloadBibtex() {
-    const blob = new Blob([bibtexAll(shown, retractedIds)], { type: "application/x-bibtex;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = collection ? `sextant-${fileSlug(collection.name)}.bib` : "sextant-favoris.bib";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 2000);
-  }
-
   if (loadError && !favorites.ready) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <p className="text-lg font-medium">Vos favoris sont indisponibles pour le moment.</p>
-        <p className="mt-1 text-base text-muted-foreground">Le service de stockage ne répond pas. Vos favoris sont intacts, réessayez dans un instant.</p>
-        <Button variant="outline" className="mt-5" onClick={() => void favorites.refresh()}><RefreshCwIcon /> Réessayer</Button>
-      </div>
+      <EmptyState
+        title="Vos favoris sont indisponibles pour le moment."
+        hint="Le service de stockage ne répond pas. Vos favoris sont intacts, réessayez dans un instant."
+        action={<Button variant="outline" className="mt-5" onClick={() => void favorites.refresh()}><RefreshCwIcon /> Réessayer</Button>}
+      />
     );
   }
 
@@ -262,7 +242,17 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       />
       {collection && <ShareDialog open={sharing} onOpenChange={setSharing} collection={collection} />}
       <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent
+          className="sm:max-w-sm"
+          // Liste supprimée : son en-tête et le déclencheur « Gérer » disparaissent, le focus serait rendu à <body>. Il va
+          // au compteur d'articles (ou au titre de l'état vide), repère stable après la suppression (A11Y-19). Sur
+          // « Annuler », Base UI le rend au déclencheur, comme d'habitude.
+          finalFocus={() => {
+            const deleted = listDeleted.current;
+            listDeleted.current = false;
+            return deleted && countRef.current?.isConnected ? countRef.current : true;
+          }}
+        >
           <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
           <DialogDescription className="text-[0.9375rem] text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
@@ -274,6 +264,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
               onClick={async () => {
                 if (!collection) return;
                 const id = collection.id;
+                listDeleted.current = true;
                 setDeleting(false);
                 if (await favorites.deleteCollection(id)) select(null);
               }}
@@ -288,15 +279,17 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
 
   if (all.length === 0 && collections.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed p-10 text-center">
-        <p ref={countRef} tabIndex={-1} className="text-lg font-medium outline-none">Aucun favori pour l'instant.</p>
-        <p className="mt-1 text-base text-muted-foreground">
-          Le cœur sur une carte ou une fiche article l'enregistre ici, retrouvable sur tous vos appareils.
-        </p>
-        <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
-          <SearchIcon className="size-4" /> Lancer une recherche
-        </Link>
-      </div>
+      <EmptyState
+        titleRef={countRef}
+        focusableTitle
+        title="Aucun favori pour l'instant."
+        hint="Le cœur sur une carte ou une fiche article l'enregistre ici, retrouvable sur tous vos appareils."
+        action={
+          <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
+            <SearchIcon className="size-4" /> Lancer une recherche
+          </Link>
+        }
+      />
     );
   }
 
@@ -347,10 +340,14 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
           <SelectTrigger className="h-10! sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
           <SelectContent>{sorts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
-        <div className="flex gap-2">
-          <Button variant="outline" className="h-10" onClick={copyBibtex} disabled={shown.length === 0}><CopyIcon /> Copier BibTeX</Button>
-          <Button variant="outline" className="h-10" onClick={downloadBibtex} disabled={shown.length === 0}><DownloadIcon /> Télécharger .bib</Button>
-        </div>
+        <BibtexActions
+          articles={shown}
+          retracted={retracted}
+          filename={collection ? `sextant-${fileSlug(collection.name)}.bib` : "sextant-favoris.bib"}
+          copiedMessage={`BibTeX copié : ${shown.length} référence${shown.length > 1 ? "s" : ""}.`}
+          className="flex-nowrap"
+          buttonClassName="h-10"
+        />
       </div>
 
       <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
@@ -359,12 +356,11 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       </p>
 
       {shown.length === 0 && collection && !q && (
-        <div className="rounded-xl border border-dashed p-8 text-center">
-          <p className="text-lg font-medium">Cette liste est vide.</p>
-          <p className="mt-1 text-base text-muted-foreground">
-            Depuis « Tous » ou une fiche article, l'icône dossier range un article dans « {collection.name} ».
-          </p>
-        </div>
+        <EmptyState
+          className="p-8"
+          title="Cette liste est vide."
+          hint={<>Depuis « Tous » ou une fiche article, l'icône dossier range un article dans « {collection.name} ».</>}
+        />
       )}
 
       <ul ref={listRef} className="flex flex-col gap-3">
@@ -375,6 +371,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             index={i}
             isLast={i === shown.length - 1}
             manualOrder={manualOrder}
+            titleAs={collection ? "h3" : "h2"}
             lists={collection ? NO_LISTS : favorites.listsOf(f.id)}
             retracted={retractedIds.has(f.id)}
             onSelect={select}
@@ -400,6 +397,8 @@ interface RowProps {
   index: number;
   isLast: boolean;
   manualOrder: boolean;
+  /** Sous le titre de la liste (h2) : h3 ; vue « Tous », directement sous le h1 de la page : h2 (QUAL-13). */
+  titleAs: "h2" | "h3";
   /** Listes qui contiennent l'article (tableau stable tant que les listes ne changent pas). */
   lists: Collection[];
   retracted: boolean;
@@ -411,7 +410,7 @@ interface RowProps {
  * Une carte de /favoris. Mémoïsée : un clic sur un cœur ou un retour sur l'onglet ne re-rend que les cœurs et les
  * sélecteurs de liste (abonnés au contexte), pas le reste de chaque carte (PERF-12).
  */
-const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, manualOrder, lists, retracted, onSelect, onMove }: RowProps) {
+const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, manualOrder, titleAs, lists, retracted, onSelect, onMove }: RowProps) {
   const animated = i < ANIMATED_ROWS;
   return (
     <li
@@ -425,15 +424,8 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
           manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28",
         )}
       >
-        <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-          <Badge variant="secondary">{typeLabel(f.type)}</Badge>
-          {f.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
-          {retracted && <Badge variant="destructive">Rétracté</Badge>}
-          {f.topic && <span className="truncate">· {f.topic}</span>}
-        </div>
-        <h3 className="title-display text-xl leading-snug">
-          <Link href={`/article/${f.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{f.title}</Link>
-        </h3>
+        <ArticleBadges type={f.type} isOa={f.isOa} retracted={retracted} topic={f.topic} />
+        <ArticleTitle href={`/article/${f.id}`} as={titleAs} className="text-xl leading-snug">{f.title}</ArticleTitle>
         {/* Actions après le titre dans le DOM (le focus et le lecteur d'écran découvrent l'article d'abord), en haut à droite à l'écran (A11Y-23). */}
         <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
           {manualOrder && (
@@ -445,12 +437,10 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
           <CollectionPicker snapshot={f} />
           <FavoriteButton snapshot={f} initialActive />
         </div>
-        <p className="text-[0.9375rem] text-muted-foreground">
-          {f.authors}{f.venue && <> · <span className="italic">{f.venue}</span></>}{f.year && <> · {f.year}</>}
-        </p>
+        <ArticleMeta authors={f.authors} venue={f.venue} year={f.year} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">
-          <span className="flex items-center gap-1"><QuoteIcon className="size-4 text-accent-brand" aria-hidden />{formatCount(f.citedByCount)} citation{f.citedByCount > 1 ? "s" : ""}</span>
-          {f.addedAt && <span>· ajouté le {DATE.format(new Date(f.addedAt))}</span>}
+          <span className="flex items-center gap-1"><CitationCount count={f.citedByCount} /></span>
+          {f.addedAt && <span>· ajouté le {DATE_SHORT.format(new Date(f.addedAt))}</span>}
           {lists.length > 0 && (
             <span className="flex flex-wrap items-center gap-1.5">
               ·{" "}

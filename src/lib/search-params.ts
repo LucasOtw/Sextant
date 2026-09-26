@@ -1,3 +1,5 @@
+import { AUTHOR_ID, normalizeId, TOPIC_ID, WORK_ID } from "@/lib/ids";
+import { formatInteger } from "@/lib/format";
 import type { SearchParams } from "@/lib/openalex";
 
 /** Paramètres d'URL de la recherche : extraits de `components/results.tsx` pour être testés sans React. */
@@ -24,15 +26,9 @@ export const LANGUAGES = [
   { value: "it", label: "Italien" },
 ] as const;
 
-/** Identifiants OpenAlex courts attendus dans l'URL : sujet `T…`, article `W…`, auteur `A…`. */
-const TOPIC_ID = /^T\d{1,15}$/i;
-const WORK_ID = /^W\d{1,15}$/i;
-const AUTHOR_ID = /^A\d{1,15}$/i;
-
-/** L'identifiant en majuscules s'il a la forme attendue, sinon undefined (le filtre est ignoré). */
+/** Identifiant OpenAlex court attendu dans l'URL (sujet `T…`, article `W…`, auteur `A…`), en majuscules ; sinon undefined (le filtre est ignoré). */
 function openAlexId(v: string | undefined, re: RegExp): string | undefined {
-  const id = v?.trim();
-  return id && re.test(id) ? id.toUpperCase() : undefined;
+  return normalizeId(v, re) ?? undefined;
 }
 
 function oneOf(v: string | undefined, options: readonly { value: string }[]): string | undefined {
@@ -88,7 +84,7 @@ export function buildHref(base: string, sp: RawSearchParams, patch: Record<strin
 }
 
 /** OpenAlex limite la pagination simple à 10 000 résultats. */
-export const MAX_RESULTS = 10_000;
+const MAX_RESULTS = 10_000;
 
 /** Numéro de la dernière page atteignable (au moins 1). */
 export function lastPageOf(total: number, perPage: number): number {
@@ -105,8 +101,8 @@ export function pagedTitle(title: string, page: number | undefined): string {
 
 /** Message lu aux lecteurs d'écran à l'arrivée d'une liste de résultats (région d'annonce, WCAG 4.1.3). */
 export function resultsMessage(total: number, page: number, perPage: number, q?: string): string {
-  const n = new Intl.NumberFormat("fr-FR").format(total);
+  const n = formatInteger(total);
   const count = `${n} résultat${total > 1 ? "s" : ""}${q ? ` pour « ${q} »` : ""}`;
   const last = lastPageOf(total, perPage);
-  return last > 1 ? `${count}, page ${page} sur ${new Intl.NumberFormat("fr-FR").format(last)}.` : `${count}.`;
+  return last > 1 ? `${count}, page ${page} sur ${formatInteger(last)}.` : `${count}.`;
 }

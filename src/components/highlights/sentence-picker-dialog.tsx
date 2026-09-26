@@ -20,8 +20,11 @@ interface Props {
   lang?: string;
   /** Phrase déjà comprise dans un passage retenu : cochée et inactive. */
   isHighlighted: (sentence: Sentence) => boolean;
-  /** Enregistre les phrases cochées (indices) ; true si tout a été enregistré (la fenêtre se ferme). */
-  onSave: (indexes: number[]) => Promise<boolean>;
+  /**
+   * Enregistre les phrases cochées (indices) ; `ok` si tout a été enregistré (la fenêtre se ferme), sinon `error`, la
+   * raison du refus, dite dans la fenêtre.
+   */
+  onSave: (indexes: number[]) => Promise<{ ok: boolean; error?: string }>;
   /** Contrôles au-dessus de la liste (choix de la page dans le lecteur PDF). */
   children?: React.ReactNode;
 }
@@ -48,11 +51,17 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
   const [checked, setChecked] = useState<Set<number>>(() => new Set());
   const [shown, setShown] = useState(sentences);
   const [busy, setBusy] = useState(false);
+  /**
+   * Échec d'enregistrement dit dans la fenêtre : le toast d'erreur est monté dans <body>, invisible et inerte quand le
+   * lecteur PDF est en plein écran natif (seul son conteneur s'affiche), où la fenêtre restait ouverte sans explication.
+   */
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Autre page du PDF : nouvelles phrases, on repart d'une liste vierge.
   if (shown !== sentences) {
     setShown(sentences);
     setChecked(new Set());
+    setSaveError(null);
   }
 
   function toggle(i: number, on: boolean) {
@@ -71,9 +80,13 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
     e.preventDefault();
     if (pending.length === 0 || busy) return;
     setBusy(true);
-    const ok = await onSave(pending);
+    setSaveError(null);
+    const result = await onSave(pending);
     setBusy(false);
-    if (ok) onClose();
+    if (result.ok) return onClose();
+    // La raison du refus quand elle est connue : « Réessayez » ne vaut que pour un échec passager (réseau, serveur).
+    const failed = `${pending.length > 1 ? "Certaines phrases n'ont" : "La phrase n'a"} pas pu être surlignée${pending.length > 1 ? "s" : ""}.`;
+    setSaveError(`${failed} ${result.error ?? "Réessayez."}`);
   }
 
   return (
@@ -116,6 +129,7 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
           </ul>
         </fieldset>
       )}
+      {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy || pending.length === 0}>

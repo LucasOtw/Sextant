@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Popover } from "@base-ui/react/popover";
 import { BuildingIcon, ExternalLinkIcon, FileTextIcon, SearchIcon } from "lucide-react";
+import { shortId } from "@/lib/ids";
 import type { AuthorProfile } from "@/lib/openalex";
 import { formatCount } from "@/lib/format";
 import { cn } from "cn";
@@ -49,8 +50,8 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
 
-  const id = authorId?.replace(/^.*\//, "") ?? null;
-  const instId = institutionId?.replace(/^.*\//, "") ?? null;
+  const id = authorId ? shortId(authorId) : null;
+  const instId = institutionId ? shortId(institutionId) : null;
 
   // Profil chargé à la première ouverture seulement.
   useEffect(() => {

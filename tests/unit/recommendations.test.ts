@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { interleaveRecommendations, parseIds, planRecommendations, seedWeights, topSeedIds, type SeedMeta } from "@/lib/recommendations-rank";
-import { reasonText } from "@/lib/recommendations-shared";
+import { forYouStatus, reasonText } from "@/lib/recommendations-shared";
 import { makeWork } from "../fixtures";
 
 const OA = "https://openalex.org/";
@@ -111,5 +111,13 @@ describe("reasonText", () => {
     expect(reasonText({ kind: "related", seeds: [{ id: "W1", title: "A" }] })).toBe("Proche de « A »");
     expect(reasonText({ kind: "related", seeds: [{ id: "W1", title: "A" }, { id: "W2", title: "B" }] })).toBe("Proche de « A » et « B »");
     expect(reasonText({ kind: "topic", topic: "Climat", seeds: [] })).toBe("Récent et cité sur « Climat », comme vos lectures");
+  });
+});
+
+describe("forYouStatus", () => {
+  it("réponse vide mais suggestions écartées sur l'appareil : section gardée, avec « Réafficher »", () => {
+    expect(forYouStatus(0, 9)).toBe("ready");
+    expect(forYouStatus(3, 0)).toBe("ready");
+    expect(forYouStatus(0, 0)).toBe("hidden");
   });
 });

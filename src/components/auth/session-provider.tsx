@@ -9,7 +9,7 @@ import { hasSessionHint, SESSION_HINT_COOKIE, type ClientUser } from "@/lib/sess
  * - `anonymous` : aucun indice de connexion ;
  * - `signed-in` : connecté d'après l'indice ; `user` arrive avec la première réponse de GET /api/favorites.
  */
-export type SessionStatus = "unknown" | "anonymous" | "signed-in";
+type SessionStatus = "unknown" | "anonymous" | "signed-in";
 
 interface SessionContext {
   status: SessionStatus;

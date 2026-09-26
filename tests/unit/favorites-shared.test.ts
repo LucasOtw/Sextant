@@ -1,29 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  apaFromSnapshot,
-  bibField,
-  bibtexAll,
-  citeInline,
-  fileSlug,
-  sanitizeSnapshot,
-  snapshotFromWork,
-  splitAuthorName,
-  WORK_ID,
-} from "@/lib/favorites-shared";
+import { fileSlug, insertAt, sameSnapshot, sanitizePlacement, sanitizeSnapshot, snapshotForStorage, snapshotFromData, snapshotFromWork } from "@/lib/favorites-shared";
+import { MAX_COLLECTIONS } from "@/lib/collections-shared";
 import { makeSnapshot, makeWork } from "../fixtures";
-
-describe("WORK_ID (identifiant d'article accepté par les routes)", () => {
-  it.each(["W1", "W4200000001", `W${"9".repeat(31)}`])("accepte %s", (id) => {
-    expect(WORK_ID.test(id)).toBe(true);
-  });
-
-  it.each(["", "W", "w123", "A123", "W12a", "W123 ", " W123", "../W1", "W1/notes", `W${"9".repeat(32)}`, "https://openalex.org/W1"])(
-    "refuse %j",
-    (id) => {
-      expect(WORK_ID.test(id)).toBe(false);
-    },
-  );
-});
 
 describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
   it("garde un instantané valide tel quel", () => {
@@ -76,78 +54,20 @@ describe("sanitizeSnapshot (instantané envoyé par le client)", () => {
     expect(loose).toMatchObject({ year: null, citedByCount: 0, type: "article", isOa: true, venue: null, topic: null, authorNames: [] });
   });
 
+  it("DOI : forme 10.NNNN/suffixe exigée, accolades, antislash et blancs refusés (injection BibTeX)", () => {
+    const doi = (value: string) => sanitizeSnapshot(makeSnapshot({ doi: value }))!.doi;
+    expect(doi("https://doi.org/10.7717/peerj.4375")).toBe("https://doi.org/10.7717/peerj.4375");
+    expect(doi("https://doi.org/10.1/x}, title = {\\input{/etc/passwd}")).toBeNull();
+    expect(doi("https://doi.org/10.1000/a b")).toBeNull();
+    expect(doi("https://doi.org/10.1000/a\\b")).toBeNull();
+    expect(doi("https://doi.org/pas-un-doi")).toBeNull();
+    expect(doi(`https://doi.org/10.1000/${"x".repeat(300)}`)).toBeNull();
+  });
+
   it("snapshotFromWork produit un instantané que l'assainissement accepte sans rien changer", () => {
     const s = snapshotFromWork(makeWork());
     expect(s.id).toBe("W4200000001");
     expect(sanitizeSnapshot(s)).toEqual(s);
-  });
-});
-
-describe("bibField", () => {
-  it("échappe les caractères spéciaux LaTeX", () => {
-    expect(bibField("50% & $5 #1 a_b")).toBe("50\\% \\& \\$5 \\#1 a\\_b");
-    expect(bibField("a\\b")).toBe("a\\textbackslash{}b");
-  });
-
-  it("équilibre les accolades : orphelines fermantes retirées, ouvrantes refermées", () => {
-    expect(bibField("a}b")).toBe("ab");
-    expect(bibField("{a")).toBe("{a}");
-    expect(bibField("{{a}")).toBe("{{a}}");
-    expect(bibField("}{DNA}")).toBe("{DNA}");
-  });
-});
-
-describe("splitAuthorName", () => {
-  it.each([
-    ["Heather Piwowar", { last: "Piwowar", initials: "H." }],
-    ["Jean-Pierre Dupont", { last: "Dupont", initials: "J.-P." }],
-    ["Ludwig van der Berg", { last: "van der Berg", initials: "L." }],
-    ["Plato", { last: "Plato", initials: "" }],
-    ["  ", { last: "", initials: "" }],
-  ])("%j", (full, expected) => {
-    expect(splitAuthorName(full)).toEqual(expected);
-  });
-});
-
-describe("références depuis un instantané", () => {
-  it("APA : deux auteurs, revue et DOI", () => {
-    expect(apaFromSnapshot(makeSnapshot())).toBe(
-      "Piwowar, H., & Priem, J. (2018). Open access and citation advantage. PeerJ. https://doi.org/10.1000/xyz123",
-    );
-  });
-
-  it("APA : anonyme, sans date, rétracté", () => {
-    expect(apaFromSnapshot(makeSnapshot({ authorNames: [], year: null, venue: null, doi: null }), true)).toBe(
-      "Anonyme (s. d.). Open access and citation advantage. [Article rétracté]",
-    );
-  });
-
-  it("APA : au-delà de 20 auteurs, les 19 premiers puis le dernier", () => {
-    const names = Array.from({ length: 25 }, (_, i) => `Prénom Nom${i + 1}`);
-    const apa = apaFromSnapshot(makeSnapshot({ authorNames: names }));
-    expect(apa).toContain("Nom19, P., … Nom25, P. (2018)");
-    expect(apa).not.toContain("Nom20,");
-  });
-
-  it("appel de citation court", () => {
-    expect(citeInline(makeSnapshot({ authorNames: [] }))).toBe("(Anonyme, 2018)");
-    expect(citeInline(makeSnapshot({ authorNames: ["Heather Piwowar"] }), 4)).toBe("(Piwowar, 2018, p. 4)");
-    expect(citeInline(makeSnapshot())).toBe("(Piwowar & Priem, 2018)");
-    expect(citeInline(makeSnapshot({ authorNames: ["A Un", "B Deux", "C Trois"], year: null }))).toBe("(Un et al., s. d.)");
-  });
-
-  it("bibtexAll : clés rendues uniques et articles rétractés marqués", () => {
-    const a = makeSnapshot({ id: "W1" });
-    const b = makeSnapshot({ id: "W2" });
-    const c = makeSnapshot({ id: "W3", type: "dissertation", title: "Une thèse remarquable", authorNames: ["Marie Curie"], year: 1903, venue: "Sorbonne", doi: null });
-    const out = bibtexAll([a, b, c], new Set(["W2"]));
-    const entries = out.split("\n\n");
-    expect(entries).toHaveLength(3);
-    expect(entries[0].split("\n")[0]).toBe("@article{piwowar2018open,");
-    expect(entries[1].split("\n")[0]).toBe("@article{piwowar2018openb,");
-    expect(entries[0]).not.toContain("note = {Retracted}");
-    expect(entries[1]).toContain("  note = {Retracted},");
-    expect(entries[2]).toBe(["@phdthesis{curie1903thse,", "  title = {Une thèse remarquable},", "  author = {Marie Curie},", "  year = {1903},", "  school = {Sorbonne},", "}"].join("\n"));
   });
 });
 
@@ -156,5 +76,98 @@ describe("fileSlug", () => {
     expect(fileSlug("Mémoire 2026 : Santé !")).toBe("memoire-2026-sante");
     expect(fileSlug("../../etc/passwd")).toBe("etc-passwd");
     expect(fileSlug("***")).toBe("liste");
+  });
+});
+
+describe("snapshotFromData (relecture Firestore, QUAL-11)", () => {
+  it("rend l'instantané stocké tel quel", () => {
+    const s = makeSnapshot();
+    expect(snapshotFromData({ ...s, addedAt: { seconds: 1 }, unverified: true }, "W9")).toEqual(s);
+  });
+
+  it("tolère un document incomplet ou mal typé : valeurs par défaut, identifiant de repli", () => {
+    expect(snapshotFromData(undefined, "W7")).toEqual({
+      id: "W7", title: "", authors: "", authorNames: [], venue: null, year: null, doi: null, type: "article", isOa: false, citedByCount: 0, topic: null,
+    });
+    const odd = snapshotFromData({ id: "", title: 12, authorNames: ["A", 3, null, "B"], year: "2018", citedByCount: Infinity, type: "", venue: 5 }, "W8");
+    expect(odd).toMatchObject({ id: "W8", title: "", authorNames: ["A", "B"], year: null, citedByCount: 0, type: "article", venue: null });
+  });
+});
+
+describe("volume, numéro et pages dans l'instantané (QUAL-02)", () => {
+  const biblio = { volume: "6", issue: null, firstPage: "e4375", lastPage: null };
+
+  it("snapshotFromWork les garde ; absents quand OpenAlex n'en donne aucun", () => {
+    expect(snapshotFromWork(makeWork()).biblio).toEqual(biblio);
+    expect(snapshotFromWork(makeWork({ biblio: undefined }))).not.toHaveProperty("biblio");
+    expect(snapshotFromWork(makeWork({ biblio: { volume: null, issue: null, first_page: null, last_page: null } }))).not.toHaveProperty("biblio");
+  });
+
+  it("sanitizeSnapshot : facultatif, chaînes bornées à 20 caractères, le reste ignoré", () => {
+    expect(sanitizeSnapshot(makeSnapshot())).not.toHaveProperty("biblio");
+    const out = sanitizeSnapshot({ ...makeSnapshot(), biblio: { volume: "v".repeat(50), issue: 3, firstPage: "1‮2", lastPage: "", extra: "x" } })!;
+    expect(out.biblio).toEqual({ volume: "v".repeat(20), issue: null, firstPage: "12", lastPage: null });
+    expect(sanitizeSnapshot({ ...makeSnapshot(), biblio: "vol. 6" })).not.toHaveProperty("biblio");
+  });
+
+  it("snapshotFromData relit le biblio stocké ; null ou absent → pas de biblio", () => {
+    expect(snapshotFromData({ ...makeSnapshot(), biblio }, "W1").biblio).toEqual(biblio);
+    expect(snapshotFromData({ ...makeSnapshot(), biblio: null }, "W1")).not.toHaveProperty("biblio");
+  });
+
+  it("snapshotForStorage écrit toujours biblio (null ou quatre clés) : une fusion Firestore n'en garde rien d'ancien", () => {
+    expect(snapshotForStorage(makeSnapshot()).biblio).toBeNull();
+    expect(snapshotForStorage(makeSnapshot({ biblio })).biblio).toEqual(biblio);
+  });
+
+  it("sameSnapshot : un volume ou des pages différents comptent ; null stocké = absent", () => {
+    const s = makeSnapshot({ biblio });
+    expect(sameSnapshot({ ...s }, s)).toBe(true);
+    expect(sameSnapshot({ ...s, biblio: { ...biblio, volume: "7" } }, s)).toBe(false);
+    expect(sameSnapshot({ ...makeSnapshot() }, s)).toBe(false);
+    expect(sameSnapshot({ ...makeSnapshot(), biblio: null }, makeSnapshot())).toBe(true);
+  });
+});
+
+describe("place d'un favori retiré (« Annuler », NEW-8)", () => {
+  const NOW = Date.parse("2026-09-26T12:00:00.000Z");
+
+  it("garde une place valide ; date ramenée au plus tard à maintenant, date illisible = inconnue", () => {
+    const placement = { addedAt: "2025-01-02T03:04:05.000Z", index: 3, lists: [{ id: "a", index: 0 }, { id: "b_2-X", index: 7 }] };
+    expect(sanitizePlacement(placement, NOW)).toEqual(placement);
+    expect(sanitizePlacement({ ...placement, addedAt: "2030-01-01T00:00:00.000Z" }, NOW)?.addedAt).toBe("2026-09-26T12:00:00.000Z");
+    expect(sanitizePlacement({ ...placement, addedAt: "hier" }, NOW)?.addedAt).toBeNull();
+    expect(sanitizePlacement({ ...placement, addedAt: null }, NOW)?.addedAt).toBeNull();
+  });
+
+  it("date avant l'an 1 (hors de la plage d'un Timestamp Firestore) = inconnue, au lieu d'une erreur 502", () => {
+    const placement = { index: null, lists: [] };
+    for (const addedAt of ["0000-12-31T00:00:00Z", "-001000-01-01T00:00:00Z"]) {
+      expect(sanitizePlacement({ ...placement, addedAt }, NOW)?.addedAt, addedAt).toBeNull();
+    }
+    expect(sanitizePlacement({ ...placement, addedAt: "0001-01-01T00:00:00Z" }, NOW)?.addedAt).toBe("0001-01-01T00:00:00.000Z");
+  });
+
+  it("rang invalide de l'index = en dernier ; doublons de listes ignorés", () => {
+    for (const index of [-1, 1.5, "2", null, 1000]) expect(sanitizePlacement({ addedAt: null, index, lists: [] }, NOW)?.index).toBeNull();
+    expect(sanitizePlacement({ addedAt: null, index: 0, lists: [{ id: "a", index: 1 }, { id: "a", index: 4 }] }, NOW)?.lists).toEqual([{ id: "a", index: 1 }]);
+  });
+
+  it("refuse une forme inutilisable : pas un objet, listes absentes ou trop nombreuses, identifiant ou rang de liste invalide", () => {
+    expect(sanitizePlacement(null)).toBeNull();
+    expect(sanitizePlacement({ addedAt: null, index: 0 })).toBeNull();
+    expect(sanitizePlacement({ lists: Array.from({ length: MAX_COLLECTIONS + 1 }, (_, i) => ({ id: `l${i}`, index: 0 })) })).toBeNull();
+    expect(sanitizePlacement({ lists: [{ id: "../autre", index: 0 }] })).toBeNull();
+    expect(sanitizePlacement({ lists: [{ id: "a", index: -1 }] })).toBeNull();
+    expect(sanitizePlacement({ lists: ["a"] })).toBeNull();
+  });
+
+  it("insertAt : copie, rang ramené dans les bornes, null = en dernier", () => {
+    const items = ["a", "b", "c"];
+    expect(insertAt(items, "x", 1)).toEqual(["a", "x", "b", "c"]);
+    expect(insertAt(items, "x", 0)).toEqual(["x", "a", "b", "c"]);
+    expect(insertAt(items, "x", 99)).toEqual(["a", "b", "c", "x"]);
+    expect(insertAt(items, "x", null)).toEqual(["a", "b", "c", "x"]);
+    expect(items).toEqual(["a", "b", "c"]);
   });
 });

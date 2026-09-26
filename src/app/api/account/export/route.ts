@@ -1,22 +1,17 @@
 import { NextResponse } from "next/server";
 import { requireStrictUser } from "@/lib/auth";
+import { overLimit, PRIVATE, serverError, tooMany } from "@/lib/api/guard";
 import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
-import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { accountCreatedAt, readProfile } from "@/lib/account";
+import { isoFromTimestamp as iso } from "@/lib/firebase/decode";
 import { listHighlights } from "@/lib/highlights";
 import { listKeysForExport } from "@/lib/api-keys";
 import { listFeedbackByAuthor, listFeedbackVotesForExport } from "@/lib/feedback";
 import { listAllNotes } from "@/lib/notes";
-import { logError } from "@/lib/log";
-import { rateLimit } from "@/lib/rate-limit";
 import { listSharesForExport } from "@/lib/shares";
 
 export const runtime = "nodejs";
-
-/** Horodatage Firestore (ou absent) en ISO 8601, ou null. */
-function iso(v: unknown): string | null {
-  return (v as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null;
-}
 
 /**
  * Export des données du compte (droits d'accès et de portabilité, RGPD art. 15 et 20) : un fichier JSON lisible,
@@ -28,11 +23,10 @@ function iso(v: unknown): string | null {
 export async function GET() {
   const { ok, user, refused: denied } = await requireStrictUser();
   if (!ok) return denied;
-  if (!rateLimit(`export:${user.uid}`, 5, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
+  if (overLimit("export", user.uid)) return tooMany();
   try {
-    const db = await adminDb();
     const [profileSnap, favorites, lists, highlights, notes, keys, published, votes, shares] = await Promise.all([
-      db.doc(`users/${user.uid}`).get(),
+      readProfile(user.uid),
       listFavorites(user.uid),
       listCollections(user.uid),
       listHighlights(user.uid),
@@ -44,17 +38,12 @@ export async function GET() {
       listSharesForExport(user.uid),
     ]);
     // Repli sur Firebase Auth quand le profil n'a pas de date d'inscription : la donnée exportée reste exacte.
-    const createdAt =
-      iso(profileSnap.get("createdAt")) ??
-      (await (await adminAuth())
-        .getUser(user.uid)
-        .then((u) => (u.metadata.creationTime ? new Date(u.metadata.creationTime).toISOString() : null))
-        .catch((e) => {
-          logError("export.getUser", e);
-          return null;
-        }));
+    const createdAt = (await accountCreatedAt(user.uid, profileSnap))?.toISOString() ?? null;
     // Dernier favori retiré, gardé pour « Annuler » (lib/favorites.ts) : remplacé au retrait suivant.
     const removed = profileSnap.get("lastRemovedFavorite") as { snapshot?: unknown; at?: unknown } | undefined;
+    // Retraits récents, gardés pour qu'« Annuler » rende sa date d'ajout d'origine (lib/favorites.ts, recentRemovals).
+    const removals = profileSnap.get("recentRemovals") as Record<string, { addedAt?: unknown; at?: unknown }> | undefined;
+    const recentRemovals = removals && typeof removals === "object" ? Object.entries(removals).map(([id, r]) => ({ id, addedAt: iso(r?.addedAt), removedAt: iso(r?.at) })) : [];
     const data = {
       format: "Sextant — export des données du compte",
       exportedAt: new Date().toISOString(),
@@ -71,6 +60,7 @@ export async function GET() {
       },
       favorites,
       lastRemovedFavorite: removed?.snapshot ? { article: removed.snapshot, removedAt: iso(removed.at) } : null,
+      recentlyRemovedFavorites: recentRemovals,
       lists,
       sharedLinks: shares,
       citations: highlights,
@@ -85,11 +75,10 @@ export async function GET() {
       headers: {
         "content-type": "application/json; charset=utf-8",
         "content-disposition": `attachment; filename="sextant-mes-donnees-${stamp}.json"`,
-        "cache-control": "private, no-store",
+        ...PRIVATE,
       },
     });
   } catch (e) {
-    logError("export.GET", e);
-    return NextResponse.json({ error: "L'export a échoué, réessayez." }, { status: 502 });
+    return serverError("export.GET", e, "L'export a échoué, réessayez.");
   }
 }

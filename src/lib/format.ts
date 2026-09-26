@@ -1,6 +1,6 @@
 import type { Work } from "./openalex";
-import { bibField } from "./favorites-shared";
 import { safeHttpUrl } from "./text";
+import { CALENDAR_DATE_LONG } from "./dates";
 
 /** Reconstruit le texte d'un résumé depuis l'index inversé d'OpenAlex. */
 export function abstractFromInvertedIndex(
@@ -90,6 +90,15 @@ export function openAccessPdfUrls(w: Work): string[] {
   return [...new Set(urls.filter((u): u is string => Boolean(u) && isPublicPdfUrl(u!)))];
 }
 
+/**
+ * Le lecteur intégré (/article/[id]/lire) peut-il ouvrir l'article ? Il faut que le meilleur lien libre soit un PDF, et
+ * qu'au moins une adresse de PDF soit relayable par /api/pdf. Même règle pour le bouton « Lire » de la fiche, la
+ * surlignage dans le PDF et la redirection du lecteur (QUAL-39).
+ */
+export function canReadInline(w: Work): boolean {
+  return Boolean(openAccessUrl(w)?.isPdf) && openAccessPdfUrls(w).length > 0;
+}
+
 export function publisherUrl(w: Work): string | null {
   return safeHttpUrl(w.doi) ?? safeHttpUrl(w.primary_location?.landing_page_url);
 }
@@ -127,15 +136,30 @@ export function oaLabel(status: string): string {
   return OA_LABELS[status] ?? status;
 }
 
-export function formatCount(n: number): string {
-  return new Intl.NumberFormat("fr-FR", { notation: n >= 10_000 ? "compact" : "standard" }).format(n);
+const INTEGER = new Intl.NumberFormat("fr-FR");
+const COMPACT = new Intl.NumberFormat("fr-FR", { notation: "compact" });
+
+/** Nombre entier à la française (« 12 345 ») : totaux de résultats, pagination. */
+export function formatInteger(n: number): string {
+  return INTEGER.format(n);
 }
 
+/** Compteur court : « 9 876 », puis « 12 k » à partir de 10 000. */
+export function formatCount(n: number): string {
+  return (n >= 10_000 ? COMPACT : INTEGER).format(n);
+}
+
+/** Date de publication d'OpenAlex (« 2024-03-15 ») en toutes lettres, au jour exact quel que soit le fuseau (QUAL-30). */
 export function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  return CALENDAR_DATE_LONG.format(d);
+}
+
+/** Initiales d'un compte pour l'avatar de repli : « Ada Lovelace » → « AL », « ada@exemple.fr » → « AE ». */
+export function initialsOf(user: { name?: string | null; email?: string | null }): string {
+  return (user.name ?? user.email ?? "?").split(/[\s@]+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("");
 }
 
 /** Tronque un texte à N mots. */
@@ -173,62 +197,6 @@ export function articleMetaDescription(w: Work, abstract: string | null): string
   // Revue et année à part (« Thèse de … . Revue, 2024. ») : pas de participe à accorder avec le type.
   const where = [venue, w.publication_year].filter(Boolean).join(", ");
   return metaDescription(where ? `${text}. ${where}.` : `${text}.`);
-}
-
-function bibKey(w: Work): string {
-  const first = w.authorships[0]?.author.display_name.split(" ").pop() ?? "anon";
-  const word = workTitle(w).split(/\s+/).find((x) => x.length > 3) ?? "work";
-  return `${first}${w.publication_year ?? ""}${word}`.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
-}
-
-export function toBibtex(w: Work): string {
-  const kind = w.type === "book" ? "book" : w.type === "conference-paper" ? "inproceedings" : "article";
-  const lines = [
-    `@${kind}{${bibKey(w)},`,
-    `  title = {${bibField(workTitle(w))}},`,
-    `  author = {${authorNames(w).map(bibField).join(" and ")}},`,
-  ];
-  if (w.publication_year) lines.push(`  year = {${w.publication_year}},`);
-  const venue = venueName(w);
-  if (venue) lines.push(`  ${kind === "inproceedings" ? "booktitle" : "journal"} = {${bibField(venue)}},`);
-  if (w.biblio?.volume) lines.push(`  volume = {${w.biblio.volume}},`);
-  if (w.biblio?.issue) lines.push(`  number = {${w.biblio.issue}},`);
-  if (w.biblio?.first_page) {
-    lines.push(`  pages = {${w.biblio.first_page}${w.biblio.last_page ? `--${w.biblio.last_page}` : ""}},`);
-  }
-  if (w.doi) lines.push(`  doi = {${w.doi.replace(/^https?:\/\/doi\.org\//, "")}},`);
-  if (w.is_retracted) lines.push(`  note = {${RETRACTED_BIBTEX_NOTE}},`);
-  lines.push("}");
-  return lines.join("\n");
-}
-
-/** Mention ajoutée aux références d'un article rétracté : on peut le citer, jamais sans le savoir. */
-export const RETRACTED_APA_SUFFIX = " [Article rétracté]";
-export const RETRACTED_BIBTEX_NOTE = "Retracted";
-
-/** Citation au format APA 7 (approximatif, suffisant pour un copier-coller). */
-export function toApa(w: Work): string {
-  const names = w.authorships.map((a) => {
-    const parts = a.author.display_name.trim().split(/\s+/);
-    const last = parts.pop() ?? "";
-    const initials = parts.map((p) => p[0]?.toUpperCase() + ".").join(" ");
-    return initials ? `${last}, ${initials}` : last;
-  });
-  let authors = "";
-  if (names.length === 0) authors = "Anonyme";
-  else if (names.length === 1) authors = names[0];
-  else if (names.length <= 20) authors = `${names.slice(0, -1).join(", ")}, & ${names[names.length - 1]}`;
-  else authors = `${names.slice(0, 19).join(", ")}, … ${names[names.length - 1]}`;
-
-  const year = w.publication_year ? `(${w.publication_year})` : "(s. d.)";
-  const venue = venueName(w);
-  const vol = w.biblio?.volume ? `, ${w.biblio.volume}` : "";
-  const issue = w.biblio?.issue ? `(${w.biblio.issue})` : "";
-  const pages = w.biblio?.first_page
-    ? `, ${w.biblio.first_page}${w.biblio.last_page ? `–${w.biblio.last_page}` : ""}`
-    : "";
-  const doi = w.doi ? ` ${w.doi}` : "";
-  return `${authors} ${year}. ${workTitle(w)}.${venue ? ` ${venue}${vol}${issue}${pages}.` : ""}${doi}${w.is_retracted ? RETRACTED_APA_SUFFIX : ""}`;
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {

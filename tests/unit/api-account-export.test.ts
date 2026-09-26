@@ -47,6 +47,7 @@ describe("GET /api/account/export", () => {
       lastLoginAt: ts("2026-09-20T08:00:00Z"),
       lastKeyUsedAt: ts("2026-09-22T09:00:00Z"),
       lastRemovedFavorite: { snapshot: makeSnapshot({ id: "W9" }), at: ts("2026-09-21T00:00:00Z") },
+      recentRemovals: { W9: { addedAt: ts("2026-01-05T00:00:00Z"), at: ts("2026-09-21T00:00:00Z") } },
       favoriteIds: ["W4200000001"],
     };
     const res = await GET();
@@ -57,6 +58,7 @@ describe("GET /api/account/export", () => {
     expect(data.profile).toMatchObject({ uid: `u${n}`, email: "ada@exemple.org", createdAt: "2025-06-01T00:00:00.000Z", lastLoginAt: "2026-09-20T08:00:00.000Z", lastKeyUsedAt: "2026-09-22T09:00:00.000Z" });
     expect(data.favorites).toHaveLength(1);
     expect(data.lastRemovedFavorite).toMatchObject({ article: { id: "W9" }, removedAt: "2026-09-21T00:00:00.000Z" });
+    expect(data.recentlyRemovedFavorites).toEqual([{ id: "W9", addedAt: "2026-01-05T00:00:00.000Z", removedAt: "2026-09-21T00:00:00.000Z" }]);
     expect(data.lists[0]).toMatchObject({ name: "Mémoire", shareToken: "tok" });
     expect(data.sharedLinks).toEqual([{ token: "tok", collectionId: "c1", createdAt: "2026-04-01T00:00:00.000Z" }]);
     expect(data.notes).toHaveLength(1);
@@ -72,5 +74,6 @@ describe("GET /api/account/export", () => {
     expect(data.profile.createdAt).toBe("2025-01-01T00:00:00.000Z");
     expect(data.profile.lastLoginAt).toBeNull();
     expect(data.lastRemovedFavorite).toBeNull();
+    expect(data.recentlyRemovedFavorites).toEqual([]);
   });
 });

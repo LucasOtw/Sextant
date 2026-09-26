@@ -1,6 +1,7 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
+import { isoFromTimestamp } from "@/lib/firebase/decode";
 import { logError } from "@/lib/log";
 import { mergeFeedbackLists, type FeedbackItem, type FeedbackKind, type FeedbackList, type FeedbackStatus } from "@/lib/feedback-shared";
 
@@ -14,7 +15,6 @@ import { mergeFeedbackLists, type FeedbackItem, type FeedbackKind, type Feedback
 const STATUSES: FeedbackStatus[] = ["open", "planned", "done", "declined"];
 
 function toItem(id: string, d: Record<string, unknown>): FeedbackItem {
-  const ts = d.createdAt as { toDate?: () => Date } | undefined;
   return {
     id,
     kind: d.kind === "bug" ? "bug" : "idea",
@@ -22,7 +22,7 @@ function toItem(id: string, d: Record<string, unknown>): FeedbackItem {
     description: String(d.description ?? ""),
     votes: Math.max(0, Number(d.votes ?? 0)),
     status: STATUSES.includes(d.status as FeedbackStatus) ? (d.status as FeedbackStatus) : "open",
-    createdAt: ts?.toDate?.().toISOString() ?? null,
+    createdAt: isoFromTimestamp(d.createdAt),
   };
 }
 
@@ -60,7 +60,7 @@ const FEEDBACK_TAG = "feedback";
 export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list-v2"], { tags: [FEEDBACK_TAG], revalidate: 60 });
 
 /** Vide le cache de la liste de /retours : la prochaine visite relit la base. Peut lever (hors requête Next) : passer par `refreshFeedbackList`. */
-export function invalidateFeedbackList(): void {
+function invalidateFeedbackList(): void {
   revalidateTag(FEEDBACK_TAG, { expire: 0 });
 }
 
@@ -100,7 +100,7 @@ export async function listFeedbackVotesForExport(uid: string): Promise<{ id: str
   const db = await adminDb();
   const snap = await db.collection(`users/${uid}/feedbackVotes`).get();
   return snap.docs
-    .map((d) => ({ id: d.id, createdAt: (d.get("createdAt") as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null }))
+    .map((d) => ({ id: d.id, createdAt: isoFromTimestamp(d.get("createdAt")) }))
     .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
 }
 

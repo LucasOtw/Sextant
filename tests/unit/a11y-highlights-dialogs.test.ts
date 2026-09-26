@@ -65,9 +65,9 @@ describe("SentencePickerDialog : enregistrement partiel", () => {
       // Premier essai : la première phrase passe, la suivante est refusée (passage trop long, 429, réseau…).
       if (onSave.mock.calls.length === 1) {
         saved.add(sentences[indexes[0]].text);
-        return false;
+        return { ok: false };
       }
-      return true;
+      return { ok: true };
     });
     await render(
       createElement(SentencePickerDialog, {

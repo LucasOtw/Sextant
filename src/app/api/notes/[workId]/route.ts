@@ -1,29 +1,20 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, requireStrictUser } from "@/lib/auth";
+import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { checkSnapshot } from "@/lib/favorites";
-import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
-import { cleanText } from "@/lib/highlights-shared";
+import { sanitizeSnapshot } from "@/lib/favorites-shared";
+import { WORK_ID } from "@/lib/ids";
+import { cleanText } from "@/lib/text";
 import { getNote, NotesLimitError, setNote } from "@/lib/notes";
 import { MAX_ARTICLE_NOTE } from "@/lib/notes-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
-import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";
-const PRIVATE = { "cache-control": "private, no-store" };
 
 type Ctx = { params: Promise<{ workId: string }> };
 
 async function guard(req: Request, ctx: Ctx, write: boolean) {
-  if (write) {
-    const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 32_768);
-    if (refused) return { refused };
-  }
   // Écriture : échec fermé si Firebase Auth ne répond pas ; lecture : servie quand même (lib/auth.ts).
-  const session = write ? await requireStrictUser() : { user: await getCurrentUser(), refused: null };
-  const user = session.user;
-  if (!user) return { refused: session.refused ?? NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
-  if (!rateLimit(`notes:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
+  const { user, refused } = await requireUser(req, { bucket: "notes", read: !write, maxBody: 32_768 });
+  if (refused) return { refused };
   const { workId } = await ctx.params;
   if (!WORK_ID.test(workId)) return { refused: NextResponse.json({ error: "Identifiant invalide." }, { status: 400 }) };
   return { user, workId };
@@ -35,8 +26,7 @@ export async function GET(req: Request, ctx: Ctx) {
   try {
     return NextResponse.json({ note: await getNote(g.user.uid, g.workId) }, { headers: PRIVATE });
   } catch (e) {
-    logError("notes.workId.GET", e);
-    return NextResponse.json({ error: "Note indisponible." }, { status: 502 });
+    return serverError("notes.workId.GET", e, "Note indisponible.");
   }
 }
 
@@ -63,7 +53,6 @@ export async function PUT(req: Request, ctx: Ctx) {
     return NextResponse.json({ note: await setNote(g.user.uid, checked.snapshot, cleanText(body.text, MAX_ARTICLE_NOTE, true), checked.verified) }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof NotesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
-    logError("notes.workId.PUT", e);
-    return NextResponse.json({ error: "L'enregistrement a échoué." }, { status: 502 });
+    return serverError("notes.workId.PUT", e, "L'enregistrement a échoué.");
   }
 }

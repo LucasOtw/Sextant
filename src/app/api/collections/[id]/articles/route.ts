@@ -1,27 +1,20 @@
 import { NextResponse } from "next/server";
-import { requireStrictUser } from "@/lib/auth";
+import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { addToCollection, CollectionNotFoundError, CollectionsLimitError, removeFromCollection } from "@/lib/collections";
 import { checkSnapshot, FavoritesLimitError, storedCheck } from "@/lib/favorites";
-import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
-import { rateLimit } from "@/lib/rate-limit";
-import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
-import { logError } from "@/lib/log";
+import { sanitizeSnapshot } from "@/lib/favorites-shared";
+import { DOC_ID, WORK_ID } from "@/lib/ids";
 
 export const runtime = "nodejs";
-const PRIVATE = { "cache-control": "private, no-store" };
-const ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 type Ctx = { params: Promise<{ id: string }> };
 
 /** Seau distinct de la gestion des listes : ranger des articles en série est un usage normal (90 par minute). */
 async function guard(req: Request, ctx: Ctx) {
-  const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
+  const { user, refused } = await requireUser(req, { bucket: "collections-items", maxBody: 16_384 });
   if (refused) return { refused };
-  const { ok, user, refused: denied } = await requireStrictUser();
-  if (!ok) return { refused: denied };
-  if (!rateLimit(`collections-items:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
-  if (!ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
+  if (!DOC_ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
   return { user, id };
 }
 
@@ -46,8 +39,7 @@ export async function POST(req: Request, ctx: Ctx) {
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof CollectionsLimitError || e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });
-    logError("collections.id.articles.POST", e);
-    return NextResponse.json({ error: "L'ajout a échoué." }, { status: 502 });
+    return serverError("collections.id.articles.POST", e, "L'ajout a échoué.");
   }
 }
 
@@ -61,7 +53,6 @@ export async function DELETE(req: Request, ctx: Ctx) {
     return NextResponse.json({ collection: await removeFromCollection(g.user.uid, g.id, workId) }, { headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
-    logError("collections.id.articles.DELETE", e);
-    return NextResponse.json({ error: "Le retrait a échoué." }, { status: 502 });
+    return serverError("collections.id.articles.DELETE", e, "Le retrait a échoué.");
   }
 }

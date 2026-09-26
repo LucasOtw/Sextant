@@ -1,6 +1,7 @@
 import "server-only";
 import { after } from "next/server";
 import { adminDb, isAdminConfigured } from "@/lib/firebase/admin";
+import { millisFromTimestamp } from "@/lib/firebase/decode";
 import { logError } from "@/lib/log";
 
 /**
@@ -33,8 +34,8 @@ export async function readStoredSummary(model: string, promptVersion: number, wo
     const snap = await Promise.race([db.doc(`aiSummaries/${summaryDocId(model, promptVersion, workId)}`).get(), late]);
     const text = snap?.get("summary");
     // Expiré mais pas encore supprimé (la suppression TTL peut prendre jusqu'à un jour) : régénéré.
-    const expiresAt = (snap?.get("expiresAt") as { toMillis?: () => number } | undefined)?.toMillis?.();
-    if (expiresAt !== undefined && expiresAt < Date.now()) return null;
+    const expiresAt = millisFromTimestamp(snap?.get("expiresAt"));
+    if (expiresAt !== null && expiresAt < Date.now()) return null;
     return typeof text === "string" && text.trim() ? text : null;
   } catch (e) {
     logError("summary.read", e, { work: workId });
@@ -48,7 +49,7 @@ export async function readStoredSummary(model: string, promptVersion: number, wo
  * Durée de vie d'un condensé : `expiresAt`, champ de la politique TTL de Firestore (firestore.indexes.json). Un
  * mauvais condensé (réponse incohérente d'un petit modèle) finit ainsi par être régénéré, sans intervention.
  */
-export const SUMMARY_TTL_MS = 180 * 24 * 60 * 60 * 1000;
+const SUMMARY_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 
 /**
  * Enregistre un condensé réussi, après l'envoi de la réponse (`after`) : l'utilisateur n'attend pas l'écriture, et

@@ -6,8 +6,15 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_HIGHLIGHT_TEXT, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
 import { undoToast } from "@/lib/undo-toast";
+import { passagesSavedToast } from "@/lib/sentences";
+import { api, ApiError, errorMessage, needsSignIn } from "@/lib/client/api";
 
-export type NewHighlight = Omit<HighlightInput, "article">;
+type NewHighlight = Omit<HighlightInput, "article">;
+
+/** Résultat d'un enregistrement de plusieurs passages : `error`, la raison du premier refus. */
+export type SaveResult = { ok: boolean; error?: string };
+
+const TOO_LONG = `Passage trop long : ${MAX_HIGHLIGHT_TEXT} caractères au plus.`;
 
 interface HighlightsContext {
   /** Utilisateur connecté : on peut enregistrer. Sinon, toute action ouvre la connexion. */
@@ -16,20 +23,19 @@ interface HighlightsContext {
   /** Article rétracté (OpenAlex) : les références copiées le signalent. */
   retracted: boolean;
   highlights: Highlight[];
-  add: (input: NewHighlight) => Promise<Highlight | null>;
+  add: (input: NewHighlight, options?: { silent?: boolean }) => Promise<Highlight | null>;
+  /**
+   * Enregistre plusieurs passages (choix de phrases), l'un après l'autre, avec un seul toast de réussite pour le lot
+   * (« 2 passages surlignés. ») au lieu d'un par passage. `ok` si tous ont été enregistrés ; sinon `error`, la raison
+   * du premier refus, sans toast : la fenêtre la dit elle-même (un toast est invisible en plein écran natif).
+   */
+  addMany: (inputs: NewHighlight[]) => Promise<SaveResult>;
   updateNote: (id: string, note: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   requestSignIn: () => void;
 }
 
 const Ctx = createContext<HighlightsContext | null>(null);
-
-async function jsonOrError(res: Response): Promise<Record<string, unknown>> {
-  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-  if (res.status === 401) throw new Error("signin");
-  if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Échec.");
-  return data;
-}
 
 interface Props {
   enabled: boolean;
@@ -71,34 +77,73 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
     };
   }, [enabled, snapshot.id]);
 
-  const add = useCallback<HighlightsContext["add"]>(
-    async (input) => {
+  /**
+   * Enregistre un passage, sans toast : le passage créé, ou la raison du refus (`signIn` : connexion demandée, déjà
+   * ouverte ; `tooLong` ; `error`, avec le message du serveur s'il en a donné un). `add` et `addMany` disent ensuite le
+   * résultat chacun à leur façon.
+   */
+  const save = useCallback(
+    async (input: NewHighlight): Promise<{ created: Highlight } | { failure: "signIn" | "tooLong" | "error"; message?: string }> => {
       if (!enabled) {
         setSignIn(true);
-        return null;
+        return { failure: "signIn" };
       }
-      if (Array.from(input.text).length > MAX_HIGHLIGHT_TEXT) {
-        toast.error(`Passage trop long : ${MAX_HIGHLIGHT_TEXT} caractères au plus. Sélectionnez un extrait plus court.`);
-        return null;
-      }
+      if (Array.from(input.text).length > MAX_HIGHLIGHT_TEXT) return { failure: "tooLong" };
       mutations.current++;
       try {
-        const data = await jsonOrError(
-          await fetch("/api/highlights", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...input, article: snapshot }) }),
-        );
-        const created = data.highlight as Highlight;
+        const { highlight: created } = await api<{ highlight: Highlight }>("/api/highlights", { method: "POST", json: { ...input, article: snapshot }, fallback: "" });
         setHighlights((prev) => [created, ...prev]);
-        toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
-          description: "Retrouvez-le dans « Mes citations », avec sa source.",
-        });
-        return created;
+        return { created };
       } catch (e) {
-        if (e instanceof Error && e.message === "signin") setSignIn(true);
-        else toast.error(e instanceof Error ? e.message : "Le passage n'a pas pu être enregistré.");
-        return null;
+        if (needsSignIn(e)) {
+          setSignIn(true);
+          return { failure: "signIn" };
+        }
+        // Message du serveur s'il en a donné un ; sinon (coupure réseau, réponse sans corps) aucun.
+        return { failure: "error", message: e instanceof ApiError && e.message ? e.message : undefined };
       }
     },
     [enabled, snapshot],
+  );
+
+  const add = useCallback<HighlightsContext["add"]>(
+    async (input, options) => {
+      const result = await save(input);
+      if ("failure" in result) {
+        if (result.failure === "tooLong") toast.error(`${TOO_LONG} Sélectionnez un extrait plus court.`);
+        else if (result.failure === "error") toast.error(result.message ?? "Le passage n'a pas pu être enregistré.");
+        return null;
+      }
+      if (!options?.silent) {
+        toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
+          description: "Retrouvez-le dans « Mes citations », avec sa source.",
+        });
+      }
+      return result.created;
+    },
+    [save],
+  );
+
+  const addMany = useCallback<HighlightsContext["addMany"]>(
+    async (inputs) => {
+      let saved = 0;
+      let error: string | undefined;
+      for (const input of inputs) {
+        const result = await save(input);
+        if ("created" in result) {
+          saved++;
+          continue;
+        }
+        // Raison du premier refus ; sans message connu (réseau), la fenêtre propose de réessayer.
+        if (error) continue;
+        if (result.failure === "tooLong") error = `${TOO_LONG} Une phrase dépasse cette limite à elle seule : sélectionnez-en un extrait dans le texte.`;
+        else if (result.failure === "signIn") error = "Connectez-vous pour surligner.";
+        else error = result.message;
+      }
+      if (saved > 0) toast.success(...passagesSavedToast(saved));
+      return saved === inputs.length ? { ok: true } : { ok: false, error };
+    },
+    [save],
   );
 
   const updateNote = useCallback<HighlightsContext["updateNote"]>(async (id, note) => {
@@ -107,11 +152,11 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
     mutations.current++;
     setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note } : h)));
     try {
-      await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ note }) }));
+      await api(`/api/highlights/${id}`, { method: "PATCH", json: { note } });
       return true;
     } catch (e) {
       setHighlights((prev) => prev.map((h) => (h.id === id ? { ...h, note: previous } : h)));
-      toast.error(e instanceof Error && e.message !== "signin" ? e.message : "La note n'a pas pu être enregistrée.");
+      toast.error(needsSignIn(e) ? "La note n'a pas pu être enregistrée." : errorMessage(e, "La note n'a pas pu être enregistrée."));
       return false;
     }
   }, []);
@@ -123,14 +168,14 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       mutations.current++;
       setHighlights((prev) => prev.filter((h) => h.id !== id));
       try {
-        await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
+        await api(`/api/highlights/${id}`, { method: "DELETE" });
         // « Annuler » recrée le passage (nouvel identifiant, même contenu).
         if (removed) undoToast("Citation supprimée.", () => void add({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix }));
         else toast("Citation supprimée.");
         return true;
       } catch (e) {
         setHighlights(previous);
-        toast.error(e instanceof Error && e.message !== "signin" ? e.message : "La suppression a échoué.");
+        toast.error(needsSignIn(e) ? "La suppression a échoué." : errorMessage(e, "La suppression a échoué."));
         return false;
       }
     },
@@ -138,8 +183,8 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
   );
 
   const value = useMemo<HighlightsContext>(
-    () => ({ enabled, snapshot, retracted, highlights, add, updateNote, remove, requestSignIn }),
-    [enabled, snapshot, retracted, highlights, add, updateNote, remove, requestSignIn],
+    () => ({ enabled, snapshot, retracted, highlights, add, addMany, updateNote, remove, requestSignIn }),
+    [enabled, snapshot, retracted, highlights, add, addMany, updateNote, remove, requestSignIn],
   );
 
   return (

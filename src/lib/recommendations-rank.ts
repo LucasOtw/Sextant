@@ -1,4 +1,5 @@
-import { shortId, type Work } from "@/lib/openalex";
+import { BATCH_WORK_ID, shortId } from "@/lib/ids";
+import type { Work } from "@/lib/openalex";
 import type { Recommendation, RecommendationSeed } from "@/lib/recommendations-shared";
 
 /**
@@ -6,15 +7,15 @@ import type { Recommendation, RecommendationSeed } from "@/lib/recommendations-s
  * Le handler lit la requête, appelle OpenAlex et ne fait qu'enchaîner ces étapes.
  */
 
-/** OpenAlex refuse tout le lot si un identifiant est hors format (« W1 ») : on ne garde que des identifiants plausibles. */
-const PLAUSIBLE_ID = /^W\d{2,15}$/;
-
-/** Liste d'identifiants d'un paramètre d'URL (« W1,W2 ») : plausibles, sans doublon, bornée. */
+/**
+ * Liste d'identifiants d'un paramètre d'URL (« W2,W3 ») : plausibles, sans doublon, bornée. OpenAlex refuse tout le
+ * lot si un identifiant est hors format (« W1 ») : seuls ceux de `BATCH_WORK_ID` sont gardés.
+ */
 export function parseIds(param: string | null, max: number): string[] {
   const out: string[] = [];
   for (const raw of (param ?? "").split(",")) {
     const id = raw.trim();
-    if (PLAUSIBLE_ID.test(id) && !out.includes(id)) out.push(id);
+    if (BATCH_WORK_ID.test(id) && !out.includes(id)) out.push(id);
     if (out.length >= max) break;
   }
   return out;

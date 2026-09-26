@@ -1,7 +1,10 @@
+import "server-only";
+
 /**
  * Résumé IA : fournisseurs interchangeables via variables d'environnement.
  * Par défaut : Mistral (modèles ouverts, hébergement européen, offre gratuite « Experiment »).
  * Groq et OpenRouter sont possibles, tous compatibles avec le format « chat/completions ». Anthropic reste possible.
+ * Les routes n'appellent que `generate` : choix du fournisseur et traduction des erreurs restent dans ce module.
  */
 
 import { logError } from "@/lib/log";
@@ -177,4 +180,61 @@ export async function completeOpenAiCompatible(
   if (!text) throw new AiError("Réponse vide du fournisseur IA.", 502);
   const finish = choice?.finish_reason ?? null;
   return { text, complete: finish === NORMAL_FINISH, finish };
+}
+
+/**
+ * Fournisseur de secours, inactif en production (Mistral) : le SDK n'est chargé qu'ici, à la demande, pour ne pas
+ * alourdir chaque démarrage à froid de la route (PERF-20). Ses erreurs sont traduites en `AiError` ici même, comme
+ * celles des fournisseurs compatibles OpenAI (QUAL-22).
+ */
+async function completeAnthropic(system: string, user: string): Promise<AiCompletion> {
+  const { default: Anthropic } = await import("@anthropic-ai/sdk");
+  // Même borne que les fournisseurs compatibles OpenAI : le SDK attendrait sinon 10 min, avec deux relances.
+  const client = new Anthropic({ timeout: AI_TIMEOUT_MS, maxRetries: 0 });
+  let response;
+  try {
+    response = await client.beta.messages.create({
+      model: modelFor("anthropic"),
+      max_tokens: 1024,
+      system,
+      output_config: { effort: "low" },
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      messages: [{ role: "user", content: user }],
+    });
+  } catch (e) {
+    if (e instanceof Anthropic.AuthenticationError) {
+      logError("ai.anthropicKey", e);
+      throw new AiError("Clé API invalide côté serveur.", 500);
+    }
+    if (e instanceof Anthropic.RateLimitError) throw new AiError("Trop de demandes, réessayez dans un instant.", 429);
+    // Délai dépassé ou coupure réseau (sous-classes d'APIError sans statut HTTP).
+    if (e instanceof Anthropic.APIConnectionError) {
+      logError("ai.anthropic", e);
+      throw new AiError("Le service IA ne répond pas, réessayez.", 504);
+    }
+    if (e instanceof Anthropic.APIError) {
+      logError("ai.anthropic", e);
+      throw new AiError(`Erreur du service IA${e.status ? ` (${e.status})` : ""}.`, 502);
+    }
+    throw e;
+  }
+  if (response.stop_reason === "refusal") throw new AiError("Le modèle n'a pas pu résumer cet article.", 502);
+  const text = response.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text)
+    .join("\n")
+    .trim();
+  if (!text) throw new AiError("Réponse vide.", 502);
+  // Fin normale seulement : fin de tour ou séquence d'arrêt (jamais max_tokens, fenêtre de contexte, pause, refus).
+  const finish = response.stop_reason ?? null;
+  return { text, complete: finish === "end_turn" || finish === "stop_sequence", finish };
+}
+
+/**
+ * Génère une réponse avec le fournisseur donné : seul point d'entrée des routes. Changer de fournisseur, en ajouter un
+ * ou prévoir un repli se fait ici, sans toucher aux routes ; toute erreur prévue arrive en `AiError` (QUAL-22).
+ */
+export function generate(provider: Provider, system: string, user: string): Promise<AiCompletion> {
+  return provider === "anthropic" ? completeAnthropic(system, user) : completeOpenAiCompatible(provider, system, user);
 }

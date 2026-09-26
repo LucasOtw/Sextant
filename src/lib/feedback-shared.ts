@@ -1,4 +1,4 @@
-import { cleanText } from "@/lib/highlights-shared";
+import { cleanText } from "@/lib/text";
 
 /** « Bugs et idées » : signalements et demandes publics, sans auteur affiché, départagés par des votes. */
 export type FeedbackKind = "bug" | "idea";

@@ -2,14 +2,17 @@ import "server-only";
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import { listCollections } from "@/lib/collections";
-import { apaFromSnapshot, type Favorite } from "@/lib/favorites-shared";
+import { formatApa } from "@/lib/citation";
+import { citationFromWork, type Favorite } from "@/lib/favorites-shared";
 import { countFavorites, findFavorites, getFavoritesByIds, listFavorites } from "@/lib/favorites";
-import { abstractFromInvertedIndex, formatAuthors, openAccessUrl, toApa, typeLabel, venueName, workTitle } from "@/lib/format";
+import { abstractFromInvertedIndex, formatAuthors, openAccessUrl, typeLabel, venueName, workTitle } from "@/lib/format";
 import { citationBlock, sourceLabel, type Highlight } from "@/lib/highlights-shared";
 import { findHighlights, listHighlights } from "@/lib/highlights";
 import { getNote, listNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
-import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, shortId, type Work } from "@/lib/openalex";
+import { fold } from "@/lib/text";
+import { BATCH_WORK_ID, shortId } from "@/lib/ids";
+import { getRetractedIds, getSimilarWorks, getWork, searchWorks, type Work } from "@/lib/openalex";
 import { SITE } from "@/lib/site";
 
 /**
@@ -27,7 +30,7 @@ const MAX_ARTICLE_HIGHLIGHTS = 200;
 const MCP_SCAN_MAX = 600;
 
 const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
-const articleId = z.string().regex(/^W\d{2,15}$/i, "Identifiant OpenAlex attendu, par exemple W2741809807").describe("Identifiant OpenAlex de l'article (W…)");
+const articleId = z.string().regex(new RegExp(BATCH_WORK_ID.source, "i"), "Identifiant OpenAlex attendu, par exemple W2741809807").describe("Identifiant OpenAlex de l'article (W…)");
 
 type Ctx = { http?: { authInfo?: { extra?: Record<string, unknown> } } };
 
@@ -39,10 +42,6 @@ function uidOf(ctx: Ctx): string {
 
 function text(t: string) {
   return { content: [{ type: "text" as const, text: t }] };
-}
-
-function fold(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 function workLine(w: Work, i?: number): string {
@@ -136,7 +135,7 @@ export function registerSextantTools(server: McpServer) {
           abstract ?? "Résumé non disponible dans OpenAlex.",
           "",
           `## Référence APA`,
-          toApa(w),
+          formatApa(citationFromWork(w), Boolean(w.is_retracted)),
         ]
           .filter((l) => l !== "")
           .join("\n"),
@@ -156,12 +155,8 @@ export function registerSextantTools(server: McpServer) {
       const w = await getWork(id);
       if (!w) return text(`Article ${id} introuvable.`);
       const n = limit ?? 6;
-      let similar = await getWorksByIds(w.related_works ?? []);
-      if (similar.length < n && w.primary_topic) {
-        const more = await getWorksBySameTopic(w.primary_topic.id, w.id, n);
-        const seen = new Set(similar.map((x) => x.id));
-        similar = [...similar, ...more.filter((x) => !seen.has(x.id))];
-      }
+      // L'outil promet `n` articles : complément par sujet dès qu'il en manque.
+      const similar = await getSimilarWorks(w, n, n);
       const warning = w.is_retracted ? `${RETRACTED_WARNING}\n\n` : "";
       if (similar.length === 0) return text(`${warning}Pas d'article proche trouvé pour « ${workTitle(w)} ».`);
       return text(`${warning}Articles proches de « ${workTitle(w)} » :\n\n${similar.slice(0, n).map(workLine).join("\n\n")}`);
@@ -233,7 +228,7 @@ export function registerSextantTools(server: McpServer) {
           found.description,
           `${items.length} article(s) :`,
           "",
-          ...items.map((f, i) => `${favoriteLine(f, i, retracted)}\n   APA : ${apaFromSnapshot(f, retracted.has(f.id))}`),
+          ...items.map((f, i) => `${favoriteLine(f, i, retracted)}\n   APA : ${formatApa(f, retracted.has(f.id))}`),
         ]
           .filter(Boolean)
           .join("\n") + caveat,

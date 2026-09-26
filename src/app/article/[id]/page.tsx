@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookOpenIcon, ExternalLinkIcon, FileTextIcon, LockIcon, LockOpenIcon, QuoteIcon, SearchIcon } from "lucide-react";
@@ -15,7 +16,8 @@ import { ReadPdfButton } from "@/components/highlights/read-pdf-button";
 import { listHighlights } from "@/lib/highlights";
 import { ArticleNote } from "@/components/notes/article-note";
 import { getNote } from "@/lib/notes";
-import { snapshotFromWork } from "@/lib/favorites-shared";
+import { formatApa, formatBibtex } from "@/lib/citation";
+import { citationFromWork, snapshotFromWork } from "@/lib/favorites-shared";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { isFavorite } from "@/lib/favorites";
 import { TrackView } from "@/components/track-view";
@@ -28,24 +30,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   abstractFromInvertedIndex,
   articleMetaDescription,
+  canReadInline,
   contentLang,
   formatAuthors,
   formatCount,
   formatDate,
   languageName,
   oaLabel,
-  openAccessPdfUrls,
   openAccessUrl,
   publisherUrl,
-  toApa,
   titleLang,
-  toBibtex,
   typeLabel,
   venueName,
   workTitle,
 } from "@/lib/format";
-import { getWork, getWorksByIds, getWorksBySameTopic, OpenAlexError, shortId, type Work } from "@/lib/openalex";
+import { doiPath, normalizeWorkId, shortId } from "@/lib/ids";
+import { getSimilarWorks, getWork, OpenAlexError, type Work } from "@/lib/openalex";
 import { themeByFieldId } from "@/lib/themes";
+import { HTML_LIMITED_BOTS } from "@/lib/html-bots";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
 import { logError, recover } from "@/lib/log";
@@ -59,13 +61,17 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   // Même contrôle que la page : un identifiant mal formé (« W…?per-page=1 ») ne doit pas emprunter le titre d'un vrai article.
-  if (!/^W\d+$/i.test(id)) return { title: "Article introuvable", robots: { index: false } };
+  if (!normalizeWorkId(id)) return { title: "Article introuvable", robots: { index: false } };
   let work: Awaited<ReturnType<typeof getWork>>;
   try {
     work = await getWork(id);
-  } catch {
-    // Panne de la source (OpenAlex) : le titre ne doit pas parler d'article absent.
-    return { title: "Article momentanément indisponible", robots: { index: false } };
+  } catch (e) {
+    // Panne passagère de la source (OpenAlex : 429, 5xx, délai). Jamais de noindex ici : servi en 200 à Googlebot, il
+    // retirerait de l'index un article qui existe. Un robot servi en rendu bloquant (html-bots) reçoit l'erreur, donc une
+    // réponse 5xx, qu'il traite comme temporaire ; un visiteur garde l'écran « Réessayer » de la page.
+    if (HTML_LIMITED_BOTS.test((await headers()).get("user-agent") ?? "")) throw e;
+    // Le titre ne doit pas parler d'article absent.
+    return { title: "Article momentanément indisponible" };
   }
   if (!work) return { title: "Article introuvable", robots: { index: false } };
   // Adresse canonique : identifiant OpenAlex tel qu'il le renvoie (« W » majuscule, notice fusionnée → la notice
@@ -85,7 +91,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  */
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
-  if (!/^W\d+$/i.test(id)) notFound();
+  const requestedId = normalizeWorkId(id);
+  if (!requestedId) notFound();
   // Lectures personnelles (cœur, surlignages, note) lancées en même temps qu'OpenAlex, pas après (PERF-09) : le
   // chemin critique d'un connecté devient max(OpenAlex, session + Firestore). Un anonyme ne lit rien.
   const sessionUserP = isAuthEnabled() ? getCurrentUser() : Promise.resolve(null);
@@ -95,7 +102,6 @@ export default async function ArticlePage({ params }: Props) {
       listHighlights(uid, wid).catch(recover("article.highlights", [])),
       getNote(uid, wid).catch(recover("article.note", null)),
     ]);
-  const requestedId = id.toUpperCase();
   const personalP = sessionUserP.then((u) => (u ? personal(u.uid, requestedId) : null));
   let work: Work | null;
   try {
@@ -110,10 +116,13 @@ export default async function ArticlePage({ params }: Props) {
   const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
   const oa = openAccessUrl(work);
   // Le lecteur intégré ne s'ouvre que si une copie libre est relayable ; sinon le PDF s'ouvre chez son hébergeur.
-  const readable = openAccessPdfUrls(work).length > 0;
+  const inline = canReadInline(work);
+  // Un seul instantané par rendu : passé à quatre composants clients, il n'est sérialisé qu'une fois (QUAL-39).
+  const snapshot = snapshotFromWork(work);
   const publisher = publisherUrl(work);
   const doiUrl = safeHttpUrl(work.doi);
   const venue = venueName(work);
+  const citation = citationFromWork(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
   const aiEnabled = provider !== null && Boolean(abstract);
@@ -138,7 +147,7 @@ export default async function ArticlePage({ params }: Props) {
         isOa={work.open_access.is_oa}
       />
       <article className="mx-auto max-w-3xl">
-      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} retracted={Boolean(work.is_retracted)} initial={initialHighlights}>
+      <HighlightsProvider key={sessionUser?.uid ?? "anon"} enabled={Boolean(sessionUser)} snapshot={snapshot} retracted={Boolean(work.is_retracted)} initial={initialHighlights}>
         <div className="flex flex-wrap items-center gap-1.5 text-sm">
           <Badge variant="secondary">{typeLabel(work.type)}</Badge>
           <Badge className={cn(work.open_access.is_oa ? "bg-oa text-oa-foreground" : "bg-muted text-muted-foreground")}>
@@ -183,15 +192,15 @@ export default async function ArticlePage({ params }: Props) {
             <Stat label="DOI">
               <ExternalLink href={doiUrl} className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
-                {(work.doi ?? doiUrl).replace(/^https?:\/\/doi\.org\//i, "")}
+                {doiPath(work.doi ?? doiUrl)}
               </ExternalLink>
             </Stat>
           )}
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && oa.isPdf && readable && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
-          {oa && oa.isPdf && !readable && (
+          {oa && inline && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
+          {oa && oa.isPdf && !inline && (
             <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire le PDF
             </ExternalLink>
@@ -206,10 +215,10 @@ export default async function ArticlePage({ params }: Props) {
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
             </ExternalLink>
           )}
-          <CopyButton text={toApa(work)} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
-          <CopyButton text={toBibtex(work)} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
-          {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
-          {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
+          <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
+          <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshot} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
+          {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
           <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
@@ -220,7 +229,7 @@ export default async function ArticlePage({ params }: Props) {
               </p>
             </div>
             <ExternalLink
-              href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, "") : workTitle(work))}`}
+              href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? doiPath(work.doi) : workTitle(work))}`}
               className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
             >
               <SearchIcon /> Chercher une version libre
@@ -252,9 +261,9 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </section>
 
-        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} abstract={abstract ?? undefined} lang={contentLang(work.language)} />
+        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={inline} abstract={abstract ?? undefined} lang={contentLang(work.language)} />
 
-        <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialNote} />
+        <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshot} initial={initialNote} />
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
@@ -323,12 +332,8 @@ function Stat({ icon, label, children }: { icon?: React.ReactNode; label: string
 async function Similar({ work }: { work: Work }) {
   let similar: Work[] = [];
   try {
-    similar = await getWorksByIds(work.related_works ?? []);
-    if (similar.length < 3 && work.primary_topic) {
-      const more = await getWorksBySameTopic(work.primary_topic.id, work.id, 6);
-      const seen = new Set(similar.map((w) => w.id));
-      similar = [...similar, ...more.filter((w) => !seen.has(w.id))];
-    }
+    // Complément par sujet sous 3 apparentés seulement ; jusqu'à 9 cartes.
+    similar = await getSimilarWorks(work, 3, 6);
   } catch (e) {
     logError("article.similar", e, { work: shortId(work.id) });
     return <p className="mt-4 text-sm text-muted-foreground">Suggestions indisponibles pour le moment.</p>;
