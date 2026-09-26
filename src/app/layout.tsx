@@ -9,6 +9,7 @@ import { SessionProvider } from "@/components/auth/session-provider";
 import { isAuthEnabled } from "@/lib/auth";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
 import { ANNOUNCER_ID } from "@/lib/announce";
+import { SkipLink } from "@/components/skip-link";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -42,10 +43,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col text-base">
+        {/* Premier arrêt au clavier : saute l'en-tête (A11Y-11). */}
+        <SkipLink target="contenu">Aller au contenu</SkipLink>
         <SessionProvider enabled={isAuthEnabled()}>
           <FavoritesProvider>
             <SiteHeader />
-            <main className="flex-1">{children}</main>
+            <main id="contenu" className="flex-1 outline-none">{children}</main>
             <SiteFooter />
           </FavoritesProvider>
         </SessionProvider>

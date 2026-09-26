@@ -29,6 +29,8 @@ export default async function SearchPage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-3">
+        {/* Titre principal pour la navigation par titres (le champ tient lieu de titre visible) : h1 → h2 (liste) → h3 (A11Y-14). */}
+        <h1 className="sr-only">{params.q ? `Recherche : « ${params.q} »` : "Recherche"}</h1>
         <SearchBox size="hero" defaultValue={params.q} hidden={{ topic: params.topic, cites: params.cites, author: params.author }} className="max-w-3xl" />
         {contextLines > 0 && (
           <Suspense

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { SearchBox } from "@/components/search-box";
-import { Results } from "@/components/results";
+import { Results, SkipToResults } from "@/components/results";
 import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Badge } from "@/components/ui/badge";
 import { getTopicsForField } from "@/lib/openalex";
@@ -55,6 +55,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
         <h1 className="title-display text-4xl sm:text-5xl">{theme.name}</h1>
         <p className="max-w-2xl text-lg text-muted-foreground">{theme.description}</p>
         <SearchBox size="hero" defaultValue={search.q} className="max-w-3xl" />
+        <SkipToResults />
         {topics.length > 0 && (
           <div className="flex flex-wrap gap-1.5 pt-1">
             {topics.map((t) => {
@@ -71,7 +72,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
           </div>
         )}
       </header>
-      <Results base={`/theme/${slug}`} sp={sp} params={search} filterDefaults={filterDefaults} />
+      <Results base={`/theme/${slug}`} sp={sp} params={search} filterDefaults={filterDefaults} skipLink={false} />
     </div>
   );
 }

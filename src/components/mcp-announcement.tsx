@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
+import { isQuietRoute } from "@/lib/quiet-routes";
 
 const McpAnnouncementContent = dynamic(() => import("@/components/mcp-announcement-content"), { ssr: false });
 
@@ -11,14 +12,15 @@ const WELCOME_KEY = "sextant:welcomed";
 
 /**
  * Annonce du serveur MCP, une seule fois par navigateur. Jamais au premier passage (le message d'accueil a la priorité,
- * et deux fenêtres d'affilée seraient pénibles), ni sur les pages où elle gênerait (compte, lecteur, liste partagée).
+ * et deux fenêtres d'affilée seraient pénibles), ni sur les pages où elle gênerait (compte, lecteur, liste partagée,
+ * pages légales : lib/quiet-routes.ts).
  */
 export function McpAnnouncement() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
 
   useEffect(() => {
-    if (/^\/(compte|liste\/|article\/[^/]+\/lire)/.test(pathname)) return;
+    if (pathname.startsWith("/compte") || isQuietRoute(pathname)) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       if (localStorage.getItem(WELCOME_KEY) && !localStorage.getItem(KEY)) timer = setTimeout(() => setOpen(true), 900);

@@ -5,6 +5,7 @@ import { RESULTS_ID, ResultsStatus } from "@/components/results-status";
 import { SearchFilters } from "@/components/search-filters";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkipLink } from "@/components/skip-link";
 import { OpenAlexError, searchWorks, type SearchParams } from "@/lib/openalex";
 import { buildHref, resultsMessage, type RawSearchParams } from "@/lib/search-params";
 
@@ -14,13 +15,17 @@ interface Props {
   params: SearchParams;
   /** Valeurs par défaut à refléter dans les filtres (voir SearchFilters). */
   filterDefaults?: { sort?: string; from?: string; to?: string };
+  /** Lien « Aller aux résultats » avant les filtres ; faux quand la page le place plus haut (sujets de /theme). */
+  skipLink?: boolean;
 }
 
 /** Filtres + liste + pagination. La liste est chargée en streaming. */
-export function Results({ base, sp, params, filterDefaults }: Props) {
+export function Results({ base, sp, params, filterDefaults, skipLink = true }: Props) {
   return (
     <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
-      <aside className="lg:sticky lg:top-20 lg:self-start">
+      {skipLink && <SkipToResults />}
+      <aside aria-labelledby="filtres-titre" className="lg:sticky lg:top-20 lg:self-start">
+        <h2 id="filtres-titre" className="sr-only">Filtres</h2>
         <SearchFilters defaults={filterDefaults} />
       </aside>
       <Suspense key={JSON.stringify(params)} fallback={<ListSkeleton />}>
@@ -96,9 +101,15 @@ async function List({ base, sp, params }: Props) {
   );
 }
 
+/** Saute les filtres (et, sur /theme, les sujets) : jusqu'à 21 arrêts au clavier avant le premier résultat (A11Y-11). */
+export function SkipToResults() {
+  return <SkipLink target={RESULTS_ID}>Aller aux résultats</SkipLink>;
+}
+
 function ListSkeleton() {
   return (
-    <div className="flex flex-col gap-3" aria-busy="true">
+    // Cible de « Aller aux résultats » pendant le chargement aussi.
+    <div id={RESULTS_ID} tabIndex={-1} className="flex flex-col gap-3 outline-none" aria-busy="true">
       <p role="status" className="sr-only">Chargement des résultats…</p>
       <Skeleton className="h-4 w-40" />
       {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
