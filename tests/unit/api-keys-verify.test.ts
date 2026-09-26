@@ -72,11 +72,21 @@ describe("verifyKey : état du compte Firebase", () => {
     await expect(verifyKey(KEY)).resolves.not.toBeNull();
   });
 
-  it("échec fermé si Firebase Auth ne répond pas, sans mémoriser l'échec", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {});
+  it("échec fermé si Firebase Auth ne répond pas : l'erreur remonte (503 côté route, pas « clé invalide »), sans être mémorisée", async () => {
     state.getUser.mockRejectedValueOnce(Object.assign(new Error("panne"), { code: "app/network-error" }));
-    await expect(verifyKey(KEY)).resolves.toBeNull();
+    await expect(verifyKey(KEY)).rejects.toThrow("panne");
     state.getUser.mockResolvedValue({ disabled: false });
+    await expect(verifyKey(KEY)).resolves.not.toBeNull();
+  });
+
+  it("clé rattachée à une session antérieure à la révocation : refusée même si elle a été écrite après (cache périmé ailleurs)", async () => {
+    const revokedAt = created + 60_000;
+    state.getUser.mockResolvedValue({ disabled: false, tokensValidAfterTime: new Date(revokedAt).toUTCString() });
+    // Écrite 2 minutes après la révocation, par une session ouverte 1 minute avant.
+    state.doc = { uid: "u1", createdAt: ts(revokedAt + 120_000), lastUsedAt: ts(Date.now()), sessionAuthTime: Math.floor((revokedAt - 60_000) / 1000) };
+    await expect(verifyKey(KEY)).resolves.toBeNull();
+    // Session ouverte après la révocation : acceptée.
+    state.doc = { uid: "u1", createdAt: ts(revokedAt + 120_000), lastUsedAt: ts(Date.now()), sessionAuthTime: Math.floor((revokedAt + 60_000) / 1000) };
     await expect(verifyKey(KEY)).resolves.not.toBeNull();
   });
 

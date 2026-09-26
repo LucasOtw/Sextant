@@ -1,0 +1,66 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "users",
+      "fieldPath": "favoriteIds",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "highlights",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "highlights",
+      "fieldPath": "note",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "highlights",
+      "fieldPath": "prefix",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "highlights",
+      "fieldPath": "suffix",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "highlights",
+      "fieldPath": "article",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "notes",
+      "fieldPath": "text",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "notes",
+      "fieldPath": "article",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "feedback",
+      "fieldPath": "description",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "aiSummaries",
+      "fieldPath": "summary",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "aiSummaries",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "users",
+      "fieldPath": "lastRemovedFavorite",
+      "indexes": []
+    }
+  ]
+}

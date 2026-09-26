@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict } from "@/lib/auth";
+import { requireStrictUser } from "@/lib/auth";
 import { addToCollection, CollectionNotFoundError, CollectionsLimitError, removeFromCollection } from "@/lib/collections";
-import { FavoritesLimitError, verifiedSnapshot } from "@/lib/favorites";
+import { checkSnapshot, FavoritesLimitError, storedCheck } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite, rejectLargeBody } from "@/lib/security";
@@ -17,8 +17,8 @@ type Ctx = { params: Promise<{ id: string }> };
 async function guard(req: Request, ctx: Ctx) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return { refused };
-  const user = await getCurrentUserStrict();
-  if (!user) return { refused: NextResponse.json({ error: "Non connecté." }, { status: 401 }) };
+  const { ok, user, refused: denied } = await requireStrictUser();
+  if (!ok) return { refused: denied };
   if (!rateLimit(`collections-items:${user.uid}`, 90, 60_000)) return { refused: NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 }) };
   const { id } = await ctx.params;
   if (!ID.test(id)) return { refused: NextResponse.json({ error: "Liste invalide." }, { status: 400 }) };
@@ -37,11 +37,12 @@ export async function POST(req: Request, ctx: Ctx) {
   }
   const input = sanitizeSnapshot(body);
   if (!input) return NextResponse.json({ error: "Article invalide." }, { status: 400 });
-  // Métadonnées rechargées depuis OpenAlex : celles du client ne servent qu'à valider l'identifiant (SEC-06).
-  const snapshot = await verifiedSnapshot(input);
-  if (!snapshot) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
   try {
-    return NextResponse.json(await addToCollection(g.user.uid, g.id, snapshot), { status: 201, headers: PRIVATE });
+    // Métadonnées rechargées depuis OpenAlex : celles du client ne servent qu'à valider l'identifiant (SEC-06).
+    // Article disparu d'OpenAlex mais déjà en favori : son instantané stocké, sans réécriture.
+    const checked = (await checkSnapshot(input)) ?? (await storedCheck(g.user.uid, input.id));
+    if (!checked) return NextResponse.json({ error: "Article introuvable." }, { status: 404 });
+    return NextResponse.json(await addToCollection(g.user.uid, g.id, checked.snapshot, checked.verified), { status: 201, headers: PRIVATE });
   } catch (e) {
     if (e instanceof CollectionNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     if (e instanceof CollectionsLimitError || e instanceof FavoritesLimitError) return NextResponse.json({ error: e.message }, { status: 409 });

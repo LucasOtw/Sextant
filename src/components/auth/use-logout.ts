@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
+import { useSession } from "@/components/auth/session-provider";
 
 /**
  * Déconnexion partagée (menu du header, page « Mon compte »). Le succès n'est annoncé que si le serveur a bien
@@ -11,6 +12,7 @@ import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
  */
 export function useLogout(redirectTo?: string) {
   const router = useRouter();
+  const { signedOut } = useSession();
   const [pending, setPending] = useState(false);
 
   const logout = useCallback(async () => {
@@ -29,10 +31,12 @@ export function useLogout(redirectTo?: string) {
       toast.error("La déconnexion a échoué.", { description: "Vérifiez votre connexion puis réessayez." });
       return;
     }
+    // L'en-tête et les favoris repassent en anonyme aussitôt ; les pages rendues à la demande, au rafraîchissement.
+    signedOut();
     toast("Vous êtes déconnecté.", { description: "À bientôt sur Sextant." });
     if (redirectTo) router.push(redirectTo);
     router.refresh();
-  }, [redirectTo, router]);
+  }, [redirectTo, router, signedOut]);
 
   return { logout, pending };
 }

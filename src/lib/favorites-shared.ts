@@ -28,6 +28,26 @@ export interface Favorite extends FavoriteSnapshot {
 }
 
 export const MAX_FAVORITES = 1000;
+
+/** Champs d'un instantané, dans l'ordre du type (`id` compris). */
+const SNAPSHOT_FIELDS = ["id", "title", "authors", "venue", "year", "doi", "type", "isOa", "citedByCount", "topic"] as const;
+
+/**
+ * L'instantané stocké (données Firestore) est déjà celui-ci : pas de réécriture du document favori, ni de conflit
+ * entre deux ajouts simultanés dans des listes (NEW-9). Un champ absent du document compte comme une différence.
+ */
+export function sameSnapshot(stored: Record<string, unknown> | undefined, s: FavoriteSnapshot): boolean {
+  if (!stored) return false;
+  if (!SNAPSHOT_FIELDS.every((k) => stored[k] === s[k])) return false;
+  const names = stored.authorNames;
+  return Array.isArray(names) && names.length === s.authorNames.length && names.every((n, i) => n === s.authorNames[i]);
+}
+
+/** Même ensemble d'identifiants (ordre indifférent) : un rechargement sans changement ne re-rend rien (PERF-12). */
+export function sameIdSet(current: ReadonlySet<string>, next: readonly string[]): boolean {
+  if (current.size !== next.length) return false;
+  return next.every((id) => current.has(id));
+}
 /** Identifiant OpenAlex d'un article (W + chiffres), borné. */
 export const WORK_ID = /^W\d{1,31}$/;
 

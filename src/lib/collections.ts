@@ -92,7 +92,7 @@ export async function deleteCollection(uid: string, id: string): Promise<void> {
 }
 
 /** Ajoute l'article à la liste et l'enregistre en favori s'il ne l'est pas encore : tout ou rien. */
-export async function addToCollection(uid: string, id: string, snapshot: FavoriteSnapshot): Promise<{ collection: Collection; favorite: Favorite }> {
+export async function addToCollection(uid: string, id: string, snapshot: FavoriteSnapshot, verified = true): Promise<{ collection: Collection; favorite: Favorite }> {
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");
   const userRef = db.doc(`users/${uid}`);
@@ -103,7 +103,7 @@ export async function addToCollection(uid: string, id: string, snapshot: Favorit
     const current = toCollection(snap.data() ?? {}, id);
     const isNew = !current.articleIds.includes(snapshot.id);
     if (isNew && current.articleIds.length >= MAX_FAVORITES) throw new CollectionsLimitError("Cette liste est pleine.");
-    const addedAt = await addFavoriteIn(tx, userRef, snapshot);
+    const addedAt = await addFavoriteIn(tx, userRef, snapshot, verified);
     if (isNew) tx.update(ref, { articleIds: FieldValue.arrayUnion(snapshot.id) });
     return {
       collection: isNew ? { ...current, articleIds: [...current.articleIds, snapshot.id] } : current,

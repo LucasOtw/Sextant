@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser, getCurrentUserStrict } from "@/lib/auth";
+import { getCurrentUser, requireStrictUser } from "@/lib/auth";
 import { verifiedSnapshot } from "@/lib/favorites";
 import { WORK_ID } from "@/lib/favorites-shared";
 import { createHighlight, HighlightsLimitError, listHighlights } from "@/lib/highlights";
@@ -35,8 +35,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 32_768);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return NextResponse.json({ error: "Non connecté." }, { status: 401 });
+  const { ok, user, refused: denied } = await requireStrictUser();
+  if (!ok) return denied;
   if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
   try {

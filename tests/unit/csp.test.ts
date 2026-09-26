@@ -1,5 +1,15 @@
+import { createHash } from "node:crypto";
+import { createRequire } from "node:module";
 import { describe, expect, it } from "vitest";
-import { buildCsp, makeNonce, summarizeCspReport } from "@/lib/csp";
+import { buildCsp, makeNonce, STATIC_PAGES, summarizeCspReport } from "@/lib/csp";
+import { PRE_HYDRATION_SCRIPT, PRE_HYDRATION_SCRIPT_HASH } from "@/lib/pre-hydration";
+import { config, isRenderedOnRequest } from "@/proxy";
+import { SESSION_COOKIE, SESSION_HINT_COOKIE } from "@/lib/session-shared";
+
+// Le compilateur de motifs de Next lui-même (non typé), pour vérifier le `matcher` du proxy tel que Next l'applique.
+const { pathToRegexp } = createRequire(import.meta.url)("next/dist/compiled/path-to-regexp") as {
+  pathToRegexp: (source: string, keys: unknown[], options: { delimiter: string; sensitive: boolean; strict: boolean }) => RegExp;
+};
 
 const directive = (csp: string, name: string) => csp.split("; ").find((d) => d.startsWith(`${name} `));
 
@@ -70,5 +80,52 @@ describe("summarizeCspReport (journal des violations)", () => {
 
   it("garde tels quels les mots-clés inline / eval", () => {
     expect(summarizeCspReport({ "blocked-uri": "inline", "violated-directive": "script-src" })).toMatchObject({ blocked: "inline", directive: "script-src" });
+  });
+});
+
+describe("pages en cache et script d'avant hydratation (PERF-01)", () => {
+  it("l'empreinte déclarée est bien celle du script (à recalculer à chaque modification)", () => {
+    expect(PRE_HYDRATION_SCRIPT_HASH).toBe(`'sha256-${createHash("sha256").update(PRE_HYDRATION_SCRIPT).digest("base64")}'`);
+  });
+
+  it("avec un nonce : empreinte du script ajoutée, toujours sans unsafe-inline", () => {
+    const csp = buildCsp({ nonce: "abc", scriptHashes: [PRE_HYDRATION_SCRIPT_HASH], dev: false, firebaseProject: "p" });
+    expect(directive(csp, "script-src")).toBe(`script-src 'self' 'nonce-abc' ${PRE_HYDRATION_SCRIPT_HASH} 'strict-dynamic' https://apis.google.com`);
+  });
+
+  it("sans nonce (page en cache) : scripts en ligne admis, sans empreinte ni strict-dynamic qui les désactiveraient", () => {
+    const csp = buildCsp({ nonce: null, scriptHashes: [PRE_HYDRATION_SCRIPT_HASH], dev: false, firebaseProject: "p" });
+    expect(directive(csp, "script-src")).toBe("script-src 'self' 'unsafe-inline' https://apis.google.com");
+    expect(directive(csp, "frame-ancestors")).toBe("frame-ancestors 'self'");
+  });
+
+  it("le proxy ne passe pas sur les pages en cache, mais sur toutes les pages rendues à la demande", () => {
+    const re = pathToRegexp(config.matcher[0].source, [], { delimiter: "/", sensitive: false, strict: true });
+    for (const page of STATIC_PAGES) expect(re.test(page), page).toBe(false);
+    for (const page of ["/search", "/article/W1", "/article/W1/lire", "/theme/informatique", "/favoris", "/citations", "/compte", "/retours", "/liste/abc", "/inconnue"]) {
+      expect(re.test(page), page).toBe(true);
+    }
+    for (const asset of ["/api/favorites", "/icon.svg", "/_next/static/x.js", "/pdfjs/6/pdf.worker.mjs", "/__/auth/handler"]) expect(re.test(asset), asset).toBe(false);
+    // Seules les charges RSC du routeur sont écartées : un document demandé avec « Purpose: prefetch » (préchargement
+    // ou prérendu par le navigateur) sera affiché tel quel et doit recevoir son nonce et sa politique.
+    const missing = config.matcher[0].missing ?? [];
+    expect(missing).toEqual([{ type: "header", key: "next-router-prefetch" }]);
+    expect(missing.some((m) => m.key.toLowerCase() === "purpose" || m.key.toLowerCase() === "sec-purpose")).toBe(false);
+  });
+
+  it("seconde entrée : les pages en cache, seulement pour rattraper l'indice d'une session ouverte avant lui", () => {
+    const entry = config.matcher[1];
+    const re = pathToRegexp(entry.source, [], { delimiter: "/", sensitive: false, strict: true });
+    for (const page of STATIC_PAGES) expect(re.test(page), page).toBe(true);
+    for (const page of ["/search", "/favoris", "/article/W1", "/a-propos/x", "/api/favorites", "/inconnue"]) expect(re.test(page), page).toBe(false);
+    expect(entry.has).toEqual([{ type: "cookie", key: SESSION_COOKIE }]);
+    expect(entry.missing).toEqual([{ type: "cookie", key: SESSION_HINT_COOKIE }]);
+  });
+
+  it("nonce réservé aux pages rendues à la demande ; une 404 prérendue reçoit la politique sans nonce", () => {
+    for (const page of ["/search", "/favoris", "/citations", "/compte", "/retours", "/article/W123", "/article/W123/lire", "/article/xyz", "/liste/tok", "/theme/informatique", "/search/"]) {
+      expect(isRenderedOnRequest(page), page).toBe(true);
+    }
+    for (const page of ["/inconnue", "/theme/inconnu", "/article/W1/autre", "/wp-login.php", "/favoris/x"]) expect(isRenderedOnRequest(page), page).toBe(false);
   });
 });

@@ -25,7 +25,8 @@ function shortTitle(title: string): string {
 export function ForYou() {
   const favorites = useFavorites();
   const [state, setState] = useState<State>({ status: "idle", items: [], fromFavorites: false });
-  const waiting = favorites.enabled && !favorites.ready && !favorites.error;
+  // On attend aussi de savoir si le visiteur est connecté (page en cache, session lue côté client : PERF-01).
+  const waiting = favorites.pending || (favorites.enabled && !favorites.ready && !favorites.error);
   // Graines figées une fois les favoris prêts, recalculées seulement à la connexion ou à la déconnexion : un cœur
   // cliqué pendant la visite ne relance pas la requête et ne réorganise pas la grille sous le pointeur (la carte
   // qu'on vient d'enregistrer en sortirait). Les nouveaux favoris comptent au prochain affichage de l'accueil.

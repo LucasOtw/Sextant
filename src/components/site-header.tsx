@@ -7,10 +7,10 @@ import { McpAnnouncement } from "@/components/mcp-announcement";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AuthButton } from "@/components/auth/auth-button";
 import { FavoritesLink } from "@/components/favorites/favorites-link";
-import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
+import { isAuthEnabled } from "@/lib/auth";
 
-export async function SiteHeader() {
-  const user = isAuthEnabled() ? await getCurrentUser() : null;
+/** En-tête commun, identique pour tous (pages en cache) : le compte s'affiche côté client (AuthButton, PERF-01). */
+export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
@@ -26,7 +26,7 @@ export async function SiteHeader() {
           <HeaderNav />
           {isAuthEnabled() && <FavoritesLink />}
           <ThemeToggle />
-          {isAuthEnabled() && <AuthButton user={user} />}
+          {isAuthEnabled() && <AuthButton />}
         </div>
       </div>
       <WelcomeDialog />

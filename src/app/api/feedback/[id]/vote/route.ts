@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict } from "@/lib/auth";
-import { FeedbackNotFoundError, toggleVote } from "@/lib/feedback";
+import { requireStrictUser } from "@/lib/auth";
+import { FeedbackNotFoundError, refreshFeedbackList, toggleVote } from "@/lib/feedback";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { logError } from "@/lib/log";
@@ -11,13 +11,16 @@ export const runtime = "nodejs";
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return NextResponse.json({ error: "Connectez-vous pour voter." }, { status: 401 });
+  const { ok, user, refused: denied } = await requireStrictUser("Connectez-vous pour voter.");
+  if (!ok) return denied;
   if (!rateLimit(`feedback-vote:${user.uid}`, 60, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   const { id } = await ctx.params;
   if (!/^[A-Za-z0-9]{1,40}$/.test(id)) return NextResponse.json({ error: "Sujet invalide." }, { status: 400 });
   try {
-    return NextResponse.json(await toggleVote(user.uid, id), { headers: { "cache-control": "private, no-store" } });
+    const result = await toggleVote(user.uid, id);
+    // Sinon un rechargement dans la minute afficherait l'état « voté » (lu à jour) à côté d'un compteur ancien.
+    refreshFeedbackList("feedback.vote.invalidate");
+    return NextResponse.json(result, { headers: { "cache-control": "private, no-store" } });
   } catch (e) {
     if (e instanceof FeedbackNotFoundError) return NextResponse.json({ error: e.message }, { status: 404 });
     logError("feedback.id.vote.POST", e);

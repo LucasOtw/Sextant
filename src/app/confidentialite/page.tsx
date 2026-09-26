@@ -58,8 +58,10 @@ export default function PrivacyPage() {
         <li><strong>Finalité et base légale</strong> : fournir le service que vous demandez en créant un compte (exécution du contrat, RGPD art. 6.1.b).</li>
         <li><strong>Durée</strong> : tant que le compte existe. Sa suppression, depuis « Mon compte », efface immédiatement le profil et toutes les données rattachées.</li>
         <li>
-          <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours.
-          Le module de connexion de Google n'est chargé qu'au moment de la connexion, et l'état qu'il laisse dans le stockage du navigateur est
+          <strong>Session</strong> : un cookie technique <code>sextant_session</code>, strictement nécessaire pour rester connecté, valable 14 jours,
+          accompagné d'un cookie <code>sextant_signed_in</code> sans donnée personnelle, qui indique seulement aux pages si une session est ouverte
+          (pour afficher votre compte sans attendre) ; il suit la durée de la session (une heure au plus quand une session expirée ou révoquée
+          est refusée) et disparaît à la déconnexion. Le module de connexion de Google n'est chargé qu'au moment de la connexion, et l'état qu'il laisse dans le stockage du navigateur est
           effacé dès la session ouverte.
         </li>
       </ul>
@@ -116,8 +118,8 @@ export default function PrivacyPage() {
 
       <h2>Cookies et mesure d'audience</h2>
       <p>
-        Sextant n'utilise ni cookie de suivi, ni outil de mesure d'audience, ni publicité. Le seul cookie posé est le cookie de session des
-        comptes, décrit ci-dessus ; étant strictement nécessaire, il ne demande pas de consentement.
+        Sextant n'utilise ni cookie de suivi, ni outil de mesure d'audience, ni publicité. Les seuls cookies posés sont les deux cookies de
+        session des comptes, décrits ci-dessus ; étant strictement nécessaires, ils ne demandent pas de consentement.
       </p>
 
       <h2>Vos droits</h2>

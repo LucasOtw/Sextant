@@ -100,12 +100,29 @@ export class AiError extends Error {
   }
 }
 
-/** Appel « chat/completions » (Groq, Mistral, OpenRouter). Renvoie le texte de la réponse. */
+/**
+ * Réponse d'un modèle : le texte, s'il est complet, et la raison d'arrêt telle que le fournisseur l'a donnée. Complet =
+ * fin normale seulement (liste d'autorisation) : une réponse coupée par la limite de jetons, une erreur en cours de
+ * génération ou un filtre de contenu peut être montrée, mais ne doit pas être gardée pour tous.
+ */
+export interface AiCompletion {
+  text: string;
+  complete: boolean;
+  finish: string | null;
+}
+
+/** Fin normale d'une génération « chat/completions » (Groq, Mistral et OpenRouter renvoient tous `stop`). */
+const NORMAL_FINISH = "stop";
+
+/**
+ * Appel « chat/completions » (Groq, Mistral, OpenRouter). Renvoie le texte de la réponse et s'il est complet : un
+ * texte coupé par `max_tokens` (petit modèle qui boucle ou déborde) peut être montré, mais ne doit pas être gardé.
+ */
 export async function completeOpenAiCompatible(
   provider: Exclude<Provider, "anthropic">,
   system: string,
   user: string,
-): Promise<string> {
+): Promise<AiCompletion> {
   const cfg = CONFIGS[provider];
   const key = process.env[cfg.envKey];
   if (!key) throw new AiError(`Clé ${cfg.envKey} absente.`, 503);
@@ -148,14 +165,16 @@ export async function completeOpenAiCompatible(
     throw new AiError(`Erreur du fournisseur IA (${res.status}).`, 502);
   }
 
-  let data: { choices?: { message?: { content?: string } }[] };
+  let data: { choices?: { message?: { content?: string }; finish_reason?: string | null }[] };
   try {
     data = (await res.json()) as typeof data;
   } catch (e) {
     logError("ai.parse", e, { provider });
     throw new AiError("Réponse illisible du fournisseur IA.", 502);
   }
-  const text = data.choices?.[0]?.message?.content?.trim();
+  const choice = data.choices?.[0];
+  const text = choice?.message?.content?.trim();
   if (!text) throw new AiError("Réponse vide du fournisseur IA.", 502);
-  return text;
+  const finish = choice?.finish_reason ?? null;
+  return { text, complete: finish === NORMAL_FINISH, finish };
 }

@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { FeedbackBoard } from "@/components/feedback/feedback-board";
 import { TooManyRequests } from "@/components/too-many-requests";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
-import { listFeedback, userFeedbackVotes } from "@/lib/feedback";
+import { listFeedbackCached, userFeedbackVotes } from "@/lib/feedback";
 import type { FeedbackItem } from "@/lib/feedback-shared";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
@@ -12,18 +12,26 @@ export const metadata: Metadata = {
   description: "Signalez un bug ou proposez une amélioration de Sextant, et votez pour ce qui compte pour vous.",
 };
 
-// Votes et nouveaux sujets visibles tout de suite.
+// Rendu à chaque visite (votes de l'utilisateur, limite par IP) ; la liste elle-même vient du cache de 60 s, vidé à
+// chaque écriture (PERF-08) : votes et nouveaux sujets restent visibles tout de suite.
 export const dynamic = "force-dynamic";
 
 export default async function FeedbackPage() {
-  // Page publique qui lit jusqu'à 300 documents : limite par IP avant Firestore (par instance), assez large pour un campus derrière un NAT.
+  // Page publique : limite par IP avant Firestore (par instance), assez large pour un campus derrière un NAT.
   const limited = !rateLimit(`feedback-view:${clientIp(await headers())}`, 120, 60_000);
-  const user = isAuthEnabled() && !limited ? await getCurrentUser() : null;
   let items: FeedbackItem[] = [];
   let voted: string[] = [];
   let loadError = false;
+  let user: Awaited<ReturnType<typeof getCurrentUser>> = null;
   if (!limited) {
-    const [list, votes] = await Promise.allSettled([listFeedback(), user ? userFeedbackVotes(user.uid) : Promise.resolve([] as string[])]);
+    // Liste et session en parallèle ; les votes de l'utilisateur (non cachables) dès que la session est connue.
+    const userP = isAuthEnabled() ? getCurrentUser() : Promise.resolve(null);
+    const [list, votes, sessionUser] = await Promise.allSettled([
+      listFeedbackCached(),
+      userP.then((u) => (u ? userFeedbackVotes(u.uid) : [])),
+      userP,
+    ]);
+    if (sessionUser.status === "fulfilled") user = sessionUser.value;
     if (list.status === "fulfilled") items = list.value;
     else loadError = true;
     if (votes.status === "fulfilled") voted = votes.value;

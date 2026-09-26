@@ -21,6 +21,7 @@ export default async function FavoritesPage() {
 
   let favorites: Favorite[] = [];
   let collections: Collection[] = [];
+  let collectionsFresh = false;
   let loadError = false;
   let retracted: string[] = [];
   // Jusqu'à un millier de lectures par rendu pour une bibliothèque pleine : limite par compte (par instance).
@@ -32,7 +33,10 @@ export default async function FavoritesPage() {
       loadError = true;
       logError("favoris.list", f.reason);
     }
-    if (c.status === "fulfilled") collections = c.value;
+    if (c.status === "fulfilled") {
+      collections = c.value;
+      collectionsFresh = true;
+    }
     else logError("favoris.collections", c.reason);
     // Rétractations recalculées à chaque visite (un article peut l'être après son enregistrement), bornées dans le temps.
     retracted = [...(await retractedWithin(favorites.map((x) => x.id), "favoris.retracted"))];
@@ -45,7 +49,7 @@ export default async function FavoritesPage() {
         <p className="mt-3 text-lg text-muted-foreground">
           Les articles que vous avez enregistrés, sur tous vos appareils. Classez-les en listes, exportez-les en BibTeX.
         </p>
-        <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <FavoritesList initial={favorites} initialCollections={collections} loadError={loadError} retracted={retracted} />) : <SignInPrompt />}</div>
+        <div className="mt-8">{user ? (limited ? <TooManyRequests /> : <FavoritesList initial={favorites} initialCollections={collections} collectionsFresh={collectionsFresh} loadError={loadError} retracted={retracted} />) : <SignInPrompt />}</div>
       </div>
     </div>
   );

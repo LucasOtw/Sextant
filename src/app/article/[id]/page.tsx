@@ -76,6 +76,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ArticlePage({ params }: Props) {
   const { id } = await params;
   if (!/^W\d+$/i.test(id)) notFound();
+  // Lectures personnelles (cœur, surlignages, note) lancées en même temps qu'OpenAlex, pas après (PERF-09) : le
+  // chemin critique d'un connecté devient max(OpenAlex, session + Firestore). Un anonyme ne lit rien.
+  const sessionUserP = isAuthEnabled() ? getCurrentUser() : Promise.resolve(null);
+  const personal = (uid: string, wid: string) =>
+    Promise.all([
+      isFavorite(uid, wid).catch(recover("article.isFavorite", false)),
+      listHighlights(uid, wid).catch(recover("article.highlights", [])),
+      getNote(uid, wid).catch(recover("article.note", null)),
+    ]);
+  const requestedId = id.toUpperCase();
+  const personalP = sessionUserP.then((u) => (u ? personal(u.uid, requestedId) : null));
   let work: Work | null;
   try {
     work = await getWork(id);
@@ -96,14 +107,14 @@ export default async function ArticlePage({ params }: Props) {
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
   const aiEnabled = provider !== null && Boolean(abstract);
-  // Cœur déjà dans le bon état au premier rendu pour un utilisateur connecté (une lecture Firestore).
-  const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
+  // Cœur déjà dans le bon état au premier rendu pour un utilisateur connecté. Notice fusionnée par OpenAlex (identifiant
+  // canonique différent de celui demandé, rare) : les données de l'utilisateur sont rangées sous le canonique, on relit.
+  const sessionUser = await sessionUserP;
+  const workId = shortId(work.id);
   const [initiallyFavorite, initialHighlights, initialNote] = sessionUser
-    ? await Promise.all([
-        isFavorite(sessionUser.uid, shortId(work.id)).catch(recover("article.isFavorite", false)),
-        listHighlights(sessionUser.uid, shortId(work.id)).catch(recover("article.highlights", [])),
-        getNote(sessionUser.uid, shortId(work.id)).catch(recover("article.note", null)),
-      ])
+    ? workId === requestedId
+      ? ((await personalP) ?? [false, [], null])
+      : await personal(sessionUser.uid, workId)
     : [false, [], null];
 
   return (

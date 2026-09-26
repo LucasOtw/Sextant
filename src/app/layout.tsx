@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
-import { headers } from "next/headers";
 import "./globals.css";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
 import { FavoritesProvider } from "@/components/favorites/favorites-provider";
-import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
+import { SessionProvider } from "@/components/auth/session-provider";
+import { isAuthEnabled } from "@/lib/auth";
+import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -26,24 +27,27 @@ export const viewport: Viewport = {
   ],
 };
 
-/** Applique le thème mémorisé (ou celui du système) avant le premier rendu, pour éviter le flash blanc. */
-const THEME_SCRIPT = `(function(){try{var t=localStorage.getItem("theme");var d=t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches;if(d){document.documentElement.classList.add("dark");document.documentElement.style.colorScheme="dark"}}catch(e){}})();`;
-
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const user = isAuthEnabled() ? await getCurrentUser() : null;
-  // Nonce de la CSP (src/proxy.ts) : sans lui, le script de thème serait refusé par la politique.
-  const nonce = (await headers()).get("x-nonce") ?? undefined;
+/**
+ * Mise en page commune, sans lecture de la requête (ni cookie de session, ni en-têtes) : les pages qui n'en lisent
+ * pas elles-mêmes (accueil, pages légales) sont prérendues et mises en cache au bord, identiques pour tous (PERF-01).
+ * L'identité est donc connue côté client seulement (SessionProvider) ; une page qui affiche des données du compte lit
+ * elle-même la session et reste rendue à la demande.
+ */
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${sans.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        {/* Thème et indice de connexion appliqués avant le premier rendu (lib/pre-hydration.ts), autorisé par la CSP via son empreinte. */}
+        <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col text-base">
-        <FavoritesProvider userId={user?.uid ?? null}>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </FavoritesProvider>
+        <SessionProvider enabled={isAuthEnabled()}>
+          <FavoritesProvider>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </FavoritesProvider>
+        </SessionProvider>
         <Toaster position="bottom-right" duration={3500} />
       </body>
     </html>

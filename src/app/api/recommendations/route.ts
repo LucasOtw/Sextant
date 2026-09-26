@@ -5,6 +5,8 @@ import { interleaveRecommendations, parseIds, planRecommendations, seedWeights, 
 import { logError, recover } from "@/lib/log";
 
 export const runtime = "nodejs";
+/** Deux étapes OpenAlex en série (graines, puis candidats), chacune bornée à 8 s : la fonction ne dure jamais plus (PERF-07). */
+export const maxDuration = 30;
 
 const RESULTS = 6;
 const MAX_TOPICS = 3;

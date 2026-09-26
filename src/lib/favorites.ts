@@ -2,7 +2,7 @@ import "server-only";
 import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
-import { MAX_FAVORITES, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { logError, recover } from "@/lib/log";
 import { getWork } from "@/lib/openalex";
 import { cleanText } from "@/lib/text";
@@ -39,22 +39,55 @@ function toFavorite(data: Record<string, unknown>, id: string): Favorite {
  * repris du client. Seul l'identifiant envoyé compte : une liste partagée ne peut pas prêter un faux titre à un vrai
  * article, qui se recopierait chez le visiteur (favoris, exports APA/BibTeX, outils MCP). L'identifiant demandé est
  * gardé même si OpenAlex a fusionné l'article sous un autre : c'est lui que le client connaît (état des cœurs).
- * `null` : article inconnu d'OpenAlex. OpenAlex en panne : l'instantané du client, déjà borné et nettoyé par
- * `sanitizeSnapshot`, pour que l'ajout reste possible (panne journalisée).
+ * `null` : article inconnu d'OpenAlex. OpenAlex en panne (429, 5xx, délai dépassé) : l'instantané du client, déjà
+ * borné et nettoyé par `sanitizeSnapshot`, pour que l'ajout reste possible (panne journalisée), marqué
+ * `verified: false` : il ne doit jamais remplacer un instantané déjà stocké (voir `addFavoriteIn`, `setNote`).
  */
-export async function verifiedSnapshot(input: FavoriteSnapshot): Promise<FavoriteSnapshot | null> {
+export async function checkSnapshot(input: FavoriteSnapshot): Promise<{ snapshot: FavoriteSnapshot; verified: boolean } | null> {
   let work;
   try {
     work = await getWork(input.id);
   } catch (e) {
     logError("favorites.verifiedSnapshot", e, { work: input.id });
-    return input;
+    return { snapshot: input, verified: false };
   }
   if (!work) return null;
   // Jamais de repli sur l'instantané du client quand OpenAlex a répondu : un titre vide (ou fait seulement de
   // caractères de contrôle) devient « Sans titre », sans quoi sanitizeSnapshot refuserait et le faux titre passerait.
   const snap = snapshotFromWork(work);
-  return sanitizeSnapshot({ ...snap, id: input.id, title: cleanText(snap.title, 500) || "Sans titre" });
+  const snapshot = sanitizeSnapshot({ ...snap, id: input.id, title: cleanText(snap.title, 500) || "Sans titre" });
+  return snapshot ? { snapshot, verified: true } : null;
+}
+
+/** Comme `checkSnapshot`, sans l'indicateur : pour un nouveau document (citation), où rien n'est écrasé. */
+export async function verifiedSnapshot(input: FavoriteSnapshot): Promise<FavoriteSnapshot | null> {
+  return (await checkSnapshot(input))?.snapshot ?? null;
+}
+
+/** `storedSnapshot` au format de `checkSnapshot` : un instantané stocké n'est pas revérifié, il n'écrase donc rien. */
+export async function storedCheck(uid: string, id: string): Promise<{ snapshot: FavoriteSnapshot; verified: false } | null> {
+  const snapshot = await storedSnapshot(uid, id);
+  return snapshot ? { snapshot, verified: false } : null;
+}
+
+/** Délai pendant lequel « Annuler » peut rétablir un favori retiré dont l'article a disparu d'OpenAlex. */
+export const RESTORE_WINDOW_MS = 10 * 60 * 1000;
+
+/**
+ * Instantané déjà connu pour un article qu'OpenAlex ne connaît plus (404) : celui du favori stocké, ou celui du
+ * dernier favori retiré il y a moins de 10 minutes (« Annuler »). Sans lui, un favori dont la notice a été supprimée
+ * ne pourrait plus être rangé dans une liste, ni rétabli après un retrait. `null` : article vraiment inconnu.
+ */
+export async function storedSnapshot(uid: string, id: string): Promise<FavoriteSnapshot | null> {
+  const db = await adminDb();
+  const userRef = db.doc(`users/${uid}`);
+  const [favorite, user] = await Promise.all([userRef.collection("favorites").doc(id).get(), userRef.get()]);
+  if (favorite.exists) return sanitizeSnapshot({ ...favorite.data(), id });
+  const removed = user.get("lastRemovedFavorite") as { snapshot?: unknown; at?: { toMillis?: () => number } } | undefined;
+  const at = removed?.at?.toMillis?.() ?? 0;
+  if (!removed || Date.now() - at > RESTORE_WINDOW_MS) return null;
+  const snapshot = sanitizeSnapshot(removed.snapshot);
+  return snapshot?.id === id ? snapshot : null;
 }
 
 /** Les favoris, du plus récent au plus ancien ; `max` borne les lectures (une par favori renvoyé). */
@@ -114,8 +147,12 @@ export class FavoritesLimitError extends Error {}
 /**
  * Écritures d'un ajout (ou rafraîchissement) de favori, au sein d'une transaction : lectures d'abord, écritures ensuite.
  * Renvoie la date d'ajout (celle d'origine si l'article était déjà enregistré).
+ * N'écrit que ce qui change (NEW-9) : ranger dans une liste un favori déjà enregistré, à l'instantané inchangé, ne
+ * touche ni `users/{uid}` ni le document favori. Deux listes cochées ensemble ne se disputent alors plus ces documents.
+ * `verified: false` (instantané du client, OpenAlex en panne ; ou instantané déjà stocké) : écrit seulement pour un
+ * nouveau favori, marqué `unverified`, jamais par-dessus un document existant. Un ajout vérifié plus tard le remplace.
  */
-export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference, s: FavoriteSnapshot): Promise<Date> {
+export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference, s: FavoriteSnapshot, verified = true): Promise<Date> {
   const { FieldValue } = await import("firebase-admin/firestore");
   const favRef = userRef.collection("favorites").doc(s.id);
   const [user, existing] = await Promise.all([tx.get(userRef), tx.get(favRef)]);
@@ -124,14 +161,24 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
   const ids: string[] = Array.isArray(known)
     ? known.filter((x): x is string => typeof x === "string")
     : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
-  if (!existing.exists && !ids.includes(s.id)) {
-    if (ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
+  // Absent de l'index : ajouté, y compris si son document existe déjà (index désaccordé, réparé au passage). Le
+  // plafond ne vaut que pour un nouvel article : un document existant compte déjà dans les favoris.
+  const isNewId = !ids.includes(s.id);
+  if (isNewId) {
+    if (!existing.exists && ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
     ids.push(s.id);
   }
   const previous = existing.exists ? (existing.get("addedAt") as { toDate?: () => Date } | undefined) : undefined;
-  tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
-  // L'instantané est rafraîchi à chaque ajout ; la date d'ajout d'origine est conservée.
-  tx.set(favRef, { ...s, addedAt: previous ?? FieldValue.serverTimestamp() }, { merge: true });
+  // Index écrit s'il change, ou s'il vient d'être reconstruit depuis la sous-collection (anciens profils).
+  if (isNewId || !Array.isArray(known) || user.get("favoritesCount") !== ids.length) {
+    tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
+  }
+  // L'instantané est rafraîchi s'il a changé (titre corrigé chez OpenAlex…), ou s'il n'avait pas pu être vérifié ; la
+  // date d'ajout d'origine est conservée. Un instantané non vérifié ne remplace jamais un document existant.
+  const storedUnverified = existing.exists && existing.get("unverified") === true;
+  if (!existing.exists || (verified && (!previous || storedUnverified || !sameSnapshot(existing.data(), s)))) {
+    tx.set(favRef, { ...s, addedAt: previous ?? FieldValue.serverTimestamp(), unverified: verified ? FieldValue.delete() : true }, { merge: true });
+  }
   return previous?.toDate?.() ?? new Date();
 }
 
@@ -140,14 +187,18 @@ export function favoriteFromSnapshot(s: FavoriteSnapshot, addedAt: Date): Favori
   return { ...toFavorite(s as unknown as Record<string, unknown>, s.id), addedAt: addedAt.toISOString() };
 }
 
-export async function addFavorite(uid: string, s: FavoriteSnapshot): Promise<Favorite> {
+export async function addFavorite(uid: string, s: FavoriteSnapshot, verified = true): Promise<Favorite> {
   const db = await adminDb();
   const userRef = db.doc(`users/${uid}`);
-  const addedAt = await db.runTransaction((tx) => addFavoriteIn(tx, userRef, s));
+  const addedAt = await db.runTransaction((tx) => addFavoriteIn(tx, userRef, s, verified));
   return favoriteFromSnapshot(s, addedAt);
 }
 
-/** Retire le favori et le sort de toutes les listes qui le contenaient, en une seule transaction. */
+/**
+ * Retire le favori et le sort de toutes les listes qui le contenaient, en une seule transaction. Son instantané est
+ * gardé dans `users/{uid}.lastRemovedFavorite` (un seul, le dernier) : « Annuler » peut le rétablir même si l'article a
+ * disparu d'OpenAlex entre-temps (voir `storedSnapshot`).
+ */
 export async function removeFavorite(uid: string, id: string): Promise<void> {
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");
@@ -164,7 +215,9 @@ export async function removeFavorite(uid: string, id: string): Promise<void> {
       ? known.filter((x): x is string => typeof x === "string")
       : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
     const next = ids.filter((x) => x !== id);
-    tx.set(userRef, { favoriteIds: next, favoritesCount: next.length }, { merge: true });
+    const removed = existing.exists ? sanitizeSnapshot({ ...existing.data(), id }) : null;
+    // L'instantané nettoyé porte toujours tous ses champs : la fusion remplace entièrement celui du retrait précédent.
+    tx.set(userRef, { favoriteIds: next, favoritesCount: next.length, ...(removed ? { lastRemovedFavorite: { snapshot: removed, at: FieldValue.serverTimestamp() } } : {}) }, { merge: true });
     if (existing.exists) tx.delete(favRef);
     lists.docs.forEach((d) => tx.update(d.ref, { articleIds: FieldValue.arrayRemove(id) }));
   });

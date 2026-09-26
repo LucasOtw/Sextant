@@ -6,11 +6,14 @@ import { BookmarkIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { cn } from "cn";
 
-/** Lien « Mes favoris » du header, avec le compteur, visible connecté. */
+/**
+ * Lien « Mes favoris » du header, avec le compteur, visible connecté. Avant que la session soit connue (page en cache,
+ * identique pour tous), il n'est montré que si le script d'avant rendu a marqué <html data-session> (PERF-01).
+ */
 export function FavoritesLink({ className }: { className?: string }) {
-  const { enabled, count } = useFavorites();
+  const { enabled, pending, count } = useFavorites();
   const current = usePathname() === "/favoris";
-  if (!enabled) return null;
+  if (!enabled && !pending) return null;
   return (
     <Link
       href="/favoris"
@@ -19,6 +22,7 @@ export function FavoritesLink({ className }: { className?: string }) {
       className={cn(
         "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground",
         current ? "bg-muted text-foreground" : "text-muted-foreground",
+        pending && "hidden [[data-session]_&]:inline-flex",
         className,
       )}
     >

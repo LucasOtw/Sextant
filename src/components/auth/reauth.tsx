@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useId, useState } from "react";
 import { GoogleButton } from "@/components/auth/google-button";
-import { GooglePopupCancelled, withGooglePopup } from "@/components/auth/google-popup";
+import { GooglePopupCancelled, useFirebaseAuthPreload, withGooglePopup } from "@/components/auth/google-popup";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { firebaseAuth, isFirebaseConfigured } from "@/lib/firebase/client";
 import { REAUTH_REQUIRED } from "@/lib/reauth-shared";
 
 /** La réponse exige-t-elle une connexion Google récente (401 `reauth_required`, SEC-09) ? Lit une copie du corps. */
@@ -46,16 +45,10 @@ interface Props {
 export function ReauthDialog({ open, onOpenChange, description, onConfirmed }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const errorId = useId();
 
-  // Comme la fenêtre de connexion : SDK et iframe préparés pendant l'affichage, pour Safari et le mobile.
-  useEffect(() => {
-    if (!open || !isFirebaseConfigured) return;
-    try {
-      firebaseAuth();
-    } catch {
-      /* configuration absente : l'erreur s'affichera au clic */
-    }
-  }, [open]);
+  // Comme la fenêtre de connexion : SDK et iframe préparés pendant l'affichage, bouton occupé jusqu'à ce qu'ils soient prêts.
+  const ready = useFirebaseAuthPreload(open);
 
   async function confirm() {
     setBusy(true);
@@ -76,10 +69,15 @@ export function ReauthDialog({ open, onOpenChange, description, onConfirmed }: P
       <DialogContent className="sm:max-w-sm">
         <DialogTitle className="title-display text-2xl">Confirmez votre identité</DialogTitle>
         <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">{description}</DialogDescription>
-        <GoogleButton className="mt-2" onClick={() => void confirm()} busy={busy}>
+        <GoogleButton className="mt-2" onClick={() => void confirm()} busy={busy || !ready} aria-describedby={error ? errorId : undefined}>
           Confirmer avec Google
         </GoogleButton>
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {/* Annoncé aussitôt : le focus reste sur le bouton, un lecteur d'écran ne lirait rien sinon (compte différent…). */}
+        {error && (
+          <p id={errorId} role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">Choisissez le même compte Google que celui de votre session.</p>
       </DialogContent>
     </Dialog>

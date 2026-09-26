@@ -65,8 +65,11 @@ export async function countNotes(uid: string): Promise<number> {
   return (await db.collection(`users/${uid}/notes`).count().get()).data().count;
 }
 
-/** Enregistre (texte non vide) ou efface (texte vide) la note de l'article. */
-export async function setNote(uid: string, article: FavoriteSnapshot, text: string): Promise<ArticleNote | null> {
+/**
+ * Enregistre (texte non vide) ou efface (texte vide) la note de l'article. `verified: false` (instantané du client,
+ * OpenAlex en panne) : l'instantané n'est écrit que pour une nouvelle note, jamais par-dessus celui d'une note existante.
+ */
+export async function setNote(uid: string, article: FavoriteSnapshot, text: string, verified = true): Promise<ArticleNote | null> {
   const db = await adminDb();
   const { FieldValue } = await import("firebase-admin/firestore");
   const ref = db.doc(`users/${uid}/notes/${article.id}`);
@@ -75,6 +78,8 @@ export async function setNote(uid: string, article: FavoriteSnapshot, text: stri
     return null;
   }
   const col = db.collection(`users/${uid}/notes`);
+  /** Instantané déjà stocké, gardé quand celui reçu n'a pas pu être vérifié. */
+  let stored: FavoriteSnapshot | null = null;
   // Plafond compté dans la transaction, et seulement pour une nouvelle note : modifier une note existante reste
   // possible une fois le plafond atteint (SEC-19).
   await db.runTransaction(async (tx) => {
@@ -83,7 +88,9 @@ export async function setNote(uid: string, article: FavoriteSnapshot, text: stri
       const n = (await tx.get(col.count())).data().count;
       if (n >= MAX_NOTES) throw new NotesLimitError(`Limite de ${MAX_NOTES} notes atteinte : supprimez-en avant d'en écrire une nouvelle.`);
     }
-    tx.set(ref, { text, article, workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+    const keepStored = current.exists && !verified && current.get("article") !== undefined;
+    if (keepStored) stored = current.get("article") as FavoriteSnapshot;
+    tx.set(ref, { text, ...(keepStored ? {} : { article }), workId: article.id, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   });
-  return { workId: article.id, text, article, updatedAt: new Date().toISOString() };
+  return { workId: article.id, text, article: stored ?? article, updatedAt: new Date().toISOString() };
 }

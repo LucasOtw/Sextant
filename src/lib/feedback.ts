@@ -1,4 +1,5 @@
 import "server-only";
+import { revalidateTag, unstable_cache } from "next/cache";
 import { adminDb } from "@/lib/firebase/admin";
 import { logError } from "@/lib/log";
 import type { FeedbackItem, FeedbackKind, FeedbackStatus } from "@/lib/feedback-shared";
@@ -29,6 +30,33 @@ export async function listFeedback(limit = 300): Promise<FeedbackItem[]> {
   const db = await adminDb();
   const snap = await db.collection("feedback").orderBy("createdAt", "desc").limit(limit).get();
   return snap.docs.map((d) => toItem(d.id, d.data()));
+}
+
+const FEEDBACK_TAG = "feedback";
+
+/**
+ * Liste publique de /retours mise en cache 60 s, partagée entre les instances (cache de données de Next) : les visites,
+ * robots compris, ne relisent plus jusqu'à 300 documents chacune (PERF-08). Chaque écriture qui change la liste ou
+ * un compteur appelle `refreshFeedbackList` : l'auteur d'un vote ou d'un sujet revoit la page à jour.
+ */
+export const listFeedbackCached = unstable_cache(() => listFeedback(), ["feedback-list"], { tags: [FEEDBACK_TAG], revalidate: 60 });
+
+/** Vide le cache de la liste de /retours : la prochaine visite relit la base. Peut lever (hors requête Next) : passer par `refreshFeedbackList`. */
+export function invalidateFeedbackList(): void {
+  revalidateTag(FEEDBACK_TAG, { expire: 0 });
+}
+
+/**
+ * `invalidateFeedbackList` après une écriture déjà faite, sans jamais lever : un échec de l'invalidation (hors contexte
+ * de requête Next, cache indisponible) est journalisé, et la liste se relit au plus tard après 60 s. L'écriture ne doit
+ * pas être présentée comme un échec pour autant.
+ */
+export function refreshFeedbackList(scope: string): void {
+  try {
+    invalidateFeedbackList();
+  } catch (e) {
+    logError(scope, e);
+  }
 }
 
 /** Identifiants des sujets pour lesquels l'utilisateur a voté. */
@@ -83,26 +111,33 @@ export async function detachAuthor(uid: string): Promise<void> {
   await batch.commit();
 }
 
+/** Paires (compteur, vote) par transaction : 250 lectures et 500 écritures, sous la limite de Firestore. */
+const WITHDRAW_CHUNK = 250;
+
 /**
  * Suppression du compte : retire chacun de ses votes du compteur du sujet, avant l'effacement de `users/{uid}`.
- * BulkWriter plutôt qu'un lot : un sujet supprimé entre-temps (NOT_FOUND) est ignoré au lieu de faire échouer toute
- * la suppression du compte, et le nombre de votes n'est pas limité à 500. Une autre erreur est journalisée sans bloquer
- * la suppression (le compteur reste borné à 0 à la lecture, voir toItem).
+ * Chaque vote est supprimé dans la même transaction que la décrémentation de son compteur : l'opération est
+ * idempotente. Si la suppression du compte échoue ensuite et qu'elle est relancée (ou si l'utilisateur garde son
+ * compte), seuls les votes pas encore retirés sont relus : aucun sujet ne perd deux voix pour un vote. Un sujet
+ * supprimé entre-temps n'a plus de compteur : le vote est supprimé seul. Pas de limite au nombre de votes (par paquets).
  */
 export async function withdrawVotes(uid: string): Promise<void> {
   const ids = await userFeedbackVotes(uid);
   if (ids.length === 0) return;
   const db = await adminDb();
-  const { FieldValue } = await import("firebase-admin/firestore");
-  const writer = db.bulkWriter();
-  // Code gRPC 5 = NOT_FOUND : pas de relance, le sujet n'existe plus.
-  writer.onWriteError((err) => err.code !== 5 && err.failedAttempts < 3);
-  let failed = 0;
-  for (const id of ids) {
-    writer.update(db.doc(`feedback/${id}`), { votes: FieldValue.increment(-1) }).catch((e: { code?: number }) => {
-      if (e.code !== 5) failed++;
+  for (let i = 0; i < ids.length; i += WITHDRAW_CHUNK) {
+    const chunk = ids.slice(i, i + WITHDRAW_CHUNK);
+    await db.runTransaction(async (tx) => {
+      const voteRefs = chunk.map((id) => db.doc(`users/${uid}/feedbackVotes/${id}`));
+      const itemRefs = chunk.map((id) => db.doc(`feedback/${id}`));
+      const docs = await tx.getAll(...voteRefs, ...itemRefs);
+      chunk.forEach((_, k) => {
+        // Vote déjà retiré (appel concurrent) : rien à décompter.
+        if (!docs[k].exists) return;
+        const item = docs[chunk.length + k];
+        if (item.exists) tx.update(itemRefs[k], { votes: Math.max(0, Number(item.get("votes") ?? 0) - 1) });
+        tx.delete(voteRefs[k]);
+      });
     });
   }
-  await writer.close();
-  if (failed > 0) logError("feedback.withdrawVotes", new Error(`${failed} vote(s) non retiré(s) sur ${ids.length}.`));
 }

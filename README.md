@@ -188,7 +188,7 @@ npm run build
 
 ### Réglages hors du code
 
-Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont listées dans les notes de lot de `docs/handoffs/`, section « À faire par le propriétaire » : lot 1 (pare-feu Vercel, clé Mistral, budget) et lot 6 (sauvegarde Firestore, variables Vercel, fournisseurs de connexion, CSP et COOP).
+Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont listées dans les notes de lot de `docs/handoffs/`, section « À faire par le propriétaire » : lot 1 (pare-feu Vercel, clé Mistral, budget), lot 6 (sauvegarde Firestore, variables Vercel, fournisseurs de connexion, CSP et COOP) et lot 7 (index Firestore, cache au bord, CSP des pages en cache, plan Firebase).
 
 ### Branches
 
@@ -199,6 +199,10 @@ Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont list
 ### Firestore
 
 Toutes les lectures et écritures passent par le serveur (SDK Admin, clé de service). `firestore.rules` ferme tout accès direct depuis un navigateur : c'est aussi le réglage par défaut du mode « production » de la console, à conserver. Pour redéployer ces règles après modification : `firebase deploy --only firestore:rules` (CLI Firebase connectée au projet).
+
+`firestore.indexes.json` retire l'indexation automatique des champs jamais interrogés (index `favoriteIds`, textes des citations et des notes, instantanés d'article, description des retours, condensés IA). Avant de le déployer, `firebase firestore:indexes` montre les index en place : si un index créé depuis la console n'y figure pas, l'ajouter au fichier, sinon le déploiement proposerait de le supprimer. Puis `firebase deploy --only firestore:indexes`.
+
+Les condensés IA sont gardés dans la collection `aiSummaries` (un document par modèle, version de la consigne et article, sans donnée personnelle) : incrémenter `PROMPT_VERSION` dans `src/app/api/summary/route.ts` à chaque changement de la consigne.
 
 ### Variables d'environnement
 

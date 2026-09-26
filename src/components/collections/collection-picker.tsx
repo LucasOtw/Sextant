@@ -47,6 +47,11 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
       </Button>
     );
 
+  // Session pas encore connue (page en cache) : le même bouton, inerte, le temps de savoir qui est là (PERF-01).
+  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- enveloppe du vrai bouton, qui reçoit le clavier.
+  const inert = <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="contents">{trigger}</span>;
+  if (favorites.pending) return inert;
+
   if (!enabled) {
     return (
       <>
@@ -59,10 +64,8 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
 
   // Pendant le chargement du menu (navigation côté client), le même bouton, inerte, tient la place
   // (le clic ne doit pas atteindre la carte qui l'entoure).
-  // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- enveloppe du vrai bouton, qui reçoit le clavier.
-  const pending = <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="contents">{trigger}</span>;
   return (
-    <Suspense fallback={pending}>
+    <Suspense fallback={inert}>
       <CollectionMenu snapshot={snapshot} trigger={trigger} />
     </Suspense>
   );

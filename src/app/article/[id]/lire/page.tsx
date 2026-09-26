@@ -28,6 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ReaderPage({ params }: Props) {
   const { id } = await params;
   if (!/^W\d+$/i.test(id)) notFound();
+  // Session vérifiée pendant la lecture d'OpenAlex, pas après (PERF-09).
+  const sessionUserP = isAuthEnabled() ? getCurrentUser() : Promise.resolve(null);
   let work: Work | null;
   try {
     work = await getWork(id);
@@ -41,7 +43,7 @@ export default async function ReaderPage({ params }: Props) {
   const oa = openAccessUrl(work);
   if (!oa?.isPdf || openAccessPdfUrls(work).length === 0) redirect(`/article/${wid}`);
 
-  const sessionUser = isAuthEnabled() ? await getCurrentUser() : null;
+  const sessionUser = await sessionUserP;
   const initial = sessionUser ? await listHighlights(sessionUser.uid, wid).catch(recover("reader.highlights", [])) : [];
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2Icon, LogOutIcon, MonitorSmartphoneIcon, Trash2Icon } from "lucide-react";
@@ -9,10 +9,12 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { useLogout } from "@/components/auth/use-logout";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
+import { useSession } from "@/components/auth/session-provider";
 
 /** Déconnexion (cet appareil ou tous), et suppression du compte, depuis la page « Mon compte ». */
 export function AccountActions() {
   const router = useRouter();
+  const { signedOut } = useSession();
   const [confirm, setConfirm] = useState(false);
   const [reauth, setReauth] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -21,6 +23,8 @@ export function AccountActions() {
   const [busyAll, setBusyAll] = useState(false);
   const [errorAll, setErrorAll] = useState<string | null>(null);
   const { logout, pending } = useLogout("/");
+  const errorId = useId();
+  const errorAllId = useId();
 
   async function deleteAccount() {
     // Fenêtre de confirmation (r)ouverte en état occupé : après la ré-authentification, la suppression rejouée prend
@@ -52,6 +56,7 @@ export function AccountActions() {
     }
     // Fenêtre laissée en état occupé jusqu'au départ de la page : rien à relancer.
     purgeStoredFirebaseAuth();
+    signedOut();
     toast.success("Compte supprimé.", { description: "Votre profil et vos données ont été effacés." });
     router.push("/");
     router.refresh();
@@ -69,14 +74,31 @@ export function AccountActions() {
       setBusyAll(false);
       return;
     }
+    if (res.status === 401) {
+      // Session déjà expirée ou révoquée : rien à couper depuis ici, il faut se reconnecter.
+      setErrorAll("Votre session a déjà expiré : reconnectez-vous.");
+      setBusyAll(false);
+      signedOut();
+      router.refresh();
+      return;
+    }
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
       setErrorAll(data.error ?? "La déconnexion des autres appareils a échoué, réessayez.");
       setBusyAll(false);
       return;
     }
+    // Sessions révoquées ; `keysPending` : la suppression des clés a échoué (elles sont déjà refusées) et se termine en différé.
+    const data = (await res.json().catch(() => ({}))) as { keysPending?: boolean };
     setConfirmAll(false);
-    toast("Vous êtes déconnecté de tous vos appareils.", { description: "Vos clés d'assistant IA ont été révoquées." });
+    signedOut();
+    if (data.keysPending) {
+      toast.warning("Vous êtes déconnecté de tous vos appareils.", {
+        description: "Vos clés d'assistant IA ne fonctionnent plus, mais n'ont pas toutes pu être effacées. Vérifiez leur liste après vous être reconnecté.",
+      });
+    } else {
+      toast("Vous êtes déconnecté de tous vos appareils.", { description: "Vos clés d'assistant IA ont été révoquées." });
+    }
     router.push("/");
     router.refresh();
   }
@@ -100,10 +122,14 @@ export function AccountActions() {
             Toutes vos sessions seront fermées, sur cet appareil aussitôt et sur les autres dans les 5 minutes, et vos clés d'assistant IA seront révoquées :
             il faudra en créer de nouvelles. À utiliser si un appareil a été perdu ou si une session vous semble suspecte.
           </DialogDescription>
-          {errorAll && <p className="text-sm text-destructive">{errorAll}</p>}
+          {errorAll && (
+            <p id={errorAllId} role="alert" className="text-sm text-destructive">
+              {errorAll}
+            </p>
+          )}
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmAll(false)} disabled={busyAll}>Annuler</Button>
-            <Button onClick={() => void logoutEverywhere()} disabled={busyAll}>
+            <Button onClick={() => void logoutEverywhere()} disabled={busyAll} aria-describedby={errorAll ? errorAllId : undefined}>
               {busyAll && <Loader2Icon className="animate-spin" />} Tout déconnecter
             </Button>
           </div>
@@ -116,10 +142,14 @@ export function AccountActions() {
           <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
             Votre compte et toutes les données qui lui sont liées seront effacés immédiatement. Cette action est définitive.
           </DialogDescription>
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <p id={errorId} role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirm(false)} disabled={busy}>Annuler</Button>
-            <Button variant="destructive" onClick={() => void deleteAccount()} disabled={busy}>
+            <Button variant="destructive" onClick={() => void deleteAccount()} disabled={busy} aria-describedby={error ? errorId : undefined}>
               {busy && <Loader2Icon className="animate-spin" />} Supprimer définitivement
             </Button>
           </div>

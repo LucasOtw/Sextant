@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { CopyIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -9,8 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { HighlightItem } from "@/components/highlights/highlight-item";
+import { ShowMore, useRevealFocus } from "@/components/show-more";
 import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
+import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 
 interface Props {
   initial: Highlight[];
@@ -18,10 +20,6 @@ interface Props {
   loadError?: boolean;
   /** Articles rétractés (vérifiés côté serveur) : badge et mention dans les références copiées. */
   retracted?: string[];
-}
-
-function fold(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 }
 
 async function jsonOrError(res: Response) {
@@ -37,24 +35,31 @@ export function CitationsList({ initial, collections, loadError = false, retract
   const retractedIds = useMemo(() => new Set(retracted), [retracted]);
   const [q, setQ] = useState("");
   const [list, setList] = useState(ALL);
+  // La saisie reste fluide : le filtre suit la frappe en priorité basse (PERF-11).
+  const dq = useDeferredValue(q);
+  const [page, setPage] = useState<PageState>({ key: "", n: PAGE_SIZE });
 
   const listItems = useMemo(() => [{ value: ALL, label: "Toutes les listes" }, ...collections.map((c) => ({ value: c.id, label: c.name }))], [collections]);
 
+  // Texte plié de chaque citation, calculé une fois par liste et non à chaque frappe.
+  const index = useMemo(() => foldedIndex(items, (h) => `${h.text} ${h.note} ${h.article.title} ${h.article.authors}`), [items]);
+
   const shown = useMemo(() => {
     const inList = list === ALL ? null : new Set(collections.find((c) => c.id === list)?.articleIds ?? []);
-    const nq = fold(q.trim());
-    return items.filter((h) => (!inList || inList.has(h.workId)) && (!nq || fold(`${h.text} ${h.note} ${h.article.title} ${h.article.authors}`).includes(nq)));
-  }, [items, q, list, collections]);
+    const matching = filterFolded(items, index, dq);
+    return inList ? matching.filter((h) => inList.has(h.workId)) : matching;
+  }, [items, index, dq, list, collections]);
 
-  const groups = useMemo(() => {
-    const map = new Map<string, Highlight[]>();
-    for (const h of shown) {
-      const arr = map.get(h.workId);
-      if (arr) arr.push(h);
-      else map.set(h.workId, [h]);
-    }
-    return [...map.values()];
-  }, [shown]);
+  // Rendu par tranches : seules les premières citations sont montées ; compteur et « Tout copier » portent sur toutes.
+  const pageKey = `${dq}|${list}`;
+  const limit = visibleCount(page, pageKey);
+  const articleCount = useMemo(() => countDistinct(shown, (h) => h.workId), [shown]);
+  // Citations remises dans l'ordre des groupes avant de couper la tranche : sinon (tri par date, articles mêlés) chaque
+  // tranche compléterait des sections déjà affichées, au-dessus du bouton, et rien n'apparaîtrait sous lui. Ainsi, une
+  // tranche prolonge la dernière section ou en ajoute de nouvelles en bas.
+  const ordered = useMemo(() => groupBy(shown, (h) => h.workId).flat(), [shown]);
+  const groups = useMemo(() => groupBy(ordered.slice(0, limit), (h) => h.workId), [ordered, limit]);
+  const { containerRef, reveal } = useRevealFocus<HTMLDivElement>(":scope > section > ul > li");
 
   async function updateNote(id: string, note: string) {
     const previous = items.find((h) => h.id === id)?.note ?? "";
@@ -145,10 +150,10 @@ export function CitationsList({ initial, collections, loadError = false, retract
       </div>
 
       <p className="text-[15px] text-muted-foreground" aria-live="polite">
-        {shown.length} citation{shown.length > 1 ? "s" : ""}{groups.length > 1 && <> · {groups.length} articles</>}{q && <> pour « {q} »</>}
+        {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour « {q} »</>}
       </p>
 
-      <div className="flex flex-col gap-8">
+      <div ref={containerRef} className="flex flex-col gap-8">
         {groups.map((group) => {
           const a = group[0].article;
           return (
@@ -162,13 +167,22 @@ export function CitationsList({ initial, collections, loadError = false, retract
               </p>
               <ul className="mt-3 flex flex-col gap-2">
                 {group.map((h) => (
-                  <HighlightItem key={h.id} highlight={h} retracted={retractedIds.has(h.workId)} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} />
+                  <HighlightItem key={h.id} highlight={h} retracted={retractedIds.has(h.workId)} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} deferPaint />
                 ))}
               </ul>
             </section>
           );
         })}
       </div>
+      <ShowMore
+        shown={Math.min(limit, shown.length)}
+        total={shown.length}
+        feminine
+        onMore={() => {
+          reveal(Math.min(limit, shown.length));
+          setPage((p) => nextPage(p, pageKey));
+        }}
+      />
     </div>
   );
 }

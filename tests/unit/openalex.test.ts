@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getAuthorProfile, getTopic, getWork, isPlausiblyRecent, shortId, withCredentials } from "@/lib/openalex";
+import { getAuthorProfile, getTopic, getWork, isPlausiblyRecent, retryBudget, shortId, withCredentials } from "@/lib/openalex";
 
 describe("isPlausiblyRecent (garde de datation des listes récentes)", () => {
   const now = new Date("2026-09-25T12:00:00Z");
@@ -93,5 +93,24 @@ describe("identifiants dans le chemin OpenAlex (SEC-15)", () => {
     const urls = captureFetch();
     await getWork("https://openalex.org/W2741809807");
     expect(new URL(urls[0]).pathname).toBe("/works/W2741809807");
+  });
+});
+
+describe("retryBudget (budget global d'un appel OpenAlex, PERF-07)", () => {
+  it("relance un statut passager reçu vite, dans le budget restant", () => {
+    expect(retryBudget(429, 200)).toBe(8000 - 200 - 1200);
+    expect(retryBudget(503, 0)).toBe(6800);
+  });
+
+  it("ne relance jamais un 504 (OpenAlex l'envoie après ~9 s) ni un statut définitif", () => {
+    expect(retryBudget(504, 100)).toBeNull();
+    expect(retryBudget(404, 100)).toBeNull();
+    expect(retryBudget(200, 100)).toBeNull();
+  });
+
+  it("ne relance pas quand le budget restant, attente comprise, est trop court", () => {
+    expect(retryBudget(502, 3800)).toBe(3000);
+    expect(retryBudget(502, 3801)).toBeNull();
+    expect(retryBudget(429, 7000)).toBeNull();
   });
 });

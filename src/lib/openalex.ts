@@ -214,20 +214,37 @@ export function withCredentials(url: URL): URL {
   return url;
 }
 
-const RETRYABLE = new Set([429, 500, 502, 503, 504]);
+/** Pas de relance d'un 504 : OpenAlex ne le renvoie qu'après environ 9 s de travail, le relancer doublerait l'attente. */
+const RETRYABLE = new Set([429, 500, 502, 503]);
 
-/** Attente maximale d'une réponse d'OpenAlex (une notice absurde peut le faire tourner une dizaine de secondes). */
+/**
+ * Budget total d'un appel à OpenAlex, relance comprise (une notice absurde peut le faire tourner une dizaine de
+ * secondes) : au-delà, la page répond par son écran d'erreur plutôt que d'occuper la fonction (PERF-07).
+ */
 const DEADLINE_MS = 8000;
+const RETRY_DELAY_MS = 1200;
+/** En dessous, une relance n'aurait pas le temps d'aboutir : on répond tout de suite. */
+const MIN_RETRY_BUDGET_MS = 3000;
+
+/**
+ * Délai accordé à la relance d'une réponse `status` reçue après `elapsedMs`, ou null s'il ne faut pas relancer :
+ * statut non passager, ou budget restant (attente comprise) trop court. Exportée pour les tests.
+ */
+export function retryBudget(status: number, elapsedMs: number, deadlineMs = DEADLINE_MS): number | null {
+  if (!RETRYABLE.has(status)) return null;
+  const left = deadlineMs - elapsedMs - RETRY_DELAY_MS;
+  return left >= MIN_RETRY_BUDGET_MS ? left : null;
+}
 
 /**
  * `fetch` borné dans le temps. Volontairement sans `AbortSignal` : Next ne déduplique pas un fetch qui en porte un, et
  * `generateMetadata` et la page lisent la même notice dans le même rendu. La requête abandonnée finit en arrière-plan
  * (et alimente le cache si elle aboutit).
  */
-async function fetchWithDeadline(url: URL, revalidate: number, path: string): Promise<Response> {
+async function fetchWithDeadline(url: URL, revalidate: number, path: string, timeoutMs = DEADLINE_MS): Promise<Response> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new OpenAlexError(`OpenAlex hors délai (${DEADLINE_MS} ms) sur ${path}`, 504)), DEADLINE_MS);
+    timer = setTimeout(() => reject(new OpenAlexError(`OpenAlex hors délai (${timeoutMs} ms) sur ${path}`, 504)), timeoutMs);
   });
   try {
     return await Promise.race([fetch(url, { next: { revalidate } }), deadline]);
@@ -251,12 +268,15 @@ async function get<T>(
   }
   withCredentials(url);
 
-  // Une seule relance rapide : suffit pour les à-coups, sans faire attendre l'utilisateur sur un vrai 429.
-  // Pas de relance après un délai dépassé : OpenAlex est alors saturé, on répond tout de suite.
+  // Une seule relance rapide : suffit pour les à-coups, sans faire attendre l'utilisateur sur un vrai 429. Elle tient
+  // dans le budget de l'appel (8 s en tout). Pas de relance après un délai dépassé ni après un 504 : OpenAlex est
+  // alors saturé, on répond tout de suite.
+  const started = Date.now();
   let res = await fetchWithDeadline(url, revalidate, path);
-  if (RETRYABLE.has(res.status)) {
-    await new Promise((r) => setTimeout(r, 1200));
-    res = await fetchWithDeadline(url, revalidate, path);
+  const budget = retryBudget(res.status, Date.now() - started);
+  if (budget !== null) {
+    await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    res = await fetchWithDeadline(url, revalidate, path, budget);
   }
   if (!res.ok) {
     throw new OpenAlexError(`OpenAlex ${res.status} sur ${path}`, res.status);
