@@ -3,7 +3,11 @@ import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
 import { ExternalLink } from "@/components/external-link";
 
-export const metadata: Metadata = { title: "À propos" };
+export const metadata: Metadata = {
+  title: "À propos",
+  description: "Ce que Sextant fait et ne fait pas, d'où viennent ses données (OpenAlex), ce qu'est le condensé par IA, et l'origine de son nom.",
+  alternates: { canonical: "/a-propos" },
+};
 
 export default function AboutPage() {
   return (

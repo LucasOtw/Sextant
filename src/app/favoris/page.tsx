@@ -12,7 +12,8 @@ import { logError } from "@/lib/log";
 import { retractedWithin } from "@/lib/retracted";
 import type { Favorite } from "@/lib/favorites-shared";
 
-export const metadata: Metadata = { title: "Mes favoris" };
+// Page personnelle : un visiteur anonyme (robot compris) n'y voit qu'une invitation à se connecter, rien à indexer (QUAL-17).
+export const metadata: Metadata = { title: "Mes favoris", robots: { index: false } };
 
 /** La liste sélectionnée (`?liste=id`) est lue côté client depuis l'URL ; le serveur fournit favoris et listes pour un premier rendu complet. */
 export default async function FavoritesPage() {

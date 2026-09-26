@@ -145,6 +145,36 @@ export function truncateWords(text: string, n: number): string {
   return words.slice(0, n).join(" ") + "…";
 }
 
+/**
+ * Texte ramené à `max` caractères au plus pour une balise `<meta name="description">` (QUAL-18) : espaces réduits,
+ * coupé au dernier espace avant la limite, suivi de « … » (compris dans les `max`). Un mot unique trop long est coupé net.
+ */
+export function metaDescription(text: string, max = 160): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  const chars = Array.from(flat);
+  if (chars.length <= max) return flat;
+  const head = chars.slice(0, max - 1).join("");
+  const cut = head.lastIndexOf(" ");
+  return `${(cut > 0 ? head.slice(0, cut) : head).replace(/[\s,;:.–—-]+$/, "")}…`;
+}
+
+const META_KINDS = new Set(["article", "review", "preprint", "book", "book-chapter", "dissertation", "report", "dataset"]);
+
+/**
+ * Description d'une fiche article : le début du résumé, ou à défaut (pas de résumé dans OpenAlex) une notice
+ * « Article de A, B et C. Revue, 2024. » pour que la page n'hérite pas de la description du site.
+ */
+export function articleMetaDescription(w: Work, abstract: string | null): string {
+  if (abstract?.trim()) return metaDescription(abstract);
+  const venue = venueName(w);
+  // « Thèse de … », « Préprint de … » ; « Publication de … » pour les types qui ne se lisent pas ainsi (conférence, autre).
+  let text = META_KINDS.has(w.type) ? typeLabel(w.type) : "Publication";
+  if (authorNames(w).length > 0) text += ` de ${formatAuthors(w, 3)}`;
+  // Revue et année à part (« Thèse de … . Revue, 2024. ») : pas de participe à accorder avec le type.
+  const where = [venue, w.publication_year].filter(Boolean).join(", ");
+  return metaDescription(where ? `${text}. ${where}.` : `${text}.`);
+}
+
 function bibKey(w: Work): string {
   const first = w.authorships[0]?.author.display_name.split(" ").pop() ?? "anon";
   const word = workTitle(w).split(/\s+/).find((x) => x.length > 3) ?? "work";

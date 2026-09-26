@@ -5,7 +5,11 @@ import { SITE } from "@/lib/site";
 import { ExternalLink } from "@/components/external-link";
 import { RETENTION, retentionLabel, validMonths } from "@/lib/retention";
 
-export const metadata: Metadata = { title: "Confidentialité" };
+export const metadata: Metadata = {
+  title: "Confidentialité",
+  description: "Ce que Sextant garde, sans compte et avec un compte, les services tiers qu'il utilise, et vos droits sur vos données : export, effacement.",
+  alternates: { canonical: "/confidentialite" },
+};
 
 const UPDATED = "26 septembre 2026";
 

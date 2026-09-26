@@ -34,6 +34,9 @@ Section maintenue à la main, hors du bloc ci-dessus (régénéré par `next dev
 - Français, vouvoiement. Composants shadcn / Base UI de `src/components/ui/`, icônes Lucide, jetons de couleur du thème
   (clair et sombre), pas de couleur en dur.
 - Accessibilité : règles `jsx-a11y` en erreur, `npm run test:a11y` ; nom accessible qui reprend le texte visible.
+- Métadonnées : `title`, `description` et `alternates.canonical` par page publique ; `robots: { index: false }` pour une
+  page personnelle. Jamais d'`openGraph` dans une page : il remplacerait en entier celui du layout (nom du site, image).
+  Nouvelle page publique : l'ajouter à `src/lib/sitemap.ts`.
 
 ## Qualité et livraison
 - Avant un commit : `npx tsc --noEmit -p .`, `npm run lint` (0 avertissement), `npm test`, `npm run build`.

@@ -15,7 +15,7 @@ import { countCollections } from "@/lib/collections";
 import { countHighlights } from "@/lib/highlights";
 import { countNotes } from "@/lib/notes";
 
-export const metadata: Metadata = { title: "Mon compte" };
+export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
 
 async function memberSince(uid: string, userDoc: Promise<DocumentSnapshot>): Promise<string | null> {
   try {

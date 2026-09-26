@@ -38,3 +38,8 @@ export function themeByFieldId(fieldId: string): Theme | undefined {
   const id = fieldId.replace(/^.*fields\//, "");
   return THEMES.find((t) => t.fieldId === id);
 }
+
+/** Description de la page d'un thème (balise meta et aperçus de partage), distincte de celle du site (QUAL-18). */
+export function themeMetaDescription(theme: Theme): string {
+  return `${theme.name} : ${theme.description} Les articles les plus cités de l'année, et une recherche limitée à cette discipline.`;
+}

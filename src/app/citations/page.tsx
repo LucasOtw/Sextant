@@ -13,7 +13,8 @@ import type { Highlight } from "@/lib/highlights-shared";
 import { logError } from "@/lib/log";
 import { retractedWithin } from "@/lib/retracted";
 
-export const metadata: Metadata = { title: "Mes citations" };
+// Page personnelle : un visiteur anonyme (robot compris) n'y voit qu'une invitation à se connecter, rien à indexer (QUAL-17).
+export const metadata: Metadata = { title: "Mes citations", robots: { index: false } };
 
 export default async function CitationsPage() {
   if (!isAuthEnabled()) redirect("/");

@@ -6,7 +6,7 @@ import { Results, SkipToResults } from "@/components/results";
 import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Badge } from "@/components/ui/badge";
 import { getTopicsForField } from "@/lib/openalex";
-import { THEMES, themeBySlug } from "@/lib/themes";
+import { THEMES, themeBySlug, themeMetaDescription } from "@/lib/themes";
 import { cn } from "cn";
 import { recover } from "@/lib/log";
 
@@ -22,7 +22,15 @@ export function generateStaticParams() {
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const theme = themeBySlug((await params).slug);
   // La page dans le titre : l'annonceur de routes de Next lit le nouveau titre à la pagination (A11Y-12).
-  return { title: pagedTitle(theme?.name ?? "Thématique", parseSearchParams(await searchParams).page) };
+  const title = pagedTitle(theme?.name ?? "Thématique", parseSearchParams(await searchParams).page);
+  if (!theme) return { title };
+  // Description propre au thème (au lieu de celle du site, répétée sur les 16 pages) et adresse canonique sans
+  // paramètres : les variantes ?q, ?sort, ?from, ?page… désignent la même page de thème (QUAL-18).
+  return {
+    title,
+    description: themeMetaDescription(theme),
+    alternates: { canonical: `/theme/${theme.slug}` },
+  };
 }
 
 export default async function ThemePage({ params, searchParams }: Props) {

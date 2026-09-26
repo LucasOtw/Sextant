@@ -3,7 +3,11 @@ import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
 import { ExternalLink } from "@/components/external-link";
 
-export const metadata: Metadata = { title: "Conditions d'utilisation" };
+export const metadata: Metadata = {
+  title: "Conditions d'utilisation",
+  description: "Les conditions d'utilisation de Sextant, en clair : le service, la lecture des PDF, le compte facultatif et les contenus que vous créez.",
+  alternates: { canonical: "/conditions" },
+};
 
 export default function TermsPage() {
   return (

@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   abstractFromInvertedIndex,
+  articleMetaDescription,
   contentLang,
   formatAuthors,
   formatCount,
@@ -67,8 +68,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Article momentanément indisponible", robots: { index: false } };
   }
   if (!work) return { title: "Article introuvable", robots: { index: false } };
-  const abstract = abstractFromInvertedIndex(work.abstract_inverted_index);
-  return { title: workTitle(work), description: abstract?.slice(0, 160) };
+  // Adresse canonique : identifiant OpenAlex tel qu'il le renvoie (« W » majuscule, notice fusionnée → la notice
+  // restante), pour que /article/w123 et /article/W123 ne comptent pas comme deux pages. Aucun `openGraph` ici : il
+  // remplacerait celui du layout (nom du site, image) ; og:title et og:description reprennent titre et description.
+  return {
+    title: workTitle(work),
+    description: articleMetaDescription(work, abstractFromInvertedIndex(work.abstract_inverted_index)),
+    alternates: { canonical: `/article/${shortId(work.id)}` },
+  };
 }
 
 /**

@@ -4,7 +4,11 @@ import { ProsePage } from "@/components/prose-page";
 import { SITE } from "@/lib/site";
 import { ExternalLink } from "@/components/external-link";
 
-export const metadata: Metadata = { title: "Mentions légales" };
+export const metadata: Metadata = {
+  title: "Mentions légales",
+  description: "Éditeur et hébergeur de Sextant, contact, signalement d'un contenu et propriété intellectuelle.",
+  alternates: { canonical: "/mentions-legales" },
+};
 
 export default function LegalNoticePage() {
   const publisher = SITE.publisherName;
