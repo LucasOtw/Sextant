@@ -10,6 +10,7 @@ import { shortId } from "@/lib/openalex";
 import { readRecent } from "@/lib/recent";
 import { clearHidden, hideRecommendation, readHidden, reasonText, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
 import { undoToast } from "@/lib/undo-toast";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 type State = { status: "idle" | "loading" | "ready" | "hidden"; items: Recommendation[]; fromFavorites: boolean };
 
@@ -41,6 +42,9 @@ export function ForYou() {
   const [reload, setReload] = useState(0);
   /** Le bouton « Réafficher » disparaît au clic : le focus va au titre de la section plutôt que sur la page. */
   const headingRef = useRef<HTMLHeadingElement>(null);
+  /** Carte écartée : le focus passe au « Pas intéressé » de la suivante (ou de la précédente), sinon au titre (A11Y-19). */
+  const listRef = useRef<HTMLUListElement>(null);
+  useFocusRecovery(listRef, ":scope > li", () => headingRef.current);
 
   useEffect(() => {
     // Connecté : on attend les favoris pour ne faire qu'une requête.
@@ -71,10 +75,8 @@ export function ForYou() {
   function dismiss(item: Recommendation) {
     const id = shortId(item.work.id);
     hideRecommendation(id);
-    setState((s) => {
-      const items = s.items.filter((x) => shortId(x.work.id) !== id);
-      return { ...s, items, status: items.length ? s.status : "hidden" };
-    });
+    // La section reste affichée quand tout est écarté : titre (qui reçoit le focus) et « Réafficher » ne disparaissent pas.
+    setState((s) => ({ ...s, items: s.items.filter((x) => shortId(x.work.id) !== id) }));
     setHiddenCount(readHidden().length);
     undoToast(
       "Suggestion écartée.",
@@ -112,8 +114,10 @@ export function ForYou() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
+      ) : state.items.length === 0 ? (
+        <p className="text-[15px] text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul ref={listRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {state.items.map((item, i) => {
             const { kind, topic, seeds } = item.reason;
             return (
@@ -142,7 +146,7 @@ export function ForYou() {
                       reasonText(item.reason)
                     )}
                   </p>
-                  <button type="button" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
+                  <button type="button" data-focus-key="dismiss" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
                     <EyeOffIcon className="size-3.5" aria-hidden /> Pas intéressé
                   </button>
                 </div>

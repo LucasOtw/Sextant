@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from "vitest";
 import { markSpans } from "@/lib/pdf-marks";
-import { clearRecent, pushRecent, readRecent, RECENT_KEY } from "@/lib/recent";
+import { clearRecent, pushRecent, readRecent, RECENT_KEY, restoreRecent } from "@/lib/recent";
 import { clearHidden, hideRecommendation, HIDDEN_KEY, readHidden, unhideRecommendation } from "@/lib/recommendations-shared";
 
 /** Couche texte PDF.js simplifiée : un <span> par fragment de ligne. */
@@ -67,6 +67,16 @@ describe("stockage local : historique et suggestions écartées", () => {
     expect(list.filter((w) => w.id === "W5")).toHaveLength(1);
     clearRecent();
     expect(readRecent()).toEqual([]);
+  });
+
+  it("historique : « Annuler » après l'effacement remet la liste, après les consultations faites entre-temps (A11Y-19)", () => {
+    for (const id of ["W1", "W2", "W3"]) pushRecent(work(id));
+    const previous = readRecent();
+    clearRecent();
+    pushRecent(work("W9"));
+    pushRecent(work("W2"));
+    restoreRecent(previous);
+    expect(readRecent().map((w) => w.id)).toEqual(["W2", "W9", "W3", "W1"]);
   });
 
   it("historique : écarte les éléments corrompus et survit à un JSON illisible", () => {

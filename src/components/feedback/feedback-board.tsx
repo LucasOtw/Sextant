@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { feedbackOrder, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
 import { cn } from "cn";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
@@ -37,12 +37,12 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
   const [signIn, setSignIn] = useState<string | null>(null);
   const [pending, setPending] = useState<Set<string>>(new Set());
 
-  const shown = useMemo(() => {
-    const list = items.filter((i) => filter === "all" || i.kind === filter);
-    return [...list].sort((a, b) =>
-      sort === "recent" ? (b.createdAt ?? "").localeCompare(a.createdAt ?? "") : b.votes - a.votes || (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
-    );
-  }, [items, filter, sort]);
+  // Ordre figé, recalculé seulement quand le visiteur change le tri ou le filtre : voter en tri « Les plus votés » ne
+  // déplace pas la ligne sous le focus (A11Y-19). Le nouveau classement apparaît au prochain tri ou au rechargement.
+  const [order, setOrder] = useState(() => ({ sort, filter, ids: feedbackOrder(initial, sort) }));
+  if (order.sort !== sort || order.filter !== filter) setOrder({ sort, filter, ids: feedbackOrder(items, sort) });
+
+  const shown = useMemo(() => inOrder(items, order.ids).filter((i) => filter === "all" || i.kind === filter), [items, order.ids, filter]);
 
   const counts = useMemo(() => ({ all: items.length, bug: items.filter((i) => i.kind === "bug").length, idea: items.filter((i) => i.kind === "idea").length }), [items]);
 
@@ -161,10 +161,11 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
         onClick={onVote}
         aria-pressed={voted}
         aria-label={`${voted ? "Retirer mon vote" : "Voter"} : ${item.title} (${item.votes} vote${item.votes > 1 ? "s" : ""})`}
-        disabled={busy}
+        // aria-disabled plutôt que disabled : un bouton désactivé perd le focus (A11Y-19) ; vote() ignore déjà le double clic.
+        aria-disabled={busy || undefined}
         className={cn(
           "flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-lg text-sm font-semibold ring-1 transition-colors",
-          voted ? "bg-accent-brand text-white ring-accent-brand" : "bg-background text-foreground ring-foreground/15 hover:ring-accent-brand hover:text-accent-brand",
+          voted ? "bg-accent-brand text-accent-brand-foreground ring-accent-brand" : "bg-background text-foreground ring-foreground/15 hover:ring-accent-brand hover:text-accent-brand",
         )}
       >
         <ChevronUpIcon className="size-4" aria-hidden />

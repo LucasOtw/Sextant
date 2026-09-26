@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckIcon, CopyIcon, KeyRoundIcon, Loader2Icon, PlusIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { useCopy } from "@/hooks/use-copy";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
@@ -52,6 +53,10 @@ export function McpKeys() {
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
   const [reauth, setReauth] = useState(false);
   const [origin, setOrigin] = useState("https://sextant-psi.vercel.app");
+  /** Clé révoquée sous le focus : « Révoquer » de la suivante, sinon de la précédente, sinon le champ « Nom de la clé » (A11Y-19). */
+  const listRef = useRef<HTMLUListElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  useFocusRecovery(listRef, ":scope > li", () => nameRef.current);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- l'origine n'est connue qu'au navigateur
@@ -109,7 +114,7 @@ export function McpKeys() {
       {keys === null ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2Icon className="size-4 animate-spin" aria-hidden /> Chargement…</p>
       ) : keys.length > 0 ? (
-        <ul className="flex flex-col divide-y rounded-lg ring-1 ring-foreground/10">
+        <ul ref={listRef} className="flex flex-col divide-y rounded-lg ring-1 ring-foreground/10">
           {keys.map((k) => (
             <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
               <div className="min-w-0">
@@ -120,7 +125,7 @@ export function McpKeys() {
                   {" · "}{k.lastUsedAt ? `utilisée le ${DATE.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={() => void revoke(k)} aria-label={`Révoquer la clé ${k.name}`}>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" data-focus-key="revoke" onClick={() => void revoke(k)} aria-label={`Révoquer la clé ${k.name}`}>
                 <Trash2Icon /> Révoquer
               </Button>
             </li>
@@ -135,7 +140,7 @@ export function McpKeys() {
           if (!busy && !full) void create();
         }}
       >
-        <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={MAX_API_KEY_NAME} placeholder="Nom de la clé (ex. Claude sur mon Mac)" aria-label="Nom de la clé" className="h-10 flex-1 text-base md:text-base" />
+        <Input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} maxLength={MAX_API_KEY_NAME} placeholder="Nom de la clé (ex. Claude sur mon Mac)" aria-label="Nom de la clé" className="h-10 flex-1 text-base md:text-base" />
         <Button type="submit" className="h-10" disabled={busy || full}>
           {busy ? <Loader2Icon className="animate-spin" /> : <PlusIcon />} Créer une clé
         </Button>

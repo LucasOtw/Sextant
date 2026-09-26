@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { HighlighterIcon, PenLineIcon, QuoteIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useHighlights } from "@/components/highlights/highlights-provider";
 import { ManualCitationDialog } from "@/components/highlights/manual-citation-dialog";
 import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
 import { isAlreadyHighlighted, passagesFrom, splitSentences } from "@/lib/sentences";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 interface Props {
   /** Barre latérale du lecteur : plus dense, et la page d'un surlignage fait défiler le PDF. */
@@ -28,6 +29,10 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   const { enabled, retracted, highlights, add, updateNote, remove, requestSignIn } = useHighlights();
   const [manual, setManual] = useState(false);
   const [picker, setPicker] = useState(false);
+  /** Passage supprimé sous le focus : « Supprimer » du suivant, sinon du précédent, sinon le titre (A11Y-19). */
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  useFocusRecovery(listRef, ":scope > li", () => headingRef.current);
   const sentences = useMemo(() => (abstract && !compact ? splitSentences(abstract, lang ?? "fr") : []), [abstract, compact, lang]);
   const where = compact ? "du PDF" : hasAbstract && hasPdf ? "du résumé, ou du PDF dans le lecteur" : hasAbstract ? "du résumé" : hasPdf ? "du PDF dans le lecteur" : null;
   // Au clavier (ou quand la sélection est malaisée) : le bouton « Surligner des phrases » ouvre la liste des phrases.
@@ -62,7 +67,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   return (
     <section id="mes-surlignages" aria-labelledby="mes-surlignages-titre" className={compact ? "" : "mt-8"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="mes-surlignages-titre" className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 ref={headingRef} id="mes-surlignages-titre" tabIndex={-1} className="flex items-center gap-2 text-sm outline-none font-semibold uppercase tracking-wide text-muted-foreground">
           <HighlighterIcon className="size-4 text-highlight-foreground" aria-hidden /> Mes surlignages
           {highlights.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium normal-case tracking-normal text-secondary-foreground">{highlights.length}</span>}
         </h2>
@@ -83,7 +88,7 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
         </div>
       ) : (
         <>
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul ref={listRef} className="mt-3 flex flex-col gap-2">
             {highlights.map((h) => (
               <HighlightItem key={h.id} highlight={h} retracted={retracted} onNote={(note) => updateNote(h.id, note)} onDelete={() => remove(h.id)} onGoToPage={onGoToPage} compact={compact} />
             ))}

@@ -21,6 +21,7 @@ import { ShareDialog } from "@/components/collections/share-dialog";
 import { ShowMore, useRevealFocus } from "@/components/show-more";
 import { formatCount, typeLabel } from "@/lib/format";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 import { cn } from "cn";
 
 const SORTS = [
@@ -148,6 +149,9 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const limit = visibleCount(page, pageKey);
 
   const { containerRef: listRef, reveal } = useRevealFocus<HTMLUListElement>(":scope > li");
+  /** Favori retiré sous le focus (cœur) : le cœur de l'article suivant, sinon du précédent, sinon le compteur (A11Y-19). */
+  const countRef = useRef<HTMLParagraphElement>(null);
+  useFocusRecovery(listRef, ":scope > li", () => countRef.current);
   /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
   const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
 
@@ -284,7 +288,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   if (all.length === 0 && collections.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center">
-        <p className="text-lg font-medium">Aucun favori pour l'instant.</p>
+        <p ref={countRef} tabIndex={-1} className="text-lg font-medium outline-none">Aucun favori pour l'instant.</p>
         <p className="mt-1 text-base text-muted-foreground">
           Le cœur sur une carte ou une fiche article l'enregistre ici, retrouvable sur tous vos appareils.
         </p>
@@ -348,7 +352,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         </div>
       </div>
 
-      <p className="text-[15px] text-muted-foreground" aria-live="polite">
+      <p ref={countRef} tabIndex={-1} className="text-[15px] text-muted-foreground outline-none" aria-live="polite">
         {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour « {q} »</>}
         {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
       </p>

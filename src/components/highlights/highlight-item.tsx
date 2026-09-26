@@ -143,7 +143,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
           </Button>
         )}
         <Button variant="ghost" size="sm" onClick={copy} aria-label={`Copier le passage « ${h.text.slice(0, 40)}… » avec sa référence`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
-        <Button variant="ghost" size="sm" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${h.text.slice(0, 40)}… »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
+        <Button variant="ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${h.text.slice(0, 40)}… »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
       </div>
     </li>
   );

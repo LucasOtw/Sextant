@@ -61,3 +61,18 @@ export function clearRecent() {
     /* stockage indisponible */
   }
 }
+
+/**
+ * « Annuler » après « Effacer l'historique » : remet la liste effacée, après les consultations faites entre-temps
+ * (elles restent en tête), sans doublon.
+ */
+export function restoreRecent(previous: RecentWork[]) {
+  try {
+    const current = readRecent();
+    const ids = new Set(current.map((w) => w.id));
+    const list = [...current, ...previous.filter((w) => !ids.has(w.id))].slice(0, MAX);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch {
+    /* stockage indisponible */
+  }
+}
