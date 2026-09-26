@@ -4,7 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * GET /api/favorites porte l'identité de l'en-tête (PERF-01) et tient à jour l'indice de connexion lisible par le
  * navigateur. Session et stockage simulés : aucune requête vers la base.
  */
-const auth = vi.hoisted(() => ({ readSessionWithReason: vi.fn(), getCurrentUserStrict: vi.fn(), strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })) }));
+const auth = vi.hoisted(() => {
+  const a = { readSessionWithReason: vi.fn(), getCurrentUserStrict: vi.fn(), requireStrictUser: vi.fn() };
+  // Garde des écritures : même contrat que lib/auth (une seule lecture stricte, 401 sans utilisateur).
+  a.requireStrictUser.mockImplementation(async () => {
+    const user = await a.getCurrentUserStrict();
+    return user ? { ok: true, user, refused: null } : { ok: false, user: null, refused: Response.json({ error: "Non connecté." }, { status: 401 }) };
+  });
+  return a;
+});
 const store = vi.hoisted(() => ({ listFavoriteIds: vi.fn(), listCollections: vi.fn() }));
 vi.mock("@/lib/auth", () => auth);
 vi.mock("@/lib/favorites", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/favorites")>()), listFavoriteIds: store.listFavoriteIds }));

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict, strictRefusal, readSessionWithReason } from "@/lib/auth";
+import { requireStrictUser, readSessionWithReason } from "@/lib/auth";
 import { addFavorite, checkSnapshot, FavoritesLimitError, listFavoriteIds, removeFavorite, storedCheck } from "@/lib/favorites";
 import { sanitizeSnapshot, WORK_ID } from "@/lib/favorites-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -62,8 +62,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return strictRefusal();
+  const { ok, user, refused: denied } = await requireStrictUser();
+  if (!ok) return denied;
   if (tooMany(user.uid)) return TOO_MANY();
   let body: unknown;
   try {
@@ -90,8 +90,8 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return strictRefusal();
+  const { ok, user, refused: denied } = await requireStrictUser();
+  if (!ok) return denied;
   if (tooMany(user.uid)) return TOO_MANY();
   const id = new URL(req.url).searchParams.get("id") ?? "";
   if (!WORK_ID.test(id)) return NextResponse.json({ error: "Identifiant invalide." }, { status: 400 });

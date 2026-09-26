@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict, strictRefusal } from "@/lib/auth";
+import { requireStrictUser } from "@/lib/auth";
 import { createFeedback, refreshFeedbackList } from "@/lib/feedback";
 import { sanitizeFeedback } from "@/lib/feedback-shared";
 import { rateLimit } from "@/lib/rate-limit";
@@ -12,8 +12,8 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const refused = rejectCrossSite(req) ?? rejectLargeBody(req, 16_384);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return strictRefusal("Connectez-vous pour publier.");
+  const { ok, user, refused: denied } = await requireStrictUser("Connectez-vous pour publier.");
+  if (!ok) return denied;
   if (!rateLimit(`feedback-post:${user.uid}`, 5, 60 * 60_000)) return NextResponse.json({ error: "Vous avez publié plusieurs sujets récemment : réessayez dans une heure." }, { status: 429 });
   let body: unknown;
   try {

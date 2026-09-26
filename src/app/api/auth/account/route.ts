@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
-import { forgetRevocationCheck, getCurrentUserStrict, strictRefusal, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
+import { forgetRevocationCheck, requireStrictUser, isRecentLogin, reauthRequired, SESSION_COOKIE } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { rejectCrossSite } from "@/lib/security";
 import { deleteAllKeys } from "@/lib/api-keys";
@@ -17,8 +17,8 @@ export const runtime = "nodejs";
 export async function DELETE(req: Request) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return strictRefusal();
+  const { ok, user, refused: denied } = await requireStrictUser();
+  if (!ok) return denied;
   if (!rateLimit(`account-del:${user.uid}`, 3, 60_000)) return NextResponse.json({ error: "Trop de requêtes, réessayez dans une minute." }, { status: 429 });
   if (!isRecentLogin(user)) return reauthRequired();
 

@@ -134,8 +134,7 @@ export const readSessionStrictWithReason = cache((): Promise<SessionRead> => rea
  * injoignable, clés publiques indisponibles), 401 sinon. Une panne ne doit pas se présenter comme « Non connecté » :
  * le client ouvrirait la fenêtre de connexion, et la victime d'un vol qui veut tout couper lirait un faux diagnostic.
  */
-export async function strictRefusal(message = "Non connecté."): Promise<NextResponse> {
-  const { failure } = await readSessionStrictWithReason();
+export function strictRefusal(failure: SessionRead["failure"], message = "Non connecté."): NextResponse {
   if (failure === "unavailable") {
     return NextResponse.json(
       { error: "Vérification de session momentanément impossible, réessayez." },
@@ -143,6 +142,19 @@ export async function strictRefusal(message = "Non connecté."): Promise<NextRes
     );
   }
   return NextResponse.json({ error: message }, { status: 401 });
+}
+
+export type StrictSession = { ok: true; user: SessionUser; refused: null } | { ok: false; user: null; refused: NextResponse };
+
+/**
+ * Garde des écritures : utilisateur strict, ou la réponse de refus tirée de la MÊME vérification. `cache()` ne mémorise
+ * rien dans un gestionnaire de route : relire la session pour connaître la raison referait tout (clés publiques, getUser),
+ * et une panne résorbée entre les deux lectures se présenterait comme « Non connecté ».
+ */
+export async function requireStrictUser(message = "Non connecté."): Promise<StrictSession> {
+  const { user, failure } = await readSessionStrictWithReason();
+  if (user) return { ok: true, user, refused: null };
+  return { ok: false, user: null, refused: strictRefusal(failure, message) };
 }
 
 /**

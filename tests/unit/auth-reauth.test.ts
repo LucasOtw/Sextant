@@ -5,14 +5,23 @@ import { REAUTH_MAX_AGE_S, REAUTH_REQUIRED } from "@/lib/reauth-shared";
  * Ré-authentification (SEC-09) et « déconnexion de tous les appareils » (SEC-08) : routes testées avec session,
  * Firebase Auth et stockage simulés. Aucune requête ne part vers la base.
  */
-const auth = vi.hoisted(() => ({
-  getCurrentUserStrict: vi.fn(),
-  getCurrentUser: vi.fn(),
-  forgetRevocationCheck: vi.fn(),
-  // Sans utilisateur strict : 401 par défaut ; une panne de la vérification est simulée au cas par cas (503).
-  strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })),
-  recheckSession: vi.fn(async () => true),
-}));
+const auth = vi.hoisted(() => {
+  const a = {
+    getCurrentUserStrict: vi.fn(),
+    getCurrentUser: vi.fn(),
+    forgetRevocationCheck: vi.fn(),
+    // Sans utilisateur strict : 401 par défaut ; une panne de la vérification est simulée au cas par cas (503).
+    strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })),
+    recheckSession: vi.fn(async () => true),
+    requireStrictUser: vi.fn(),
+  };
+  // Garde des écritures (lib/auth) : utilisateur strict simulé, ou la réponse de refus simulée ci-dessus.
+  a.requireStrictUser.mockImplementation(async () => {
+    const user = await a.getCurrentUserStrict();
+    return user ? { ok: true, user, refused: null } : { ok: false, user: null, refused: await a.strictRefusal() };
+  });
+  return a;
+});
 const server = vi.hoisted(() => ({ after: vi.fn() }));
 const admin = vi.hoisted(() => ({ revokeRefreshTokens: vi.fn(), deleteUser: vi.fn(), verifyIdToken: vi.fn(), createSessionCookie: vi.fn(), getUser: vi.fn() }));
 const keys = vi.hoisted(() => ({ deleteAllKeys: vi.fn(), createKey: vi.fn(), listKeys: vi.fn() }));

@@ -12,7 +12,10 @@ const session = vi.hoisted(() => ({ uid: "" }));
 // Connexion Google « récente » (authTime = maintenant) : la suppression exige une connexion de moins de 10 minutes (SEC-09).
 vi.mock("@/lib/auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/auth")>()),
-  getCurrentUserStrict: async () => (session.uid ? { uid: session.uid, email: null, name: null, picture: null, authTime: Math.floor(Date.now() / 1000) } : null),
+  requireStrictUser: async () =>
+    session.uid
+      ? { ok: true, user: { uid: session.uid, email: null, name: null, picture: null, authTime: Math.floor(Date.now() / 1000) }, refused: null }
+      : { ok: false, user: null, refused: Response.json({ error: "Non connecté." }, { status: 401 }) },
   forgetRevocationCheck: () => {},
 }));
 

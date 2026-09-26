@@ -24,7 +24,7 @@ vi.mock("@/lib/firebase/admin", () => ({
 }));
 vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/log")>()), logError: vi.fn() }));
 
-const { forgetRevocationCheck, getCurrentUser, getCurrentUserStrict, readSessionWithReason, recheckSession, strictRefusal } = await import("@/lib/auth");
+const { forgetRevocationCheck, getCurrentUser, getCurrentUserStrict, readSessionWithReason, recheckSession, requireStrictUser } = await import("@/lib/auth");
 const { forgetAccountState } = await import("@/lib/account-state");
 
 const revokedAt = Date.parse("2026-09-20T10:00:00Z");
@@ -130,21 +130,30 @@ describe("readSession : révocation, compte supprimé ou désactivé", () => {
     await expect(readSessionWithReason()).resolves.toEqual({ user: null, failure: "rejected" });
   });
 
-  it("strictRefusal : 503 quand la vérification est en panne, 401 pour un refus ou sans cookie", async () => {
+  it("requireStrictUser : 503 quand la vérification est en panne, 401 pour un refus ou sans cookie", async () => {
     state.claims = { uid: "u1", auth_time: sec(revokedAt) + 60 };
     state.getUser.mockRejectedValue(new Error("réseau"));
-    const down = await strictRefusal();
-    expect(down.status).toBe(503);
-    expect(down.headers.get("retry-after")).toBe("5");
-    expect(((await down.json()) as { error: string }).error).not.toBe("Non connecté.");
+    const down = await requireStrictUser();
+    expect(down.ok).toBe(false);
+    expect(down.refused?.status).toBe(503);
+    expect(down.refused?.headers.get("retry-after")).toBe("5");
+    expect(((await down.refused!.json()) as { error: string }).error).not.toBe("Non connecté.");
 
     state.getUser.mockResolvedValue(account());
     state.claims = { uid: "u1", auth_time: sec(revokedAt) - 60 };
-    expect((await strictRefusal()).status).toBe(401);
+    expect((await requireStrictUser()).refused?.status).toBe(401);
     state.cookie = undefined;
-    const none = await strictRefusal("Connectez-vous pour voter.");
-    expect(none.status).toBe(401);
-    expect(await none.json()).toEqual({ error: "Connectez-vous pour voter." });
+    const none = await requireStrictUser("Connectez-vous pour voter.");
+    expect(none.refused?.status).toBe(401);
+    expect(await none.refused!.json()).toEqual({ error: "Connectez-vous pour voter." });
+  });
+
+  it("requireStrictUser : la raison vient de la même lecture (une panne résorbée juste après reste un 503, pas « Non connecté »)", async () => {
+    state.claims = { uid: "u1", auth_time: sec(revokedAt) + 60 };
+    state.getUser.mockRejectedValueOnce(new Error("réseau")).mockResolvedValue(account());
+    const res = await requireStrictUser();
+    expect(res.refused?.status).toBe(503);
+    expect(state.getUser).toHaveBeenCalledTimes(1);
   });
 
   it("recheckSession relit l'état du compte sans le cache de l'instance (révocation faite ailleurs)", async () => {

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserStrict, strictRefusal } from "@/lib/auth";
+import { requireStrictUser } from "@/lib/auth";
 import { revokeKey } from "@/lib/api-keys";
 import { API_KEY_ID } from "@/lib/api-keys-shared";
 import { rejectCrossSite } from "@/lib/security";
@@ -11,8 +11,8 @@ export const runtime = "nodejs";
 export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const refused = rejectCrossSite(req);
   if (refused) return refused;
-  const user = await getCurrentUserStrict();
-  if (!user) return strictRefusal();
+  const { ok, user, refused: denied } = await requireStrictUser();
+  if (!ok) return denied;
   const { id } = await ctx.params;
   if (!API_KEY_ID.test(id)) return NextResponse.json({ error: "Clé invalide." }, { status: 400 });
   try {

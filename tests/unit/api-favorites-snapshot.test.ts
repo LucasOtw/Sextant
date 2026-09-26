@@ -5,7 +5,15 @@ import { makeSnapshot, makeWork } from "../fixtures";
  * SEC-06 : l'instantané d'un favori est reconstruit depuis OpenAlex, jamais repris du client. Session, OpenAlex et
  * stockage sont simulés (aucune requête vers la base ni vers OpenAlex).
  */
-const auth = vi.hoisted(() => ({ getCurrentUser: vi.fn(), getCurrentUserStrict: vi.fn(), strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })) }));
+const auth = vi.hoisted(() => {
+  const a = { getCurrentUser: vi.fn(), getCurrentUserStrict: vi.fn(), requireStrictUser: vi.fn() };
+  // Garde des écritures : même contrat que lib/auth (une seule lecture stricte, 401 sans utilisateur).
+  a.requireStrictUser.mockImplementation(async () => {
+    const user = await a.getCurrentUserStrict();
+    return user ? { ok: true, user, refused: null } : { ok: false, user: null, refused: Response.json({ error: "Non connecté." }, { status: 401 }) };
+  });
+  return a;
+});
 const openalex = vi.hoisted(() => ({ getWork: vi.fn() }));
 const store = vi.hoisted(() => ({ addFavorite: vi.fn(), addToCollection: vi.fn(), storedCheck: vi.fn() }));
 

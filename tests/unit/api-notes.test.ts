@@ -6,7 +6,15 @@ import { makeSnapshot, makeWork } from "../fixtures";
  * Modèle pour les autres routes d'écriture (favoris, listes, surlignages, retours).
  */
 const user = { uid: "u1", email: null, name: null, picture: null };
-const auth = vi.hoisted(() => ({ getCurrentUser: vi.fn(), getCurrentUserStrict: vi.fn(), strictRefusal: vi.fn(async () => Response.json({ error: "Non connecté." }, { status: 401 })) }));
+const auth = vi.hoisted(() => {
+  const a = { getCurrentUser: vi.fn(), getCurrentUserStrict: vi.fn(), requireStrictUser: vi.fn() };
+  // Garde des écritures : même contrat que lib/auth (une seule lecture stricte, 401 sans utilisateur).
+  a.requireStrictUser.mockImplementation(async () => {
+    const user = await a.getCurrentUserStrict();
+    return user ? { ok: true, user, refused: null } : { ok: false, user: null, refused: Response.json({ error: "Non connecté." }, { status: 401 }) };
+  });
+  return a;
+});
 const notes = vi.hoisted(() => ({ getNote: vi.fn(), setNote: vi.fn(), NotesLimitError: class NotesLimitError extends Error {} }));
 const openalex = vi.hoisted(() => ({ getWork: vi.fn() }));
 vi.mock("@/lib/auth", () => auth);
