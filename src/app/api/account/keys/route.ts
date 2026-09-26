@@ -3,7 +3,7 @@ import { isRecentLogin, reauthRequired, recheckSession } from "@/lib/auth";
 import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { ApiKeysLimitError, createKey, listKeys } from "@/lib/api-keys";
 import { MAX_API_KEY_NAME } from "@/lib/api-keys-shared";
-import { cleanText } from "@/lib/highlights-shared";
+import { cleanText } from "@/lib/text";
 import { logError } from "@/lib/log";
 
 export const runtime = "nodejs";

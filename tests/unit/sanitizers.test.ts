@@ -1,14 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  citationBlock,
-  cleanText,
-  MAX_HIGHLIGHT_TEXT,
-  sanitizeHighlightInput,
-  sanitizePage,
-  sourceLabel,
-  tooLong,
-  type Highlight,
-} from "@/lib/highlights-shared";
+import { citationBlock, MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, sanitizePage, sourceLabel, type Highlight } from "@/lib/highlights-shared";
+import { cleanText, tooLong } from "@/lib/text";
 import { MAX_COLLECTION_DESCRIPTION, MAX_COLLECTION_NAME, sanitizeCollectionDescription, sanitizeCollectionName, SHARE_TOKEN, shareUrl } from "@/lib/collections-shared";
 import { MAX_FEEDBACK_TITLE, sanitizeFeedback } from "@/lib/feedback-shared";
 import { makeSnapshot } from "../fixtures";
@@ -18,15 +10,24 @@ describe("cleanText (surlignages, notes, retours)", () => {
     expect(cleanText("  a\u0000b\u200Bc d  \n e \u202E", 100)).toBe("abc d e");
   });
 
-  // Défauts connus (QUAL-32, lot 10 de l'audit) : ces tests échouent tant que le défaut existe (`it.fails`) ;
-  // le correctif QUAL-32 doit retirer `.fails`.
-  it.fails("QUAL-32 — une tabulation sépare les mots au lieu de les coller", () => {
+  it("QUAL-32 — une tabulation sépare les mots au lieu de les coller", () => {
     expect(cleanText("mot1\tmot2", 100)).toBe("mot1 mot2");
   });
 
-  it.fails("QUAL-32 — les émojis composés (ZWJ) restent intacts", () => {
+  it("QUAL-32 — les émojis composés (ZWJ) restent intacts", () => {
     const family = "\u{1F468}\u200D\u{1F469}\u200D\u{1F467}";
     expect(cleanText(family, 100)).toBe(family);
+  });
+
+  it("QUAL-32 — tabulation verticale, saut de page et NEL deviennent une espace, aussi avec les sauts de ligne gardés", () => {
+    expect(cleanText("a\vb\fc\u0085d", 100)).toBe("a b c d");
+    expect(cleanText("col1\tcol2\nligne 2", 100, true)).toBe("col1 col2\nligne 2");
+  });
+
+  it("QUAL-32 — le ZWNJ d'un mot persan est gardé, les contrôles bidirectionnels et invisibles sont retirés", () => {
+    const persian = "\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645";
+    expect(cleanText(persian, 100)).toBe(persian);
+    expect(cleanText("x\u202Ey\u2066z\u2069\uFEFF\u2060", 100)).toBe("xyz");
   });
 
   it("garde les sauts de ligne si demandé, trois au plus deviennent deux", () => {
@@ -109,8 +110,9 @@ describe("listes (collections)", () => {
     expect(sanitizeCollectionDescription(null)).toBe("");
   });
 
-  it.fails("QUAL-32 — un saut de ligne ou une tabulation dans la description sépare les mots", () => {
-    expect(sanitizeCollectionDescription("À lire\navant\tlundi")).toBe("À lire avant lundi");
+  it("QUAL-32 — un saut de ligne ou une tabulation dans la description sépare les mots", () => {
+    expect(sanitizeCollectionDescription("À lire\navant\tlundi")).toBe("À lire avant lundi");    expect(sanitizeCollectionName("Mémoire\t2026")).toBe("Mémoire 2026");
+    expect(sanitizeCollectionName("Lectures \u{1F3F3}\uFE0F\u200D\u{1F308}")).toBe("Lectures \u{1F3F3}\uFE0F\u200D\u{1F308}");
   });
 
   it("jeton de partage : 22 caractères base64url exactement", () => {

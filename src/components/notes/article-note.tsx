@@ -8,14 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_ARTICLE_NOTE, type ArticleNote as Note } from "@/lib/notes-shared";
 import { api, errorMessage, needsSignIn } from "@/lib/client/api";
+import { DATE_TIME } from "@/lib/dates";
 
 interface Props {
   enabled: boolean;
   snapshot: FavoriteSnapshot;
   initial: Note | null;
 }
-
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
 /** « Ma note » : un texte libre sur l'article, enregistré tout seul quelques instants après la frappe. */
 export function ArticleNote({ enabled, snapshot, initial }: Props) {
@@ -168,7 +167,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
           {status === "saving" && <span className="flex items-center gap-1"><Loader2Icon className="size-3 animate-spin" aria-hidden /> Enregistrement…</span>}
           {status === "saved" && <span className="flex items-center gap-1"><CheckIcon className="size-3" aria-hidden /> Enregistré</span>}
           {status === "error" && <span className="text-destructive">Non enregistré</span>}
-          {status === "idle" && savedAt && <span>Modifié le {DATE.format(new Date(savedAt))}</span>}
+          {status === "idle" && savedAt && <span>Modifié le {DATE_TIME.format(new Date(savedAt))}</span>}
         </p>
       </div>
       <Textarea

@@ -24,6 +24,7 @@ import { moveLabel } from "@/lib/labels";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 import { cn } from "cn";
+import { DATE_SHORT } from "@/lib/dates";
 
 const SORTS = [
   { value: "added", label: "Ajout récent" },
@@ -32,8 +33,6 @@ const SORTS = [
   { value: "cited", label: "Citations" },
   { value: "title", label: "Titre" },
 ];
-
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 
 /** Seules les premières cartes entrent en animation : au-delà, des centaines d'animations partiraient ensemble. */
 const ANIMATED_ROWS = 12;
@@ -428,7 +427,7 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <ArticleMeta authors={f.authors} venue={f.venue} year={f.year} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-1"><CitationCount count={f.citedByCount} /></span>
-          {f.addedAt && <span>· ajouté le {DATE.format(new Date(f.addedAt))}</span>}
+          {f.addedAt && <span>· ajouté le {DATE_SHORT.format(new Date(f.addedAt))}</span>}
           {lists.length > 0 && (
             <span className="flex flex-wrap items-center gap-1.5">
               ·{" "}

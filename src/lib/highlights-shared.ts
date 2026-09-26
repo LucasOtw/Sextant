@@ -1,9 +1,6 @@
 import { citeInline, formatApa } from "@/lib/citation";
 import { type FavoriteSnapshot, sanitizeSnapshot } from "@/lib/favorites-shared";
-import { cleanText } from "@/lib/text";
-
-// Déplacé dans src/lib/text.ts (utilisé aussi par favorites-shared) ; réexporté pour les appelants existants.
-export { cleanText };
+import { cleanText, tooLong } from "@/lib/text";
 
 /**
  * Surlignages : un passage retenu, rattaché à son article (`W…`), sa page, sa date et une note.
@@ -35,11 +32,6 @@ export const MAX_CONTEXT = 120;
 export const MAX_PAGE = 100_000;
 
 const SOURCES: HighlightSource[] = ["abstract", "pdf", "manual"];
-
-/** Le texte dépasse-t-il la borne (comptée en points de code) ? Sert à refuser plutôt que tronquer en silence. */
-export function tooLong(input: unknown, max: number): boolean {
-  return typeof input === "string" && Array.from(input).length > max;
-}
 
 export function sanitizePage(input: unknown): number | null {
   if (typeof input !== "number" || !Number.isFinite(input)) return null;

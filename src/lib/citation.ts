@@ -1,11 +1,12 @@
 /**
  * Références bibliographiques (APA 7, BibTeX, appel de citation court) : un seul module pour tous les écrans (QUAL-02).
  * La fiche article, les favoris, les listes (privées et partagées), les citations surlignées et les outils MCP citent
- * donc un même article de la même façon. Module pur, qui n'importe que lib/ids (lui-même sans dépendance) : utilisable
+ * donc un même article de la même façon. Module pur, qui n'importe que lib/ids et lib/text (sans dépendance) : utilisable
  * côté client comme côté serveur, et hors de tout cycle (format.ts et favorites-shared.ts en dépendent, jamais l'inverse).
  */
 
 import { doiPath } from "@/lib/ids";
+import { stripAccents } from "@/lib/text";
 
 /** Volume, numéro et pages d'une publication (OpenAlex `biblio`) ; les quatre clés sont toujours présentes. */
 export interface Biblio {
@@ -68,7 +69,7 @@ export function splitAuthorName(full: string): { last: string; initials: string 
 
 /** Lettres latines sans accent (« É » → « E », « ü » → « u »), chiffres ; tout le reste est retiré. */
 function ascii(s: string): string {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]/g, "");
+  return stripAccents(s).replace(/[^A-Za-z0-9]/g, "");
 }
 
 /**

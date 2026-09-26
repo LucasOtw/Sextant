@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import type { Suggestion } from "@/app/api/suggest/route";
 import { THEMES } from "@/lib/themes";
 import { formatCount } from "@/lib/format";
+import { fold } from "@/lib/text";
 import { cn } from "cn";
 
 interface Props {
@@ -23,10 +24,6 @@ type Item =
   | { kind: "search"; label: string; href: string }
   | { kind: "theme"; label: string; description: string; href: string }
   | { kind: "work"; label: string; hint: string | null; citations: number; href: string };
-
-function normalize(s: string) {
-  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
 
 export function SearchBox({ defaultValue = "", size = "compact", hidden, className }: Props) {
   const router = useRouter();
@@ -79,8 +76,8 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
   }, []);
 
   const q = query.trim();
-  const nq = normalize(q);
-  const themes = q.length >= 2 ? THEMES.filter((t) => normalize(t.name).includes(nq)).slice(0, 2) : [];
+  const nq = fold(q);
+  const themes = q.length >= 2 ? THEMES.filter((t) => fold(t.name).includes(nq)).slice(0, 2) : [];
   const items: Item[] = q
     ? [
         { kind: "search", label: q, href: searchHref(q) },

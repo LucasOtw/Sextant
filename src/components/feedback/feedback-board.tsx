@@ -20,8 +20,8 @@ import { api, errorMessage } from "@/lib/client/api";
 import { voteLabel } from "@/lib/labels";
 import { REPORT_SECTION, reportHref } from "@/lib/report";
 import { cn } from "cn";
+import { DATE_SHORT } from "@/lib/dates";
 
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
 const SORTS = [
   { value: "votes", label: "Les plus votés" },
   { value: "recent", label: "Les plus récents" },
@@ -208,7 +208,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
             {item.kind === "bug" ? <BugIcon aria-hidden /> : <LightbulbIcon aria-hidden />} {KIND_LABEL[item.kind]}
           </Badge>
           {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
-          {item.createdAt && <span className="text-xs text-muted-foreground">{DATE.format(new Date(item.createdAt))}</span>}
+          {item.createdAt && <span className="text-xs text-muted-foreground">{DATE_SHORT.format(new Date(item.createdAt))}</span>}
           {/* Nom accessible qui commence par le texte visible (WCAG 2.5.3) et dit quel sujet est visé. */}
           <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="ml-auto text-xs text-muted-foreground underline-offset-3 hover:text-foreground hover:underline">
             Signaler

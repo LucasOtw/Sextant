@@ -2,14 +2,11 @@
  * Filtre et affichage par tranches des grandes listes du compte (/favoris jusqu'à 1 000 articles, /citations jusqu'à
  * 2 000 passages). Module pur, partagé client / serveur (PERF-11).
  */
+import { fold } from "@/lib/text";
 
 /** Taille d'une tranche affichée ; « Afficher plus » en ajoute autant. */
 export const PAGE_SIZE = 50;
 
-/** Minuscules sans accents : « Écologie » et « ecologie » se retrouvent. */
-export function fold(s: string): string {
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-}
 
 /**
  * Texte plié de chaque élément, calculé une fois par liste (et non à chaque frappe) : 2 000 citations longues se

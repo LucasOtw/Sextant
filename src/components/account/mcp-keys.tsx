@@ -11,8 +11,7 @@ import { MAX_API_KEY_NAME, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { useCopy } from "@/hooks/use-copy";
 import { neighbourEquivalent } from "@/lib/focus";
-
-const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
+import { DATE_SHORT } from "@/lib/dates";
 
 const COPY_FAILURE = "Presse-papiers indisponible : sélectionnez le texte pour le copier.";
 
@@ -140,8 +139,8 @@ export function McpKeys() {
                 <p className="flex items-center gap-2 font-medium"><KeyRoundIcon className="size-4 text-accent-brand" aria-hidden /> {k.name}</p>
                 <p className="text-xs text-muted-foreground">
                   <code>{k.prefix}…</code>
-                  {k.createdAt && <> · créée le {DATE.format(new Date(k.createdAt))}</>}
-                  {" · "}{k.lastUsedAt ? `utilisée le ${DATE.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
+                  {k.createdAt && <> · créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
+                  {" · "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
               </div>
               <Button

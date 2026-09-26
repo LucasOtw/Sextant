@@ -15,6 +15,7 @@ import { countCollections } from "@/lib/collections";
 import { countHighlights } from "@/lib/highlights";
 import { countNotes } from "@/lib/notes";
 import { initialsOf } from "@/lib/format";
+import { DATE_LONG } from "@/lib/dates";
 
 export const metadata: Metadata = { title: "Mon compte", robots: { index: false } };
 
@@ -22,7 +23,7 @@ export const metadata: Metadata = { title: "Mon compte", robots: { index: false 
 async function memberSince(uid: string, profile: Promise<DocumentSnapshot>): Promise<string | null> {
   try {
     const d = await accountCreatedAt(uid, await profile);
-    return d ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d) : null;
+    return d ? DATE_LONG.format(d) : null;
   } catch (e) {
     logError("compte.memberSince", e);
     return null;

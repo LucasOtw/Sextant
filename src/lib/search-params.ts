@@ -1,4 +1,5 @@
 import { AUTHOR_ID, normalizeId, TOPIC_ID, WORK_ID } from "@/lib/ids";
+import { formatInteger } from "@/lib/format";
 import type { SearchParams } from "@/lib/openalex";
 
 /** Paramètres d'URL de la recherche : extraits de `components/results.tsx` pour être testés sans React. */
@@ -100,8 +101,8 @@ export function pagedTitle(title: string, page: number | undefined): string {
 
 /** Message lu aux lecteurs d'écran à l'arrivée d'une liste de résultats (région d'annonce, WCAG 4.1.3). */
 export function resultsMessage(total: number, page: number, perPage: number, q?: string): string {
-  const n = new Intl.NumberFormat("fr-FR").format(total);
+  const n = formatInteger(total);
   const count = `${n} résultat${total > 1 ? "s" : ""}${q ? ` pour « ${q} »` : ""}`;
   const last = lastPageOf(total, perPage);
-  return last > 1 ? `${count}, page ${page} sur ${new Intl.NumberFormat("fr-FR").format(last)}.` : `${count}.`;
+  return last > 1 ? `${count}, page ${page} sur ${formatInteger(last)}.` : `${count}.`;
 }

@@ -1,5 +1,6 @@
 import type { Work } from "./openalex";
 import { safeHttpUrl } from "./text";
+import { CALENDAR_DATE_LONG } from "./dates";
 
 /** Reconstruit le texte d'un résumé depuis l'index inversé d'OpenAlex. */
 export function abstractFromInvertedIndex(
@@ -126,15 +127,25 @@ export function oaLabel(status: string): string {
   return OA_LABELS[status] ?? status;
 }
 
-export function formatCount(n: number): string {
-  return new Intl.NumberFormat("fr-FR", { notation: n >= 10_000 ? "compact" : "standard" }).format(n);
+const INTEGER = new Intl.NumberFormat("fr-FR");
+const COMPACT = new Intl.NumberFormat("fr-FR", { notation: "compact" });
+
+/** Nombre entier à la française (« 12 345 ») : totaux de résultats, pagination. */
+export function formatInteger(n: number): string {
+  return INTEGER.format(n);
 }
 
+/** Compteur court : « 9 876 », puis « 12 k » à partir de 10 000. */
+export function formatCount(n: number): string {
+  return (n >= 10_000 ? COMPACT : INTEGER).format(n);
+}
+
+/** Date de publication d'OpenAlex (« 2024-03-15 ») en toutes lettres, au jour exact quel que soit le fuseau (QUAL-30). */
 export function formatDate(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d);
+  return CALENDAR_DATE_LONG.format(d);
 }
 
 /** Initiales d'un compte pour l'avatar de repli : « Ada Lovelace » → « AL », « ada@exemple.fr » → « AE ». */

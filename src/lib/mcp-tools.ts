@@ -10,7 +10,7 @@ import { citationBlock, sourceLabel, type Highlight } from "@/lib/highlights-sha
 import { findHighlights, listHighlights } from "@/lib/highlights";
 import { getNote, listNotes } from "@/lib/notes";
 import { logError } from "@/lib/log";
-import { fold } from "@/lib/list-filter";
+import { fold } from "@/lib/text";
 import { BATCH_WORK_ID, shortId } from "@/lib/ids";
 import { getRetractedIds, getWork, getWorksByIds, getWorksBySameTopic, searchWorks, type Work } from "@/lib/openalex";
 import { SITE } from "@/lib/site";

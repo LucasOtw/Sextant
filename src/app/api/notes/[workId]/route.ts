@@ -3,7 +3,7 @@ import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { checkSnapshot } from "@/lib/favorites";
 import { sanitizeSnapshot } from "@/lib/favorites-shared";
 import { WORK_ID } from "@/lib/ids";
-import { cleanText } from "@/lib/highlights-shared";
+import { cleanText } from "@/lib/text";
 import { getNote, NotesLimitError, setNote } from "@/lib/notes";
 import { MAX_ARTICLE_NOTE } from "@/lib/notes-shared";
 

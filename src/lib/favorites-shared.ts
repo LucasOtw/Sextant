@@ -2,7 +2,7 @@ import type { Work } from "@/lib/openalex";
 import { shortId, WORK_ID } from "@/lib/ids";
 import type { Biblio, CitationSource } from "@/lib/citation";
 import { authorNames, formatAuthors, venueName, workTitle } from "@/lib/format";
-import { cleanText } from "@/lib/text";
+import { cleanText, fold } from "@/lib/text";
 
 /**
  * Instantané d'un article enregistré en favori : assez de métadonnées pour afficher la liste
@@ -170,5 +170,5 @@ export function sanitizeSnapshot(input: unknown): FavoriteSnapshot | null {
 
 /** Nom de fichier sûr à partir d'un nom de liste. */
 export function fileSlug(name: string): string {
-  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liste";
+  return fold(name).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "liste";
 }

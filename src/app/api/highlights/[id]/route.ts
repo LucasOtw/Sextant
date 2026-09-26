@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { DOC_ID } from "@/lib/ids";
 import { deleteHighlight, HighlightNotFoundError, updateHighlightNote } from "@/lib/highlights";
-import { cleanText, MAX_NOTE } from "@/lib/highlights-shared";
+import { MAX_NOTE } from "@/lib/highlights-shared";
+import { cleanText } from "@/lib/text";
 
 export const runtime = "nodejs";
 

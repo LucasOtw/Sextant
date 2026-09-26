@@ -6,6 +6,7 @@ import { SearchFilters } from "@/components/search-filters";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SkipLink } from "@/components/skip-link";
+import { formatInteger } from "@/lib/format";
 import { OpenAlexError, searchWorks, type SearchParams } from "@/lib/openalex";
 import { buildHref, resultsMessage, type RawSearchParams } from "@/lib/search-params";
 
@@ -77,7 +78,7 @@ async function List({ base, sp, params }: Props) {
       <ResultsStatus message={resultsMessage(total, current, perPage, params.q)} />
       {/* Titre de la liste, focalisable : cible du focus après un changement de page (sinon renvoyé sur la page, A11Y-12). */}
       <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-[0.9375rem] font-normal text-muted-foreground outline-none">
-        {new Intl.NumberFormat("fr-FR").format(total)} résultat{total > 1 ? "s" : ""}
+        {formatInteger(total)} résultat{total > 1 ? "s" : ""}
         {params.q && <> pour « {params.q} »</>}
       </h2>
       <ul className="flex flex-col gap-3">

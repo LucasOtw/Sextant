@@ -3,7 +3,8 @@ import { PRIVATE, requireUser, serverError } from "@/lib/api/guard";
 import { verifiedSnapshot } from "@/lib/favorites";
 import { WORK_ID } from "@/lib/ids";
 import { createHighlight, HighlightsLimitError, listHighlights } from "@/lib/highlights";
-import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput, tooLong } from "@/lib/highlights-shared";
+import { MAX_HIGHLIGHT_TEXT, sanitizeHighlightInput } from "@/lib/highlights-shared";
+import { tooLong } from "@/lib/text";
 
 export const runtime = "nodejs";
 
