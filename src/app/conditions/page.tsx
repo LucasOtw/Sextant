@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Conditions d'utilisation" };
 
 export default function TermsPage() {
   return (
-    <ProsePage title="Conditions d'utilisation" intro="En clair, et en quelques points." updated="24 septembre 2026">
+    <ProsePage title="Conditions d'utilisation" intro="En clair, et en quelques points." updated="26 septembre 2026">
       <h2>Le service</h2>
       <p>
         Sextant est un moteur de recherche et de découverte d'articles scientifiques, gratuit et sans publicité. La recherche ne demande
@@ -34,9 +34,15 @@ export default function TermsPage() {
       <p>
         Le compte est personnel et se crée par connexion Google. Vos favoris, listes, citations et notes vous appartiennent et restent privés.
         Une liste que vous partagez par lien devient visible de quiconque a ce lien, jusqu'à ce que vous le désactiviez : vous restez
-        responsable de ce que vous y mettez (nom et description compris).
-        Vous pouvez les télécharger ou supprimer votre compte à tout moment depuis « Mon compte », ce qui efface l'ensemble de vos données.
-        Nous pouvons fermer un compte utilisé pour contourner les règles d'usage ci-dessus.
+        responsable de ce que vous y mettez (nom et description compris). Il en va de même des sujets que vous publiez sur la page
+        « Bugs et idées » : ils sont publics, sans nom d'auteur, et doivent porter sur Sextant.
+        Vous pouvez télécharger vos données ou supprimer votre compte à tout moment depuis « Mon compte », ce qui efface l'ensemble de
+        vos données (vos sujets publiés restent en ligne, détachés de votre compte).
+      </p>
+      <p>
+        Tout contenu publié peut être signalé (voir <Link href="/mentions-legales#signaler">Signaler un contenu</Link>). Nous pouvons retirer
+        un sujet illicite, injurieux ou sans rapport avec Sextant, désactiver le lien d'une liste partagée au contenu illicite, et fermer
+        un compte utilisé pour contourner les règles d'usage ci-dessus.
       </p>
 
       <h2>Contenus et exactitude</h2>

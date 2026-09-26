@@ -6,6 +6,7 @@ import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { listFeedbackCached, userFeedbackVotes } from "@/lib/feedback";
 import type { FeedbackItem } from "@/lib/feedback-shared";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Bugs et idées",
@@ -45,7 +46,15 @@ export default async function FeedbackPage() {
           Signalez un problème ou proposez une amélioration. Votez pour ce qui compte pour vous : les sujets les plus demandés passent en premier.
         </p>
         <div className="mt-8">
-          {limited ? <TooManyRequests /> : <FeedbackBoard initial={items} initialVoted={voted} signedIn={Boolean(user)} loadError={loadError} />}
+          {limited ? <TooManyRequests /> : (
+            <FeedbackBoard
+              initial={items}
+              initialVoted={voted}
+              signedIn={Boolean(user)}
+              loadError={loadError}
+              report={{ email: SITE.contactEmail, pageUrl: `${SITE.url}/retours` }}
+            />
+          )}
         </div>
       </div>
     </div>
