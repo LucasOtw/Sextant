@@ -2,7 +2,8 @@ import "server-only";
 import type { DocumentReference, DocumentSnapshot, Transaction } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { scanPages } from "@/lib/firebase/scan";
-import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { MAX_FAVORITES, sameSnapshot, sanitizeSnapshot, snapshotFromData, snapshotFromWork, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { dateFromTimestamp, isoFromTimestamp, millisFromTimestamp } from "@/lib/firebase/decode";
 import { logError, recover } from "@/lib/log";
 import { getWork } from "@/lib/openalex";
 import { cleanText } from "@/lib/text";
@@ -17,21 +18,18 @@ import { cleanText } from "@/lib/text";
  */
 
 function toFavorite(data: Record<string, unknown>, id: string): Favorite {
-  const ts = data.addedAt as { toDate?: () => Date } | undefined;
-  return {
-    id,
-    title: String(data.title ?? ""),
-    authors: String(data.authors ?? ""),
-    authorNames: Array.isArray(data.authorNames) ? (data.authorNames as string[]) : [],
-    venue: (data.venue as string | null) ?? null,
-    year: (data.year as number | null) ?? null,
-    doi: (data.doi as string | null) ?? null,
-    type: String(data.type ?? "article"),
-    isOa: Boolean(data.isOa),
-    citedByCount: Number(data.citedByCount ?? 0),
-    topic: (data.topic as string | null) ?? null,
-    addedAt: ts?.toDate?.().toISOString() ?? null,
-  };
+  return { ...snapshotFromData(data, id), id, addedAt: isoFromTimestamp(data.addedAt) };
+}
+
+/** Index `favoriteIds` du profil, ou `null` s'il manque (favoris antérieurs à son introduction). */
+function knownFavoriteIds(user: DocumentSnapshot): string[] | null {
+  const known = user.get("favoriteIds");
+  return Array.isArray(known) ? known.filter((x): x is string => typeof x === "string") : null;
+}
+
+/** Dans une transaction : les identifiants lus dans la sous-collection (rattrapage d'un profil sans index). */
+async function favoriteIdsFromDocs(tx: Transaction, userRef: DocumentReference): Promise<string[]> {
+  return (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
 }
 
 /**
@@ -83,8 +81,8 @@ export async function storedSnapshot(uid: string, id: string): Promise<FavoriteS
   const userRef = db.doc(`users/${uid}`);
   const [favorite, user] = await Promise.all([userRef.collection("favorites").doc(id).get(), userRef.get()]);
   if (favorite.exists) return sanitizeSnapshot({ ...favorite.data(), id });
-  const removed = user.get("lastRemovedFavorite") as { snapshot?: unknown; at?: { toMillis?: () => number } } | undefined;
-  const at = removed?.at?.toMillis?.() ?? 0;
+  const removed = user.get("lastRemovedFavorite") as { snapshot?: unknown; at?: unknown } | undefined;
+  const at = millisFromTimestamp(removed?.at) ?? 0;
   if (!removed || Date.now() - at > RESTORE_WINDOW_MS) return null;
   const snapshot = sanitizeSnapshot(removed.snapshot);
   return snapshot?.id === id ? snapshot : null;
@@ -122,8 +120,8 @@ export async function listFavoriteIds(uid: string): Promise<string[]> {
   const user = await userRef.get();
   // Profil absent (compte supprimé, cookie encore valide ailleurs) : ne rien recréer sous users/{uid}.
   if (!user.exists) return [];
-  const ids = user.get("favoriteIds");
-  if (Array.isArray(ids)) return ids.filter((x): x is string => typeof x === "string");
+  const ids = knownFavoriteIds(user);
+  if (ids) return ids;
   const snap = await userRef.collection("favorites").select().get();
   const rebuilt = snap.docs.map((d) => d.id);
   await userRef.set({ favoriteIds: rebuilt, favoritesCount: rebuilt.length }, { merge: true }).catch(recover("favorites.rebuildIndex", undefined));
@@ -156,11 +154,9 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
   const { FieldValue } = await import("firebase-admin/firestore");
   const favRef = userRef.collection("favorites").doc(s.id);
   const [user, existing] = await Promise.all([tx.get(userRef), tx.get(favRef)]);
-  const known = user.get("favoriteIds");
+  const known = knownFavoriteIds(user);
   // Liste de référence : le champ s'il existe, sinon la sous-collection (rattrapage des anciens favoris).
-  const ids: string[] = Array.isArray(known)
-    ? known.filter((x): x is string => typeof x === "string")
-    : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
+  const ids = known ?? (await favoriteIdsFromDocs(tx, userRef));
   // Absent de l'index : ajouté, y compris si son document existe déjà (index désaccordé, réparé au passage). Le
   // plafond ne vaut que pour un nouvel article : un document existant compte déjà dans les favoris.
   const isNewId = !ids.includes(s.id);
@@ -168,9 +164,10 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
     if (!existing.exists && ids.length >= MAX_FAVORITES) throw new FavoritesLimitError(`Limite de ${MAX_FAVORITES} favoris atteinte.`);
     ids.push(s.id);
   }
-  const previous = existing.exists ? (existing.get("addedAt") as { toDate?: () => Date } | undefined) : undefined;
+  // Valeur brute : réécrite telle quelle, la date d'ajout d'origine ne bouge pas.
+  const previous: unknown = existing.exists ? existing.get("addedAt") : undefined;
   // Index écrit s'il change, ou s'il vient d'être reconstruit depuis la sous-collection (anciens profils).
-  if (isNewId || !Array.isArray(known) || user.get("favoritesCount") !== ids.length) {
+  if (isNewId || !known || user.get("favoritesCount") !== ids.length) {
     tx.set(userRef, { favoriteIds: ids, favoritesCount: ids.length }, { merge: true });
   }
   // L'instantané est rafraîchi s'il a changé (titre corrigé chez OpenAlex…), ou s'il n'avait pas pu être vérifié ; la
@@ -179,12 +176,12 @@ export async function addFavoriteIn(tx: Transaction, userRef: DocumentReference,
   if (!existing.exists || (verified && (!previous || storedUnverified || !sameSnapshot(existing.data(), s)))) {
     tx.set(favRef, { ...s, addedAt: previous ?? FieldValue.serverTimestamp(), unverified: verified ? FieldValue.delete() : true }, { merge: true });
   }
-  return previous?.toDate?.() ?? new Date();
+  return dateFromTimestamp(previous) ?? new Date();
 }
 
 /** Le favori tel que renvoyé au client, sans relecture après écriture. */
 export function favoriteFromSnapshot(s: FavoriteSnapshot, addedAt: Date): Favorite {
-  return { ...toFavorite(s as unknown as Record<string, unknown>, s.id), addedAt: addedAt.toISOString() };
+  return { ...s, addedAt: addedAt.toISOString() };
 }
 
 export async function addFavorite(uid: string, s: FavoriteSnapshot, verified = true): Promise<Favorite> {
@@ -210,10 +207,7 @@ export async function removeFavorite(uid: string, id: string): Promise<void> {
       tx.get(favRef),
       tx.get(userRef.collection("collections").where("articleIds", "array-contains", id)),
     ]);
-    const known = user.get("favoriteIds");
-    const ids: string[] = Array.isArray(known)
-      ? known.filter((x): x is string => typeof x === "string")
-      : (await tx.get(userRef.collection("favorites").select())).docs.map((d) => d.id);
+    const ids = knownFavoriteIds(user) ?? (await favoriteIdsFromDocs(tx, userRef));
     const next = ids.filter((x) => x !== id);
     const removed = existing.exists ? sanitizeSnapshot({ ...existing.data(), id }) : null;
     // L'instantané nettoyé porte toujours tous ses champs : la fusion remplace entièrement celui du retrait précédent.

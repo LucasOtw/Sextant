@@ -3,6 +3,7 @@ import { requireStrictUser } from "@/lib/auth";
 import { listCollections } from "@/lib/collections";
 import { listFavorites } from "@/lib/favorites";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { isoFromTimestamp as iso } from "@/lib/firebase/decode";
 import { listHighlights } from "@/lib/highlights";
 import { listKeysForExport } from "@/lib/api-keys";
 import { listFeedbackByAuthor, listFeedbackVotesForExport } from "@/lib/feedback";
@@ -12,11 +13,6 @@ import { rateLimit } from "@/lib/rate-limit";
 import { listSharesForExport } from "@/lib/shares";
 
 export const runtime = "nodejs";
-
-/** Horodatage Firestore (ou absent) en ISO 8601, ou null. */
-function iso(v: unknown): string | null {
-  return (v as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null;
-}
 
 /**
  * Export des données du compte (droits d'accès et de portabilité, RGPD art. 15 et 20) : un fichier JSON lisible,

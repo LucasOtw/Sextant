@@ -1,6 +1,7 @@
 import "server-only";
 import { createHash, randomBytes } from "node:crypto";
 import { adminDb } from "@/lib/firebase/admin";
+import { isoFromTimestamp, millisFromTimestamp } from "@/lib/firebase/decode";
 import { accountState, type AccountState } from "@/lib/account-state";
 import { logError } from "@/lib/log";
 import { API_KEY_FORMAT, MAX_API_KEYS, type ApiKeyInfo } from "@/lib/api-keys-shared";
@@ -22,8 +23,7 @@ export function hashKey(key: string): string {
 }
 
 function toInfo(id: string, data: Record<string, unknown>): ApiKeyInfo {
-  const ts = (v: unknown) => (v as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null;
-  return { id, name: String(data.name ?? ""), prefix: String(data.prefix ?? ""), createdAt: ts(data.createdAt), lastUsedAt: ts(data.lastUsedAt) };
+  return { id, name: String(data.name ?? ""), prefix: String(data.prefix ?? ""), createdAt: isoFromTimestamp(data.createdAt), lastUsedAt: isoFromTimestamp(data.lastUsedAt) };
 }
 
 export async function listKeys(uid: string): Promise<ApiKeyInfo[]> {
@@ -105,13 +105,13 @@ export async function verifyKey(key: string): Promise<{ uid: string; keyId: stri
   const account: AccountState = await accountState(uid);
   if (!account.active) return null;
   // Une clé sans date de création (aucune ne devrait l'être) n'est pas refusée pour autant : compatibilité.
-  const createdAt = (snap.get("createdAt") as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
+  const createdAt = millisFromTimestamp(snap.get("createdAt")) ?? 0;
   if (createdAt && account.validAfter && createdAt < account.validAfter) return null;
   // Session créatrice antérieure à la révocation : refusée, quelle que soit la date d'écriture de la clé. Les clés
   // sans ce champ (créées avant) gardent le seul contrôle sur createdAt.
   const sessionAuthTime = snap.get("sessionAuthTime");
   if (typeof sessionAuthTime === "number" && account.validAfter && sessionAuthTime * 1000 < account.validAfter) return null;
-  const last = (snap.get("lastUsedAt") as { toMillis?: () => number } | null)?.toMillis?.() ?? 0;
+  const last = millisFromTimestamp(snap.get("lastUsedAt")) ?? 0;
   if (Date.now() - last > 60 * 60 * 1000) {
     const { FieldValue } = await import("firebase-admin/firestore");
     // Attendue (quelques dizaines de ms, une fois par heure et par clé) : une écriture lancée sans attente peut être

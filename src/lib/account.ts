@@ -1,6 +1,7 @@
 import "server-only";
 import type { DocumentReference, Firestore, WriteBatch } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { millisFromTimestamp } from "@/lib/firebase/decode";
 import { forgetRevocationCheck } from "@/lib/auth";
 import { deleteAllKeys } from "@/lib/api-keys";
 import { detachAuthor, withdrawVotes } from "@/lib/feedback";
@@ -54,8 +55,6 @@ export interface PurgeReport {
   failed: number;
 }
 
-const toMillis = (v: unknown): number | null => (v as { toMillis?: () => number } | null | undefined)?.toMillis?.() ?? null;
-
 /** `users/{uid}.lastKeyUsedAt` (ms) des comptes donnés, lus par lots ; absent du résultat si inconnu. */
 async function profileKeyUse(db: Firestore, uids: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
@@ -64,7 +63,7 @@ async function profileKeyUse(db: Firestore, uids: string[]): Promise<Map<string,
     if (refs.length === 0) continue;
     const snaps = await db.getAll(...refs, { fieldMask: ["lastKeyUsedAt"] });
     for (const snap of snaps) {
-      const t = toMillis(snap.get("lastKeyUsedAt"));
+      const t = millisFromTimestamp(snap.get("lastKeyUsedAt"));
       if (t !== null) out.set(snap.id, t);
     }
   }
@@ -99,7 +98,7 @@ export async function purgeInactive(o: PurgeOptions): Promise<PurgeReport> {
   for (const d of keySnap.docs) {
     const uid = d.get("uid");
     if (typeof uid !== "string") continue;
-    const key = { createdAt: toMillis(d.get("createdAt")), lastUsedAt: toMillis(d.get("lastUsedAt")) };
+    const key = { createdAt: millisFromTimestamp(d.get("createdAt")), lastUsedAt: millisFromTimestamp(d.get("lastUsedAt")) };
     const last = lastActivity(key.lastUsedAt, key.createdAt);
     keyActivity.set(uid, Math.max(keyActivity.get(uid) ?? 0, last));
     if (keyCutoff !== null && isKeyUnused(key, keyCutoff)) {

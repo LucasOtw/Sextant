@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fileSlug, sanitizeSnapshot, snapshotFromWork, WORK_ID } from "@/lib/favorites-shared";
+import { fileSlug, sanitizeSnapshot, snapshotFromData, snapshotFromWork, WORK_ID } from "@/lib/favorites-shared";
 import { makeSnapshot, makeWork } from "../fixtures";
 
 describe("WORK_ID (identifiant d'article accepté par les routes)", () => {
@@ -78,5 +78,20 @@ describe("fileSlug", () => {
     expect(fileSlug("Mémoire 2026 : Santé !")).toBe("memoire-2026-sante");
     expect(fileSlug("../../etc/passwd")).toBe("etc-passwd");
     expect(fileSlug("***")).toBe("liste");
+  });
+});
+
+describe("snapshotFromData (relecture Firestore, QUAL-11)", () => {
+  it("rend l'instantané stocké tel quel", () => {
+    const s = makeSnapshot();
+    expect(snapshotFromData({ ...s, addedAt: { seconds: 1 }, unverified: true }, "W9")).toEqual(s);
+  });
+
+  it("tolère un document incomplet ou mal typé : valeurs par défaut, identifiant de repli", () => {
+    expect(snapshotFromData(undefined, "W7")).toEqual({
+      id: "W7", title: "", authors: "", authorNames: [], venue: null, year: null, doi: null, type: "article", isOa: false, citedByCount: 0, topic: null,
+    });
+    const odd = snapshotFromData({ id: "", title: 12, authorNames: ["A", 3, null, "B"], year: "2018", citedByCount: Infinity, type: "", venue: 5 }, "W8");
+    expect(odd).toMatchObject({ id: "W8", title: "", authorNames: ["A", "B"], year: null, citedByCount: 0, type: "article", venue: null });
   });
 });

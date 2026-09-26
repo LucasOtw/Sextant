@@ -84,6 +84,31 @@ export function citationFromWork(work: Work): CitationSource {
   return { ...snapshotFromWork(work), authorNames: authorNames(work), biblio };
 }
 
+/**
+ * Instantané relu depuis Firestore (favori, article d'une note ou d'un surlignage), sans rejet : chaque champ est
+ * vérifié par son type et prend sa valeur par défaut s'il manque ou n'a pas la bonne forme. Un seul décodage pour
+ * tous les modules (QUAL-11) : un champ ajouté à l'instantané ne peut plus disparaître d'un écran.
+ * `fallbackId` : identifiant pris quand le document n'en porte pas (celui du document favori, de la note…).
+ */
+export function snapshotFromData(input: unknown, fallbackId: string): FavoriteSnapshot {
+  const o = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v : null);
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  return {
+    id: str(o.id) || fallbackId,
+    title: str(o.title) ?? "",
+    authors: str(o.authors) ?? "",
+    authorNames: Array.isArray(o.authorNames) ? o.authorNames.filter((n): n is string => typeof n === "string") : [],
+    venue: str(o.venue),
+    year: num(o.year),
+    doi: str(o.doi),
+    type: str(o.type) || "article",
+    isOa: Boolean(o.isOa),
+    citedByCount: num(o.citedByCount) ?? 0,
+    topic: str(o.topic),
+  };
+}
+
 const clip = (s: unknown, max: number) => (typeof s === "string" ? s.slice(0, max) : "");
 
 /**

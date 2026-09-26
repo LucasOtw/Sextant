@@ -1,6 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import { adminDb } from "@/lib/firebase/admin";
+import { isoFromTimestamp } from "@/lib/firebase/decode";
 import { CollectionNotFoundError } from "@/lib/collections";
 import { getFavoritesByIds } from "@/lib/favorites";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
@@ -51,7 +52,7 @@ export async function listSharesForExport(uid: string): Promise<{ token: string;
   return snap.docs.map((d) => ({
     token: d.id,
     collectionId: String(d.get("collectionId") ?? ""),
-    createdAt: (d.get("createdAt") as { toDate?: () => Date } | undefined)?.toDate?.().toISOString() ?? null,
+    createdAt: isoFromTimestamp(d.get("createdAt")),
   }));
 }
 

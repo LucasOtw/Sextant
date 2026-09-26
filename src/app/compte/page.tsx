@@ -9,6 +9,7 @@ import { AccountActions } from "@/components/auth/account-actions";
 import { McpKeys } from "@/components/account/mcp-keys";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
+import { dateFromTimestamp } from "@/lib/firebase/decode";
 import { logError } from "@/lib/log";
 import { countFavorites } from "@/lib/favorites";
 import { countCollections } from "@/lib/collections";
@@ -20,9 +21,8 @@ export const metadata: Metadata = { title: "Mon compte", robots: { index: false 
 async function memberSince(uid: string, userDoc: Promise<DocumentSnapshot>): Promise<string | null> {
   try {
     const snap = await userDoc;
-    const ts = snap.get("createdAt") as { toDate?: () => Date } | undefined;
     // Repli sur Firebase Auth : un profil sans date (écriture de connexion ratée) garde sa vraie date d'inscription.
-    const d = ts?.toDate?.() ?? (await authCreationDate(uid));
+    const d = dateFromTimestamp(snap.get("createdAt")) ?? (await authCreationDate(uid));
     return d ? new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" }).format(d) : null;
   } catch (e) {
     logError("compte.memberSince", e);

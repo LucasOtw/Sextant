@@ -1,5 +1,6 @@
 import "server-only";
 import { adminDb } from "@/lib/firebase/admin";
+import { isoFromTimestamp } from "@/lib/firebase/decode";
 import { addFavoriteIn, favoriteFromSnapshot } from "@/lib/favorites";
 import { MAX_FAVORITES, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_COLLECTIONS, type Collection } from "@/lib/collections-shared";
@@ -11,13 +12,12 @@ import { MAX_COLLECTIONS, type Collection } from "@/lib/collections-shared";
  */
 
 function toCollection(data: Record<string, unknown>, id: string): Collection {
-  const ts = data.createdAt as { toDate?: () => Date } | undefined;
   return {
     id,
     name: String(data.name ?? ""),
     description: String(data.description ?? ""),
     articleIds: Array.isArray(data.articleIds) ? (data.articleIds as unknown[]).filter((x): x is string => typeof x === "string") : [],
-    createdAt: ts?.toDate?.().toISOString() ?? null,
+    createdAt: isoFromTimestamp(data.createdAt),
     shareToken: typeof data.shareToken === "string" ? data.shareToken : null,
   };
 }
