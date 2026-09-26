@@ -9,18 +9,38 @@
  * - saut de ligne gardé (réduit ensuite, ou changé en espace sans `keepLines`) ;
  * - tabulations, saut de page et NEL changés en espace : un texte collé d'un tableur ne voit pas ses mots fusionner ;
  * - ZWNJ et ZWJ (U+200C, U+200D) gardés : écritures persane et indiennes, émojis composés (QUAL-32) ;
+ * - étiquettes (U+E0020-U+E007F) gardées : elles composent les drapeaux de subdivision (Écosse, pays de Galles) ;
  * - tout le reste retiré, dont les contrôles bidirectionnels (U+202A-U+202E, U+2066-U+2069), U+200B et le BOM.
  */
 function controlChar(c: string): string {
-  if (c === "\n" || c === "\u200C" || c === "\u200D") return c;
+  const cp = c.codePointAt(0) ?? 0;
+  if (c === "\n" || c === "\u200C" || c === "\u200D" || (cp >= 0xe0020 && cp <= 0xe007f)) return c;
   return c === "\t" || c === "\v" || c === "\f" || c === "\u0085" ? " " : "";
 }
 
-/** Texte normalisé : caractères de contrôle et de mise en forme retirés (cf. `controlChar`), espaces réduits (les sauts de ligne sont gardés si `keepLines`), borné. */
+/** ZWNJ et ZWJ en bord de texte ou contre un blanc : ils ne joignent rien, on les retire. */
+const LOOSE_JOINERS = /(^|\s)[\u200C\u200D]+|[\u200C\u200D]+(?=\s|$)/g;
+
+/** Au moins un caractère visible : ni blanc, ni ZWNJ / ZWJ, ni étiquette. */
+const VISIBLE = /[^\s\u200C\u200D\u{E0020}-\u{E007F}]/u;
+
+/**
+ * Texte normalisé : caractères de contrôle et de mise en forme retirés (cf. `controlChar`), espaces réduits (les sauts
+ * de ligne sont gardés si `keepLines`), borné. Chaîne vide s'il ne reste rien de visible : un nom de liste, un titre de
+ * retour ou un passage fait seulement de ZWJ passerait sinon les contrôles « non vide » (ZWJ gardés depuis QUAL-32).
+ */
 export function cleanText(input: unknown, max: number, keepLines = false): string {
   if (typeof input !== "string") return "";
-  const flat = input.replace(/\r\n?/g, "\n").replace(/[\p{Cc}\p{Cf}]/gu, controlChar).replace(keepLines ? /[^\S\n]+/g : /\s+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
-  return Array.from(flat).slice(0, max).join("").trim();
+  const flat = input
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\p{Cc}\p{Cf}]/gu, controlChar)
+    .replace(LOOSE_JOINERS, "$1")
+    .replace(keepLines ? /[^\S\n]+/g : /\s+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  // La troncature peut laisser un joignant en fin de texte : second passage.
+  const out = Array.from(flat).slice(0, max).join("").replace(LOOSE_JOINERS, "$1").trim();
+  return VISIBLE.test(out) ? out : "";
 }
 
 /** Le texte dépasse-t-il la borne (comptée en points de code) ? Sert à refuser plutôt que tronquer en silence. */

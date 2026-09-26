@@ -30,6 +30,25 @@ describe("cleanText (surlignages, notes, retours)", () => {
     expect(cleanText("x\u202Ey\u2066z\u2069\uFEFF\u2060", 100)).toBe("xyz");
   });
 
+  it("QUAL-32 — un drapeau de subdivision (étiquettes U+E0020-U+E007F) reste intact", () => {
+    const scotland = "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F}";
+    expect(cleanText(scotland, 50)).toBe(scotland);
+    expect(cleanText(`Lectures ${scotland}`, 50)).toBe(`Lectures ${scotland}`);
+  });
+
+  it("texte sans caractère visible (ZWJ, ZWNJ, étiquettes seuls) : chaîne vide", () => {
+    expect(cleanText("\u200D\u200C", 10)).toBe("");
+    expect(cleanText(" \u200D \u200C\u200D ", 10)).toBe("");
+    expect(cleanText("\u{E0067}\u{E007F}", 10)).toBe("");
+    expect(cleanText("\u200D\n\u200C", 10, true)).toBe("");
+  });
+
+  it("ZWJ et ZWNJ qui ne joignent rien (bord du texte, contre un blanc, coupés par la borne) sont retirés", () => {
+    expect(cleanText("\u200Dabc\u200C", 10)).toBe("abc");
+    expect(cleanText("a \u200D b", 10)).toBe("a b");
+    expect(cleanText("ab\u200Dcd", 3)).toBe("ab");
+  });
+
   it("garde les sauts de ligne si demandé, trois au plus deviennent deux", () => {
     expect(cleanText("l1\r\nl2\n\n\n\nl3   x", 100, true)).toBe("l1\nl2\n\nl3 x");
   });
@@ -80,6 +99,7 @@ describe("sanitizeHighlightInput", () => {
 
   it("refuse un texte vide, un article invalide ou une entrée qui n'est pas un objet", () => {
     expect(sanitizeHighlightInput({ ...valid, text: " \u200B " })).toBeNull();
+    expect(sanitizeHighlightInput({ ...valid, text: "\u200D\u200D" })).toBeNull();
     expect(sanitizeHighlightInput({ ...valid, article: { id: "x" } })).toBeNull();
     expect(sanitizeHighlightInput(null)).toBeNull();
     expect(sanitizeHighlightInput("texte")).toBeNull();
@@ -101,6 +121,8 @@ describe("listes (collections)", () => {
     expect(sanitizeCollectionName("  Mémoire\u0007   2026 ")).toBe("Mémoire 2026");
     expect(sanitizeCollectionName("x".repeat(MAX_COLLECTION_NAME + 20))).toHaveLength(MAX_COLLECTION_NAME);
     expect(sanitizeCollectionName(" \u200B\u200E ")).toBeNull();
+    expect(sanitizeCollectionName("\u200D")).toBeNull();
+    expect(sanitizeCollectionName("\u200D\u200C\u200D")).toBeNull();
     expect(sanitizeCollectionName(12)).toBeNull();
   });
 
@@ -111,7 +133,8 @@ describe("listes (collections)", () => {
   });
 
   it("QUAL-32 — un saut de ligne ou une tabulation dans la description sépare les mots", () => {
-    expect(sanitizeCollectionDescription("À lire\navant\tlundi")).toBe("À lire avant lundi");    expect(sanitizeCollectionName("Mémoire\t2026")).toBe("Mémoire 2026");
+    expect(sanitizeCollectionDescription("À lire\navant\tlundi")).toBe("À lire avant lundi");
+    expect(sanitizeCollectionName("Mémoire\t2026")).toBe("Mémoire 2026");
     expect(sanitizeCollectionName("Lectures \u{1F3F3}\uFE0F\u200D\u{1F308}")).toBe("Lectures \u{1F3F3}\uFE0F\u200D\u{1F308}");
   });
 
@@ -135,6 +158,8 @@ describe("retours (bugs et idées)", () => {
   it("refuse un type inconnu, un titre trop court, un tableau ou une valeur non objet", () => {
     expect(sanitizeFeedback({ kind: "spam", title: "Titre valide" })).toBeNull();
     expect(sanitizeFeedback({ kind: "bug", title: "abc" })).toBeNull();
+    expect(sanitizeFeedback({ kind: "bug", title: "\u200D".repeat(8) })).toBeNull();
+    expect(sanitizeFeedback({ kind: "bug", title: "a" + "\u200D".repeat(7) })).toBeNull();
     expect(sanitizeFeedback([{ kind: "bug", title: "Titre valide" }])).toBeNull();
     expect(sanitizeFeedback("bug")).toBeNull();
   });
