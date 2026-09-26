@@ -64,7 +64,7 @@ export default async function SharedListPage({ params }: Props) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
         <h1 className="title-display text-3xl">Liste indisponible</h1>
-        <p className="mt-3 text-[15px] text-muted-foreground">
+        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
           Les listes partagées ne sont pas disponibles sur cette instance. En local, lancez <code>npm run dev:emu</code> ou
           définissez <code>ALLOW_PROD_DB=1</code>.
         </p>
@@ -85,7 +85,7 @@ export default async function SharedListPage({ params }: Props) {
         <h1 className="title-display mt-2 text-4xl sm:text-5xl">{list.name}</h1>
         {list.description && <p className="mt-3 text-lg text-muted-foreground">{list.description}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[15px] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
+          <p className="text-[0.9375rem] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
           <SharedListActions name={list.name} articles={list.articles} retracted={[...retracted]} />
         </div>
 
@@ -95,10 +95,7 @@ export default async function SharedListPage({ params }: Props) {
           <ul className="mt-6 flex flex-col gap-3">
             {list.articles.map((a) => (
               <li key={a.id}>
-                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
-                  <div className="absolute right-3 top-3 z-10">
-                    <FavoriteButton snapshot={a} />
-                  </div>
+                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
                   <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
                     <Badge variant="secondary">{typeLabel(a.type)}</Badge>
                     {a.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
@@ -108,7 +105,11 @@ export default async function SharedListPage({ params }: Props) {
                   <h2 className="title-display text-xl leading-snug">
                     <Link href={`/article/${a.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{a.title}</Link>
                   </h2>
-                  <p className="text-[15px] text-muted-foreground">
+                  {/* Le cœur suit le titre dans le DOM, en haut à droite à l'écran (A11Y-23). */}
+                  <div className="absolute right-3 top-3 z-10">
+                    <FavoriteButton snapshot={a} />
+                  </div>
+                  <p className="text-[0.9375rem] text-muted-foreground">
                     {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
                   </p>
                   <p className="flex items-center gap-1 pt-1 text-sm text-muted-foreground">

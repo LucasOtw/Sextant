@@ -4,8 +4,10 @@ import type { Work } from "@/lib/openalex";
 import { shortId } from "@/lib/openalex";
 import {
   abstractFromInvertedIndex,
+  contentLang,
   formatAuthors,
   formatCount,
+  titleLang,
   truncateWords,
   typeLabel,
   venueName,
@@ -33,15 +35,10 @@ export function WorkCard({ work, variant = "list" }: Props) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-2 rounded-xl wrap-break-word bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25",
+        "group relative flex flex-col gap-2 rounded-xl wrap-break-word bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25",
         compact ? "h-full" : "sm:p-5",
       )}
     >
-      {favorites && (
-        <div className="absolute right-3 top-3 z-10">
-          <FavoriteButton snapshot={snapshotFromWork(work)} />
-        </div>
-      )}
       <div className={cn("flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground", favorites && "pr-10")}>
         <Badge variant="secondary">{typeLabel(work.type)}</Badge>
         {work.open_access.is_oa && (
@@ -54,13 +51,19 @@ export function WorkCard({ work, variant = "list" }: Props) {
         )}
       </div>
 
-      <h3 className={cn("title-display leading-snug", compact ? "text-lg" : "text-xl sm:text-[1.4rem]")}>
+      <h3 lang={titleLang(work)} className={cn("title-display leading-snug", compact ? "text-lg" : "text-xl sm:text-[1.4rem]")}>
         <Link href={href} className="after:absolute after:inset-0 hover:text-accent-brand">
           {workTitle(work)}
         </Link>
       </h3>
+      {/* Le cœur suit le titre dans le DOM (on sait de quel article il s'agit avant d'y arriver), en haut à droite à l'écran (A11Y-23). */}
+      {favorites && (
+        <div className="absolute right-3 top-3 z-10">
+          <FavoriteButton snapshot={snapshotFromWork(work)} />
+        </div>
+      )}
 
-      <p className="text-[15px] text-muted-foreground">
+      <p className="text-[0.9375rem] text-muted-foreground">
         {formatAuthors(work, compact ? 2 : 3)}
         {venue && <> · <span className="italic">{venue}</span></>}
         {work.publication_year && <> · {work.publication_year}</>}
@@ -70,7 +73,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
       </p>
 
       {!compact && abstract && (
-        <p className="text-[15px] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
+        <p lang={contentLang(work.language)} className="text-[0.9375rem] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
       )}
 
       <div className="mt-auto flex items-center gap-1 pt-1 text-sm text-muted-foreground">

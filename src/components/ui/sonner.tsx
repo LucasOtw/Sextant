@@ -40,6 +40,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--border-radius": "var(--radius)",
         } as React.CSSProperties
       }
+      // Libellés en français (Sonner les donne en anglais) : bouton de fermeture des toasts « Annuler » (lib/undo-toast.ts).
+      toastOptions={{ closeButtonAriaLabel: "Fermer la notification" }}
       {...props}
     />
   );

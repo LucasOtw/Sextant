@@ -1,15 +1,16 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { EyeOffIcon, SparklesIcon } from "lucide-react";
-import { toast } from "sonner";
+import { EyeIcon, EyeOffIcon, SparklesIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { WorkCard } from "@/components/work-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shortId } from "@/lib/openalex";
 import { readRecent } from "@/lib/recent";
-import { hideRecommendation, readHidden, reasonText, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
+import { clearHidden, hideRecommendation, readHidden, reasonText, unhideRecommendation, type Recommendation } from "@/lib/recommendations-shared";
+import { undoToast } from "@/lib/undo-toast";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 type State = { status: "idle" | "loading" | "ready" | "hidden"; items: Recommendation[]; fromFavorites: boolean };
 
@@ -35,6 +36,15 @@ export function ForYou() {
     setSeed({ enabled: favorites.enabled, key: favorites.favoriteIds.slice(0, 30).join(",") });
   }
   const favKey = seed?.key ?? null;
+  /** Suggestions écartées sur cet appareil : un bouton permet de les réafficher (le toast « Annuler » n'est pas le seul recours). */
+  const [hiddenCount, setHiddenCount] = useState(0);
+  /** Relance du calcul après « Réafficher les suggestions écartées ». */
+  const [reload, setReload] = useState(0);
+  /** Le bouton « Réafficher » disparaît au clic : le focus va au titre de la section plutôt que sur la page. */
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  /** Carte écartée : le focus passe au « Pas intéressé » de la suivante (ou de la précédente), sinon au titre (A11Y-19). */
+  const listRef = useRef<HTMLUListElement>(null);
+  useFocusRecovery(listRef, ":scope > li", () => headingRef.current);
 
   useEffect(() => {
     // Connecté : on attend les favoris pour ne faire qu'une requête.
@@ -51,31 +61,39 @@ export function ForYou() {
     const q = new URLSearchParams({ seen: seen.join(","), fav: fav.join(","), hide: readHidden().slice(0, 200).join(",") });
     fetch(`/api/recommendations?${q}`, { signal: ctrl.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((data: { items: Recommendation[] }) => setState({ status: data.items.length ? "ready" : "hidden", items: data.items, fromFavorites: fav.length > 0 }))
+      .then((data: { items: Recommendation[] }) => {
+        setState({ status: data.items.length ? "ready" : "hidden", items: data.items, fromFavorites: fav.length > 0 });
+        setHiddenCount(readHidden().length);
+      })
       .catch(() => {
         // Un échec de rechargement (429, panne OpenAlex) garde les suggestions déjà affichées.
         if (!ctrl.signal.aborted) setState((s) => (s.items.length ? s : { status: "hidden", items: [], fromFavorites: false }));
       });
     return () => ctrl.abort();
-  }, [favKey]);
+  }, [favKey, reload]);
 
   function dismiss(item: Recommendation) {
     const id = shortId(item.work.id);
     hideRecommendation(id);
-    setState((s) => {
-      const items = s.items.filter((x) => shortId(x.work.id) !== id);
-      return { ...s, items, status: items.length ? s.status : "hidden" };
-    });
-    toast("Suggestion écartée.", {
-      description: "Elle ne vous sera plus proposée.",
-      action: {
-        label: "Annuler",
-        onClick: () => {
-          unhideRecommendation(id);
-          setState((s) => ({ ...s, status: "ready", items: s.items.some((x) => shortId(x.work.id) === id) ? s.items : [...s.items, item] }));
-        },
+    // La section reste affichée quand tout est écarté : titre (qui reçoit le focus) et « Réafficher » ne disparaissent pas.
+    setState((s) => ({ ...s, items: s.items.filter((x) => shortId(x.work.id) !== id) }));
+    setHiddenCount(readHidden().length);
+    undoToast(
+      "Suggestion écartée.",
+      () => {
+        unhideRecommendation(id);
+        setHiddenCount(readHidden().length);
+        setState((s) => ({ ...s, status: "ready", items: s.items.some((x) => shortId(x.work.id) === id) ? s.items : [...s.items, item] }));
       },
-    });
+      "Elle ne vous sera plus proposée.",
+    );
+  }
+
+  function showHidden() {
+    clearHidden();
+    setHiddenCount(0);
+    setReload((n) => n + 1);
+    headingRef.current?.focus();
   }
 
   if (state.status === "idle" || state.status === "hidden") return null;
@@ -83,7 +101,7 @@ export function ForYou() {
   return (
     <section id="pour-vous" className="py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
       <div className="mb-5">
-        <h2 className="title-display flex items-center gap-2 text-3xl sm:text-4xl">
+        <h2 ref={headingRef} tabIndex={-1} className="title-display flex items-center gap-2 text-3xl outline-none sm:text-4xl">
           <SparklesIcon className="size-7 text-accent-brand" aria-hidden /> Pour vous
         </h2>
         <p className="mt-1.5 text-base text-muted-foreground">
@@ -96,8 +114,10 @@ export function ForYou() {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
+      ) : state.items.length === 0 ? (
+        <p className="text-[0.9375rem] text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
       ) : (
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul ref={listRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {state.items.map((item, i) => {
             const { kind, topic, seeds } = item.reason;
             return (
@@ -126,7 +146,7 @@ export function ForYou() {
                       reasonText(item.reason)
                     )}
                   </p>
-                  <button type="button" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
+                  <button type="button" data-focus-key="dismiss" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
                     <EyeOffIcon className="size-3.5" aria-hidden /> Pas intéressé
                   </button>
                 </div>
@@ -135,6 +155,11 @@ export function ForYou() {
             );
           })}
         </ul>
+      )}
+      {state.status === "ready" && hiddenCount > 0 && (
+        <button type="button" onClick={showHidden} className="mt-4 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground">
+          <EyeIcon className="size-4" aria-hidden /> Réafficher les suggestions écartées ({hiddenCount})
+        </button>
       )}
     </section>
   );

@@ -8,6 +8,8 @@ import { FavoritesProvider } from "@/components/favorites/favorites-provider";
 import { SessionProvider } from "@/components/auth/session-provider";
 import { isAuthEnabled } from "@/lib/auth";
 import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
+import { ANNOUNCER_ID } from "@/lib/announce";
+import { SkipLink } from "@/components/skip-link";
 
 const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -41,14 +43,19 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col text-base">
+        {/* Premier arrêt au clavier : saute l'en-tête (A11Y-11). */}
+        <SkipLink target="contenu">Aller au contenu</SkipLink>
         <SessionProvider enabled={isAuthEnabled()}>
           <FavoritesProvider>
             <SiteHeader />
-            <main className="flex-1">{children}</main>
+            <main id="contenu" className="flex-1 outline-none">{children}</main>
             <SiteFooter />
           </FavoritesProvider>
         </SessionProvider>
+        {/* Toasts d'information : 3,5 s. Ceux qui proposent « Annuler » durent plus longtemps (lib/undo-toast.ts). */}
         <Toaster position="bottom-right" duration={3500} />
+        {/* Région d'annonce aux lecteurs d'écran, montée vide (lib/announce.ts) : « Copié », nombre de résultats… */}
+        <div id={ANNOUNCER_ID} aria-live="polite" aria-atomic="true" className="sr-only" />
       </body>
     </html>
   );

@@ -1,16 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { BugIcon, ChevronUpIcon, LightbulbIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
+import { announce } from "@/lib/announce";
+import { voteLabel } from "@/lib/labels";
 import { cn } from "cn";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
@@ -37,12 +41,12 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
   const [signIn, setSignIn] = useState<string | null>(null);
   const [pending, setPending] = useState<Set<string>>(new Set());
 
-  const shown = useMemo(() => {
-    const list = items.filter((i) => filter === "all" || i.kind === filter);
-    return [...list].sort((a, b) =>
-      sort === "recent" ? (b.createdAt ?? "").localeCompare(a.createdAt ?? "") : b.votes - a.votes || (b.createdAt ?? "").localeCompare(a.createdAt ?? ""),
-    );
-  }, [items, filter, sort]);
+  // Ordre figé, recalculé seulement quand le visiteur change le tri ou le filtre : voter en tri « Les plus votés » ne
+  // déplace pas la ligne sous le focus (A11Y-19). Le nouveau classement apparaît au prochain tri ou au rechargement.
+  const [order, setOrder] = useState(() => ({ sort, filter, ids: feedbackOrder(initial, sort) }));
+  if (order.sort !== sort || order.filter !== filter) setOrder({ sort, filter, ids: feedbackOrder(items, sort) });
+
+  const shown = useMemo(() => inOrder(items, order.ids).filter((i) => filter === "all" || i.kind === filter), [items, order.ids, filter]);
 
   const counts = useMemo(() => ({ all: items.length, bug: items.filter((i) => i.kind === "bug").length, idea: items.filter((i) => i.kind === "idea").length }), [items]);
 
@@ -152,6 +156,7 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
 
 function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted: boolean; busy: boolean; onVote: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const descriptionId = useId();
   const long = item.description.length > 280;
   const status = STATUS_LABEL[item.status];
   return (
@@ -159,12 +164,14 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
       <button
         type="button"
         onClick={onVote}
+        // Nom fixe, l'état est dit par aria-pressed (« Voter : …, enfoncé ») : un nom qui change le dirait deux fois (A11Y-30).
         aria-pressed={voted}
-        aria-label={`${voted ? "Retirer mon vote" : "Voter"} : ${item.title} (${item.votes} vote${item.votes > 1 ? "s" : ""})`}
-        disabled={busy}
+        aria-label={voteLabel(item.title, item.votes)}
+        // aria-disabled plutôt que disabled : un bouton désactivé perd le focus (A11Y-19) ; vote() ignore déjà le double clic.
+        aria-disabled={busy || undefined}
         className={cn(
           "flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-lg text-sm font-semibold ring-1 transition-colors",
-          voted ? "bg-accent-brand text-white ring-accent-brand" : "bg-background text-foreground ring-foreground/15 hover:ring-accent-brand hover:text-accent-brand",
+          voted ? "bg-accent-brand text-accent-brand-foreground ring-accent-brand" : "bg-background text-foreground ring-foreground/15 hover:ring-accent-brand hover:text-accent-brand",
         )}
       >
         <ChevronUpIcon className="size-4" aria-hidden />
@@ -178,12 +185,12 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
           {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
           {item.createdAt && <span className="text-xs text-muted-foreground">{DATE.format(new Date(item.createdAt))}</span>}
         </div>
-        <h2 className="mt-1.5 text-[17px] font-semibold leading-snug">{item.title}</h2>
+        <h2 className="mt-1.5 text-[1.0625rem] font-semibold leading-snug">{item.title}</h2>
         {item.description && (
           <>
-            <p className={cn("mt-1 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
+            <p id={descriptionId} className={cn("mt-1 whitespace-pre-line text-[0.9375rem] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
             {long && (
-              <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded}>
+              <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded} aria-controls={descriptionId}>
                 {expanded ? "Réduire" : "Lire la suite"}
               </button>
             )}
@@ -199,7 +206,7 @@ function Composer({ open, onOpenChange, onCreated }: { open: boolean; onOpenChan
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogTitle className="title-display text-2xl">Nouveau sujet</DialogTitle>
-        <DialogDescription className="text-[15px] text-muted-foreground">
+        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
           Un sujet par bug ou par idée. Vérifiez d'abord qu'il n'existe pas déjà : un vote suffit alors.
         </DialogDescription>
         {open && <ComposerForm onClose={() => onOpenChange(false)} onCreated={onCreated} />}
@@ -213,11 +220,25 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
-  const valid = title.trim().length >= 5;
+  /** Envoi tenté avec un titre trop court : l'indication passe en erreur (A11Y-21). */
+  const [showError, setShowError] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
+  const kindName = useId();
+  const length = feedbackTitleLength(title);
+  const valid = length >= MIN_FEEDBACK_TITLE;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!valid || busy) return;
+    if (busy) return;
+    // « Publier » reste actif : un bouton grisé ne dirait pas pourquoi. Le refus est expliqué sous le champ, qui reprend le focus.
+    if (!valid) {
+      // Rendu immédiat : le champ doit porter l'erreur (aria-invalid, indication) quand il reçoit le focus.
+      flushSync(() => setShowError(true));
+      // Déjà dans le champ (Entrée) : le focus ne bouge pas, l'indication ne serait pas relue, on l'annonce.
+      if (document.activeElement === titleRef.current) announce(feedbackTitleHint(length, true));
+      else titleRef.current?.focus();
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/feedback", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ kind, title, description }) });
@@ -235,49 +256,58 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <form onSubmit={submit} className="mt-1 flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Type de sujet">
+      {/* Boutons radio natifs : un seul arrêt de tabulation, les flèches changent le type (A11Y-30). */}
+      <fieldset className="grid grid-cols-2 gap-2">
+        <legend className="sr-only">Type de sujet</legend>
         {([
           ["bug", "Un bug", "Quelque chose ne marche pas", BugIcon],
           ["idea", "Une idée", "Une amélioration, une fonctionnalité", LightbulbIcon],
         ] as const).map(([value, label, hint, Icon]) => (
-          <button
+          <label
             key={value}
-            type="button"
-            role="radio"
-            aria-checked={kind === value}
-            onClick={() => setKind(value)}
             className={cn(
-              "flex flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors",
+              "relative flex cursor-pointer flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2",
               kind === value ? "bg-accent-brand/8 ring-2 ring-accent-brand" : "ring-foreground/15 hover:ring-foreground/30",
             )}
           >
+            <input type="radio" name={kindName} value={value} checked={kind === value} onChange={() => setKind(value)} className="sr-only" />
             <span className="flex items-center gap-1.5 font-medium"><Icon className="size-4" aria-hidden /> {label}</span>
             <span className="text-xs text-muted-foreground">{hint}</span>
-          </button>
+          </label>
         ))}
-      </div>
-      <Input
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'un formulaire que l'utilisateur vient d'ouvrir : le focus y est attendu.
-        autoFocus
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        maxLength={MAX_FEEDBACK_TITLE}
-        placeholder={kind === "bug" ? "Ex. Le PDF ne s'affiche pas sur iPhone" : "Ex. Exporter une liste au format RIS"}
-        aria-label="Titre"
-        className="h-10 text-base md:text-base"
-      />
-      <Textarea
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        maxLength={MAX_FEEDBACK_DESCRIPTION}
-        rows={4}
-        placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil (facultatif)" : "À quoi ça vous servirait (facultatif)"}
-        aria-label="Description"
-        className="text-base md:text-[15px]"
-      />
+      </fieldset>
+      <Field label="Titre" hint={feedbackTitleHint(length, showError && !valid)} invalid={showError && !valid}>
+        {(control) => (
+          <Input
+            {...control}
+            ref={titleRef}
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- champ d'un formulaire que l'utilisateur vient d'ouvrir : le focus y est attendu.
+            autoFocus
+            aria-required="true"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={MAX_FEEDBACK_TITLE}
+            placeholder={kind === "bug" ? "Ex. Le PDF ne s'affiche pas sur iPhone" : "Ex. Exporter une liste au format RIS"}
+            className="h-10 text-base md:text-base"
+          />
+        )}
+      </Field>
+      <Field label="Description" optional>
+        {(control) => (
+          <Textarea
+            {...control}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={MAX_FEEDBACK_DESCRIPTION}
+            rows={4}
+            placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil" : "À quoi ça vous servirait"}
+            className="text-base md:text-[0.9375rem]"
+          />
+        )}
+      </Field>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
-        <Button type="submit" disabled={!valid || busy}>{busy && <Loader2Icon className="animate-spin" />} Publier</Button>
+        <Button type="submit" disabled={busy}>{busy && <Loader2Icon className="animate-spin" />} Publier</Button>
       </div>
     </form>
   );

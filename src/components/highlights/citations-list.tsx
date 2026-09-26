@@ -1,6 +1,6 @@
 "use client";
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { CopyIcon, SearchIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +13,8 @@ import { ShowMore, useRevealFocus } from "@/components/show-more";
 import type { Collection } from "@/lib/collections-shared";
 import { citationBlock, type Highlight } from "@/lib/highlights-shared";
 import { countDistinct, filterFolded, foldedIndex, groupBy, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
+import { undoToast } from "@/lib/undo-toast";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 
 interface Props {
   initial: Highlight[];
@@ -60,6 +62,9 @@ export function CitationsList({ initial, collections, loadError = false, retract
   const ordered = useMemo(() => groupBy(shown, (h) => h.workId).flat(), [shown]);
   const groups = useMemo(() => groupBy(ordered.slice(0, limit), (h) => h.workId), [ordered, limit]);
   const { containerRef, reveal } = useRevealFocus<HTMLDivElement>(":scope > section > ul > li");
+  /** Citation supprimée sous le focus : « Supprimer » de la suivante, sinon de la précédente, sinon le compteur (A11Y-19). */
+  const countRef = useRef<HTMLParagraphElement>(null);
+  useFocusRecovery(containerRef, ":scope > section > ul > li", () => countRef.current);
 
   async function updateNote(id: string, note: string) {
     const previous = items.find((h) => h.id === id)?.note ?? "";
@@ -92,7 +97,8 @@ export function CitationsList({ initial, collections, loadError = false, retract
     setItems((prev) => prev.filter((h) => h.id !== id));
     try {
       await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
-      toast("Citation supprimée.", removed ? { action: { label: "Annuler", onClick: () => void restore(removed) } } : undefined);
+      if (removed) undoToast("Citation supprimée.", () => void restore(removed));
+      else toast("Citation supprimée.");
       return true;
     } catch (e) {
       setItems(previous);
@@ -122,7 +128,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
   if (items.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center">
-        <p className="text-lg font-medium">Aucune citation pour l'instant.</p>
+        <p ref={countRef} tabIndex={-1} className="text-lg font-medium outline-none">Aucune citation pour l'instant.</p>
         <p className="mt-1 text-base text-muted-foreground">
           Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton « Surligner » apparaît. Le passage est gardé ici, avec l'article, la page et la date.
         </p>
@@ -149,7 +155,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
         <Button variant="outline" className="h-10" onClick={copyAll} disabled={shown.length === 0}><CopyIcon /> Tout copier</Button>
       </div>
 
-      <p className="text-[15px] text-muted-foreground" aria-live="polite">
+      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
         {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour « {q} »</>}
       </p>
 
@@ -162,7 +168,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
               <h2 className="title-display text-xl leading-snug">
                 <Link href={`/article/${group[0].workId}`} className="hover:text-accent-brand">{a.title}</Link>
               </h2>
-              <p className="mt-1 text-[15px] text-muted-foreground">
+              <p className="mt-1 text-[0.9375rem] text-muted-foreground">
                 {a.authors}{a.venue && <> · <span className="italic">{a.venue}</span></>}{a.year && <> · {a.year}</>}
               </p>
               <ul className="mt-3 flex flex-col gap-2">

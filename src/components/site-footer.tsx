@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/logo";
+import { ExternalLink } from "@/components/external-link";
 
 const LINKS = [
   { href: "/a-propos", label: "À propos" },
@@ -23,9 +24,9 @@ export function SiteFooter() {
               {l.label}
             </Link>
           ))}
-          <a href="https://openalex.org" target="_blank" rel="noreferrer" className="transition-colors hover:text-foreground">
+          <ExternalLink href="https://openalex.org" className="transition-colors hover:text-foreground">
             Données OpenAlex
-          </a>
+          </ExternalLink>
         </nav>
         <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Sextant</p>
       </div>

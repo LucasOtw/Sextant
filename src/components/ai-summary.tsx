@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Loader2Icon, SparklesIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -26,6 +26,19 @@ type State = { status: "idle" } | { status: "loading" } | { status: "done"; text
 /** Condensé du résumé original en quatre points (traduit si besoin), généré à la demande. */
 export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
   const [state, setState] = useState<State>({ status: "idle" });
+  const boxRef = useRef<HTMLDivElement>(null);
+  const resultRef = useRef<HTMLDivElement>(null);
+  const retryRef = useRef<HTMLButtonElement>(null);
+  const errorId = useId();
+
+  // Le bouton « Condenser » disparaît au clic : le focus retomberait sur la page. On l'amène sur le résultat, ou sur
+  // « Réessayer » en cas d'échec, sauf si l'utilisateur est parti ailleurs pendant la génération (A11Y-13).
+  useEffect(() => {
+    if (state.status !== "done" && state.status !== "error") return;
+    const active = document.activeElement;
+    if (active && active !== document.body && !boxRef.current?.contains(active)) return;
+    (state.status === "done" ? resultRef.current : retryRef.current)?.focus();
+  }, [state.status]);
 
   async function run() {
     try {
@@ -68,16 +81,19 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
     ? "Question, méthode, résultat, portée : le résumé ci-dessus, condensé."
     : "Le résumé ci-dessus, traduit et condensé : question, méthode, résultat, portée.";
   const cta = isFrench ? "Condenser le résumé" : "Traduire et condenser";
+  // Région d'annonce toujours montée (une région insérée déjà remplie n'est pas lue) : début, fin ou échec de la génération.
+  const status = loading ? `${providerLabel} lit le résumé…` : state.status === "done" ? "Synthèse prête." : state.status === "error" ? state.message : "";
 
   return (
-    <div className="mt-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+    <div ref={boxRef} className="mt-5 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+      <p className="sr-only" aria-live="polite">{status}</p>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 text-base font-semibold">
             <SparklesIcon className={loading ? "size-4 animate-pulse text-accent-brand" : "size-4 text-accent-brand"} aria-hidden />
             {title}
           </h3>
-          <p className="mt-1 text-[15px] text-muted-foreground">{intro}</p>
+          <p className="mt-1 text-[0.9375rem] text-muted-foreground">{intro}</p>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-secondary-foreground" title={model}>
           <span className="size-1.5 rounded-full bg-accent-brand" aria-hidden />
@@ -93,7 +109,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       )}
 
       {loading && (
-        <div className="mt-4 space-y-3" aria-live="polite">
+        <div className="mt-4 space-y-3" aria-hidden>
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2Icon className="size-4 animate-spin" aria-hidden />
             {providerLabel} lit le résumé
@@ -108,7 +124,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
       )}
 
       {state.status === "done" && (
-        <div className="mt-4 space-y-2.5 text-[15px] leading-relaxed animate-in fade-in slide-in-from-bottom-1 duration-400 motion-reduce:animate-none">
+        <div ref={resultRef} tabIndex={-1} className="mt-4 space-y-2.5 text-[0.9375rem] leading-relaxed outline-none animate-in fade-in slide-in-from-bottom-1 duration-400 motion-reduce:animate-none">
           {state.text.split(/\n+/).map((line, i) => (
             <p key={i} className="animate-in fade-in fill-mode-backwards duration-500 motion-reduce:animate-none" style={{ animationDelay: `${i * 120}ms` }}>
               {line}
@@ -122,8 +138,8 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
 
       {state.status === "error" && (
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <p className="text-sm text-destructive">{state.message}</p>
-          <Button size="sm" variant="ghost" onClick={run}>Réessayer</Button>
+          <p id={errorId} className="text-sm text-destructive">{state.message}</p>
+          <Button ref={retryRef} size="sm" variant="ghost" onClick={run} aria-describedby={errorId}>Réessayer</Button>
         </div>
       )}
     </div>
@@ -131,5 +147,5 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
 }
 
 function Dot({ delay }: { delay: number }) {
-  return <span className="size-1 animate-bounce rounded-full bg-current" style={{ animationDelay: `${delay}ms` }} />;
+  return <span className="size-1 motion-safe:animate-bounce rounded-full bg-current" style={{ animationDelay: `${delay}ms` }} />;
 }

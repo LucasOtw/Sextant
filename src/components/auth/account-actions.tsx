@@ -118,7 +118,7 @@ export function AccountActions() {
       <Dialog open={confirmAll} onOpenChange={(o) => !busyAll && setConfirmAll(o)}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Se déconnecter partout ?</DialogTitle>
-          <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
             Toutes vos sessions seront fermées, sur cet appareil aussitôt et sur les autres dans les 5 minutes, et vos clés d'assistant IA seront révoquées :
             il faudra en créer de nouvelles. À utiliser si un appareil a été perdu ou si une session vous semble suspecte.
           </DialogDescription>
@@ -139,7 +139,7 @@ export function AccountActions() {
       <Dialog open={confirm} onOpenChange={(o) => !busy && setConfirm(o)}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Supprimer votre compte ?</DialogTitle>
-          <DialogDescription className="text-[15px] leading-relaxed text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
             Votre compte et toutes les données qui lui sont liées seront effacés immédiatement. Cette action est définitive.
           </DialogDescription>
           {error && (

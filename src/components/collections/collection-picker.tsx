@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
+import { withArticle } from "@/lib/labels";
 import { cn } from "cn";
 
 // Menu des listes : rendu côté serveur et préchargé pour un connecté, jamais téléchargé par un anonyme (PERF-03).
@@ -37,7 +38,8 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
 
   const trigger =
     variant === "icon" ? (
-      <Button variant="ghost" size="icon" aria-label={label} title={label} className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}>
+      // Icône seule, répétée sur chaque carte : le nom cite l'article, l'infobulle garde le libellé court (A11Y-23).
+      <Button variant="ghost" size="icon" aria-label={withArticle(label, snapshot.title)} title={label} className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}>
         <Icon className={cn("size-[18px]", inLists ? "text-accent-brand" : "text-muted-foreground")} />
       </Button>
     ) : (

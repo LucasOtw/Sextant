@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { CheckIcon, CopyIcon, HomeIcon, RotateCwIcon } from "lucide-react";
 import { ErrorScene } from "@/components/error-scene";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useCopy } from "@/hooks/use-copy";
 
 interface Props {
   error: Error & { digest?: string };
@@ -13,7 +14,7 @@ interface Props {
 
 /** Contenu commun des erreurs serveur : page (error.tsx) et document entier (global-error.tsx). */
 export function ServerError({ error, retry }: Props) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy } = useCopy();
 
   useEffect(() => {
     // Trace côté navigateur ; la même référence (digest) se retrouve dans les journaux Vercel.
@@ -45,15 +46,8 @@ export function ServerError({ error, retry }: Props) {
         {reference && (
           <button
             type="button"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(reference);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1800);
-              } catch {
-                /* presse-papiers indisponible : la référence reste lisible */
-              }
-            }}
+            // Presse-papiers indisponible : la référence reste lisible.
+            onClick={() => void copy(reference, { message: "Référence copiée." })}
             className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs hover:bg-secondary hover:text-foreground"
             aria-label={copied ? "Référence copiée" : `Copier la référence ${reference}`}
           >

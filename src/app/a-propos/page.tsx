@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
+import { ExternalLink } from "@/components/external-link";
 
 export const metadata: Metadata = { title: "À propos" };
 
@@ -25,7 +26,7 @@ export default function AboutPage() {
 
       <h2>D'où viennent les données</h2>
       <p>
-        Les métadonnées bibliographiques proviennent d'<a href="https://openalex.org" target="_blank" rel="noreferrer">OpenAlex</a>,
+        Les métadonnées bibliographiques proviennent d'<ExternalLink href="https://openalex.org">OpenAlex</ExternalLink>,
         une base ouverte (licence CC0) maintenue par l'organisation à but non lucratif OurResearch. Elles peuvent comporter des
         erreurs ou des lacunes : un résumé manquant, une affiliation approximative, un décompte de citations en retard.
       </p>
@@ -39,7 +40,7 @@ export default function AboutPage() {
       <h2>Le condensé par IA</h2>
       <p>
         Sur une fiche, vous pouvez demander un condensé en quatre points du résumé original, traduit en français si besoin. Il est
-        généré à la demande par un modèle ouvert de <a href="https://mistral.ai" target="_blank" rel="noreferrer">Mistral AI</a>,
+        généré à la demande par un modèle ouvert de <ExternalLink href="https://mistral.ai">Mistral AI</ExternalLink>,
         hébergé en Europe, à partir du seul résumé. Il est indicatif : lisez l'article, pas seulement sa synthèse.
       </p>
 

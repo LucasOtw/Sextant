@@ -1,26 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { CheckIcon, CopyIcon, DownloadIcon } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { bibtexAll, fileSlug, type FavoriteSnapshot } from "@/lib/favorites-shared";
+import { useCopy } from "@/hooks/use-copy";
 
 /** Export BibTeX d'une liste partagée : copier ou télécharger le .bib. `retracted` : vérifié côté serveur. */
 export function SharedListActions({ name, articles, retracted = [] }: { name: string; articles: FavoriteSnapshot[]; retracted?: string[] }) {
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyText } = useCopy();
   const retractedIds = useMemo(() => new Set(retracted), [retracted]);
   const bib = () => bibtexAll(articles, retractedIds);
 
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(bib());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("Presse-papiers indisponible.");
-    }
-  }
+  const copy = () => void copyText(bib(), { message: "BibTeX copié.", failure: "Presse-papiers indisponible." });
 
   function download() {
     const url = URL.createObjectURL(new Blob([bib()], { type: "application/x-bibtex;charset=utf-8" }));

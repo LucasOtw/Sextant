@@ -58,7 +58,7 @@ Seize grands domaines, de l'informatique aux arts et humanités. Chaque thémati
 
 ### 🌙 Confortable, de jour comme de nuit
 
-Mode sombre en un clic, mémorisé. Historique local « Consultés récemment » pour reprendre où vous en étiez. Transitions douces, jamais tape-à-l'œil.
+Thème clair, sombre ou celui du système, au choix et mémorisé. Historique local « Consultés récemment » pour reprendre où vous en étiez. Transitions douces, jamais tape-à-l'œil.
 
 <img src="docs/screenshots/05-accueil-sombre.png" width="880" alt="Page d'accueil en mode sombre" />
 

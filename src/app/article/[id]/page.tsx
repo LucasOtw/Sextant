@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   abstractFromInvertedIndex,
+  contentLang,
   formatAuthors,
   formatCount,
   formatDate,
@@ -36,6 +37,7 @@ import {
   openAccessUrl,
   publisherUrl,
   toApa,
+  titleLang,
   toBibtex,
   typeLabel,
   venueName,
@@ -47,6 +49,7 @@ import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
 import { cn } from "cn";
 import { logError, recover } from "@/lib/log";
 import { safeHttpUrl } from "@/lib/text";
+import { ExternalLink } from "@/components/external-link";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -137,17 +140,18 @@ export default async function ArticlePage({ params }: Props) {
           </Badge>
           {work.is_retracted && <Badge variant="destructive">Rétracté</Badge>}
           {theme && (
-            <Link href={`/theme/${theme.slug}`} className="ml-1 text-muted-foreground hover:text-foreground">
+            <Link href={`/theme/${theme.slug}`} className="ml-1 text-muted-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">
               {theme.name}
             </Link>
           )}
         </div>
 
-        <h1 className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
+        {/* Titre et résumé dans la langue de l'article : lus avec la bonne voix par les lecteurs d'écran (A11Y-04). */}
+        <h1 lang={titleLang(work)} className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
 
         <Authors work={work} />
 
-        <p className="mt-3 text-[15px] text-muted-foreground">
+        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
           {venue && <span className="italic text-foreground">{venue}</span>}
           {venue && (work.publication_date || work.publication_year) && " · "}
           {formatDate(work.publication_date) ?? work.publication_year}
@@ -159,7 +163,7 @@ export default async function ArticlePage({ params }: Props) {
           {work.language && <> · {work.language.toUpperCase()}</>}
         </p>
 
-        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[15px]">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem]">
           <Stat icon={<QuoteIcon />} label="Citations">
             <Link href={`/search?cites=${shortId(work.id)}`} className="underline underline-offset-2 hover:text-accent-brand">
               {formatCount(work.cited_by_count)}
@@ -170,10 +174,10 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {doiUrl && (
             <Stat label="DOI">
-              <a href={doiUrl} target="_blank" rel="noreferrer" className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
+              <ExternalLink href={doiUrl} className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
                 {(work.doi ?? doiUrl).replace(/^https?:\/\/doi\.org\//i, "")}
-              </a>
+              </ExternalLink>
             </Stat>
           )}
         </dl>
@@ -181,41 +185,39 @@ export default async function ArticlePage({ params }: Props) {
         <div className="mt-5 flex flex-wrap gap-2">
           {oa && oa.isPdf && readable && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
           {oa && oa.isPdf && !readable && (
-            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire le PDF
-            </a>
+            </ExternalLink>
           )}
           {oa && !oa.isPdf && (
-            <a href={oa.url} target="_blank" rel="noreferrer" className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
               <FileTextIcon /> Lire en accès ouvert
-            </a>
+            </ExternalLink>
           )}
           {publisher && (
-            <a href={publisher} target="_blank" rel="noreferrer" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
+            <ExternalLink href={publisher} className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
-            </a>
+            </ExternalLink>
           )}
-          <CopyButton text={toApa(work)} label="Citer (APA)" size="lg" className="bg-card px-3.5" />
-          <CopyButton text={toBibtex(work)} label="BibTeX" size="lg" className="bg-card px-3.5" />
+          <CopyButton text={toApa(work)} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
+          <CopyButton text={toBibtex(work)} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
           {isAuthEnabled() && <FavoriteButton snapshot={snapshotFromWork(work)} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
           {isAuthEnabled() && <CollectionPicker snapshot={snapshotFromWork(work)} variant="button" className="px-3.5" />}
         </div>
         {!oa && (
-          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[15px] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
+          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
             <div className="flex items-start gap-2.5">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
               <p className="text-muted-foreground">
                 <span className="font-medium text-foreground">Texte intégral non accessible ici.</span> Aucune version libre n'est connue : la page de l'éditeur demande en général un abonnement, souvent couvert par votre bibliothèque universitaire. Vous pouvez tout de même l'enregistrer, le citer et noter vos citations à la main.
               </p>
             </div>
-            <a
+            <ExternalLink
               href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? work.doi.replace(/^https?:\/\/doi\.org\//, "") : workTitle(work))}`}
-              target="_blank"
-              rel="noreferrer"
               className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
             >
               <SearchIcon /> Chercher une version libre
-            </a>
+            </ExternalLink>
           </aside>
         )}
 
@@ -229,7 +231,7 @@ export default async function ArticlePage({ params }: Props) {
             )}
           </h2>
           {abstract ? (
-            <HighlightableAbstract text={abstract} className="mt-3 text-[17px] leading-relaxed" />
+            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 text-[1.0625rem] leading-relaxed" />
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -243,7 +245,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
         </section>
 
-        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} />
+        <ArticleHighlights hasAbstract={Boolean(abstract)} hasPdf={Boolean(oa?.isPdf && readable)} abstract={abstract ?? undefined} lang={contentLang(work.language)} />
 
         <ArticleNote enabled={Boolean(sessionUser)} snapshot={snapshotFromWork(work)} initial={initialNote} />
 
@@ -285,7 +287,7 @@ function Authors({ work }: { work: Work }) {
   const rest = list.length - shown.length;
   if (list.length === 0) return null;
   return (
-    <p className="mt-4 text-[15px] leading-relaxed">
+    <p className="mt-4 text-[0.9375rem] leading-relaxed">
       {shown.map((a, i) => {
         const inst = a.institutions[0]?.display_name;
         return (

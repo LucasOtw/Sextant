@@ -1,0 +1,127 @@
+"use client";
+
+import { useState } from "react";
+import { HighlighterIcon, Loader2Icon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { useDialogContainer } from "@/components/highlights/dialog-container";
+import { pendingIndexes, type Sentence } from "@/lib/sentences";
+
+interface Props {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  title: string;
+  description: string;
+  /** Phrases proposées ; null pendant le chargement (page du PDF). */
+  sentences: Sentence[] | null;
+  /** Échec du chargement des phrases. */
+  error?: string | null;
+  /** Langue du texte (attribut `lang` des phrases). */
+  lang?: string;
+  /** Phrase déjà comprise dans un passage retenu : cochée et inactive. */
+  isHighlighted: (sentence: Sentence) => boolean;
+  /** Enregistre les phrases cochées (indices) ; true si tout a été enregistré (la fenêtre se ferme). */
+  onSave: (indexes: number[]) => Promise<boolean>;
+  /** Contrôles au-dessus de la liste (choix de la page dans le lecteur PDF). */
+  children?: React.ReactNode;
+}
+
+/**
+ * Surligner sans sélectionner à la souris (A11Y-18) : les phrases du texte en cases à cocher, parcourues au clavier
+ * (Tab, Espace) et lues par les lecteurs d'écran. Des phrases qui se suivent forment un seul passage.
+ */
+export function SentencePickerDialog({ open, onOpenChange, title, description, ...rest }: Props) {
+  const container = useDialogContainer();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent container={container} className="max-h-[92dvh] min-w-0 overflow-y-auto sm:max-w-xl">
+        <DialogTitle className="title-display text-2xl">{title}</DialogTitle>
+        <DialogDescription className="text-[0.9375rem] text-muted-foreground">{description}</DialogDescription>
+        {/* Monté à l'ouverture seulement : les cases repartent décochées à chaque fois. */}
+        {open && <Picker {...rest} onClose={() => onOpenChange(false)} />}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClose }: Omit<Props, "open" | "onOpenChange" | "title" | "description"> & { onClose: () => void }) {
+  const [checked, setChecked] = useState<Set<number>>(() => new Set());
+  const [shown, setShown] = useState(sentences);
+  const [busy, setBusy] = useState(false);
+
+  // Autre page du PDF : nouvelles phrases, on repart d'une liste vierge.
+  if (shown !== sentences) {
+    setShown(sentences);
+    setChecked(new Set());
+  }
+
+  function toggle(i: number, on: boolean) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(i);
+      else next.delete(i);
+      return next;
+    });
+  }
+
+  // Seules les phrases pas encore retenues partent : après un enregistrement partiel, les autres restent cochées.
+  const pending = sentences ? pendingIndexes(checked, sentences, isHighlighted) : [];
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (pending.length === 0 || busy) return;
+    setBusy(true);
+    const ok = await onSave(pending);
+    setBusy(false);
+    if (ok) onClose();
+  }
+
+  return (
+    <form onSubmit={save} className="flex min-w-0 flex-col gap-3">
+      {children}
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">{error}</p>
+      ) : sentences === null ? (
+        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2Icon className="size-4 animate-spin" aria-hidden /> Lecture du texte…
+        </p>
+      ) : sentences.length === 0 ? (
+        <p role="status" className="text-sm text-muted-foreground">Aucune phrase à surligner ici.</p>
+      ) : (
+        <fieldset className="min-w-0">
+          <legend className="text-sm font-medium text-muted-foreground">
+            {sentences.length} phrase{sentences.length > 1 ? "s" : ""} · des phrases cochées qui se suivent forment un seul passage
+          </legend>
+          <ul className="mt-2 flex flex-col gap-1">
+            {sentences.map((s, i) => {
+              const done = isHighlighted(s);
+              return (
+                <li key={`${s.start}-${s.end}`}>
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-lg px-2 py-1.5 text-[0.9375rem] leading-relaxed hover:bg-muted has-disabled:cursor-default has-disabled:hover:bg-transparent">
+                    <input
+                      type="checkbox"
+                      className="mt-1.5 size-4 shrink-0 accent-accent-brand"
+                      checked={done || checked.has(i)}
+                      disabled={done}
+                      onChange={(e) => toggle(i, e.target.checked)}
+                    />
+                    <span className="min-w-0 wrap-break-word">
+                      <span lang={lang}>{s.text}</span>
+                      {done && <span className="text-sm text-muted-foreground"> (déjà surlignée)</span>}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
+        </fieldset>
+      )}
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
+        <Button type="submit" disabled={busy || pending.length === 0}>
+          {busy ? <Loader2Icon className="animate-spin" /> : <HighlighterIcon />} Surligner{pending.length > 0 && ` (${pending.length})`}
+        </Button>
+      </div>
+    </form>
+  );
+}

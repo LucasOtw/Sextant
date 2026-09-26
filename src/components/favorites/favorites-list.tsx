@@ -20,7 +20,9 @@ import { bibtexAll, fileSlug, type Favorite } from "@/lib/favorites-shared";
 import { ShareDialog } from "@/components/collections/share-dialog";
 import { ShowMore, useRevealFocus } from "@/components/show-more";
 import { formatCount, typeLabel } from "@/lib/format";
+import { moveLabel } from "@/lib/labels";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
+import { useFocusRecovery } from "@/hooks/use-focus-recovery";
 import { cn } from "cn";
 
 const SORTS = [
@@ -148,6 +150,9 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const limit = visibleCount(page, pageKey);
 
   const { containerRef: listRef, reveal } = useRevealFocus<HTMLUListElement>(":scope > li");
+  /** Favori retiré sous le focus (cœur) : le cœur de l'article suivant, sinon du précédent, sinon le compteur (A11Y-19). */
+  const countRef = useRef<HTMLParagraphElement>(null);
+  useFocusRecovery(listRef, ":scope > li", () => countRef.current);
   /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
   const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
 
@@ -259,7 +264,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       <Dialog open={deleting && Boolean(collection)} onOpenChange={setDeleting}>
         <DialogContent className="sm:max-w-sm">
           <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[15px] text-muted-foreground">
+          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
           </DialogDescription>
           <div className="mt-2 flex justify-end gap-2">
@@ -284,7 +289,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   if (all.length === 0 && collections.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-10 text-center">
-        <p className="text-lg font-medium">Aucun favori pour l'instant.</p>
+        <p ref={countRef} tabIndex={-1} className="text-lg font-medium outline-none">Aucun favori pour l'instant.</p>
         <p className="mt-1 text-base text-muted-foreground">
           Le cœur sur une carte ou une fiche article l'enregistre ici, retrouvable sur tous vos appareils.
         </p>
@@ -305,7 +310,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
               <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="min-w-0 line-clamp-2 wrap-break-word">{collection.name}</span>
             </h2>
-            {collection.description && <p className="mt-1 text-[15px] text-muted-foreground">{collection.description}</p>}
+            {collection.description && <p className="mt-1 text-[0.9375rem] text-muted-foreground">{collection.description}</p>}
             {collection.shareToken && (
               <button type="button" onClick={() => setSharing(true)} className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-accent-brand underline underline-offset-3">
                 <Link2Icon className="size-3.5" aria-hidden /> Partagée par lien
@@ -313,7 +318,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             )}
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label="Renommer ou supprimer la liste" />}>
+            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label={`Gérer la liste ${collection.name}`} />}>
               <SettingsIcon /> Gérer
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -348,7 +353,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         </div>
       </div>
 
-      <p className="text-[15px] text-muted-foreground" aria-live="polite">
+      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
         {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour « {q} »</>}
         {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
       </p>
@@ -416,20 +421,10 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
     >
       <article
         className={cn(
-          "relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5",
+          "relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5",
           manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28",
         )}
       >
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
-          {manualOrder && (
-            <>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Monter dans la liste" data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label="Descendre dans la liste" data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
-            </>
-          )}
-          <CollectionPicker snapshot={f} />
-          <FavoriteButton snapshot={f} initialActive />
-        </div>
         <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
           <Badge variant="secondary">{typeLabel(f.type)}</Badge>
           {f.isOa && <Badge className="bg-oa text-oa-foreground"><LockOpenIcon aria-hidden /> Accès ouvert</Badge>}
@@ -439,7 +434,18 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <h3 className="title-display text-xl leading-snug">
           <Link href={`/article/${f.id}`} className="after:absolute after:inset-0 hover:text-accent-brand">{f.title}</Link>
         </h3>
-        <p className="text-[15px] text-muted-foreground">
+        {/* Actions après le titre dans le DOM (le focus et le lecteur d'écran découvrent l'article d'abord), en haut à droite à l'écran (A11Y-23). */}
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
+          {manualOrder && (
+            <>
+              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("up", f.title)} data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
+              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("down", f.title)} data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
+            </>
+          )}
+          <CollectionPicker snapshot={f} />
+          <FavoriteButton snapshot={f} initialActive />
+        </div>
+        <p className="text-[0.9375rem] text-muted-foreground">
           {f.authors}{f.venue && <> · <span className="italic">{f.venue}</span></>}{f.year && <> · {f.year}</>}
         </p>
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">

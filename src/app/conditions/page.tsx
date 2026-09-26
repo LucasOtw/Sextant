@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
+import { ExternalLink } from "@/components/external-link";
 
 export const metadata: Metadata = { title: "Conditions d'utilisation" };
 
@@ -40,7 +41,7 @@ export default function TermsPage() {
 
       <h2>Contenus et exactitude</h2>
       <p>
-        Les métadonnées proviennent d'<a href="https://openalex.org" target="_blank" rel="noreferrer">OpenAlex</a> et sont fournies « en
+        Les métadonnées proviennent d'<ExternalLink href="https://openalex.org">OpenAlex</ExternalLink> et sont fournies « en
         l'état ». Les condensés par IA et les suggestions « Pour vous » sont indicatifs et peuvent contenir des erreurs. Sextant ne garantit
         ni l'exhaustivité, ni l'exactitude, ni la disponibilité continue du service, et ne saurait être tenu responsable de l'usage que vous
         faites des informations consultées. Référez-vous toujours à la publication originale.

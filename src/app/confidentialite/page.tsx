@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ProsePage } from "@/components/prose-page";
 import { SITE } from "@/lib/site";
+import { ExternalLink } from "@/components/external-link";
 
 export const metadata: Metadata = { title: "Confidentialité" };
 
@@ -132,7 +133,7 @@ export default function PrivacyPage() {
       </ul>
       <p>
         Si vous estimez que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à la CNIL
-        (<a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noreferrer">cnil.fr/fr/plaintes</a>).
+        (<ExternalLink href="https://www.cnil.fr/fr/plaintes">cnil.fr/fr/plaintes</ExternalLink>).
       </p>
 
       <h2>Évolution</h2>

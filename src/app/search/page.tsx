@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBox } from "@/components/search-box";
 import { Results } from "@/components/results";
-import { parseSearchParams, type RawSearchParams } from "@/lib/search-params";
+import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getAuthorProfile, getTopic, getWork } from "@/lib/openalex";
 import { workTitle } from "@/lib/format";
@@ -14,9 +14,9 @@ interface Props {
 }
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const { q } = await searchParams;
-  const query = Array.isArray(q) ? q[0] : q;
-  return { title: query ? `« ${query} »` : "Recherche" };
+  const { q, page } = parseSearchParams(await searchParams);
+  // La page dans le titre : l'annonceur de routes de Next lit le nouveau titre à la pagination (A11Y-12).
+  return { title: pagedTitle(q ? `« ${q} »` : "Recherche", page) };
 }
 
 export default async function SearchPage({ searchParams }: Props) {
@@ -29,13 +29,15 @@ export default async function SearchPage({ searchParams }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
       <div className="mb-6 flex flex-col gap-3">
+        {/* Titre principal pour la navigation par titres (le champ tient lieu de titre visible) : h1 → h2 (liste) → h3 (A11Y-14). */}
+        <h1 className="sr-only">{params.q ? `Recherche : « ${params.q} »` : "Recherche"}</h1>
         <SearchBox size="hero" defaultValue={params.q} hidden={{ topic: params.topic, cites: params.cites, author: params.author }} className="max-w-3xl" />
         {contextLines > 0 && (
           <Suspense
             key={`${params.topic ?? ""}|${params.author ?? ""}|${params.cites ?? ""}`}
             fallback={Array.from({ length: contextLines }, (_, i) => (
               // Hauteur d'une ligne de contexte réservée : la liste de résultats ne saute pas à l'arrivée du texte.
-              <Skeleton key={i} className="h-[1.5em] w-72 max-w-full text-[15px]" />
+              <Skeleton key={i} className="h-[1.5em] w-72 max-w-full text-[0.9375rem]" />
             ))}
           >
             <SearchContext topic={params.topic} author={params.author} cites={params.cites} q={params.q} />
@@ -66,7 +68,7 @@ async function SearchContext({ topic: topicId, author: authorId, cites, q }: { t
 
 function ContextLine({ label, value, clearHref }: { label: string; value: string; clearHref: string }) {
   return (
-    <p className="text-[15px] text-muted-foreground">
+    <p className="text-[0.9375rem] text-muted-foreground">
       {label} : <span className="text-foreground">{value}</span>{" "}
       <Link href={clearHref} className="underline underline-offset-2 hover:text-foreground">
         (retirer)

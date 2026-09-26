@@ -14,10 +14,10 @@ export function ThemeGrid({ limit, className }: { limit?: number; className?: st
           <Link
             href={`/theme/${t.slug}`}
             prefetch={false}
-            className="group flex h-full flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25"
+            className="group flex h-full flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25"
           >
             <span className={cn("size-3 rounded-full", t.tone)} aria-hidden />
-            <span className="text-[17px] font-semibold leading-tight">{t.name}</span>
+            <span className="text-[1.0625rem] font-semibold leading-tight">{t.name}</span>
             <span className="text-sm leading-snug text-muted-foreground">{t.description}</span>
             <ArrowRightIcon className="mt-auto size-4 self-end text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
           </Link>

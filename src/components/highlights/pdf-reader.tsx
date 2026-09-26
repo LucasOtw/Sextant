@@ -2,17 +2,23 @@
 
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFWorker, RenderTask } from "pdfjs-dist";
-import { AlertTriangleIcon, ChevronDownIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
+import { AlertTriangleIcon, ChevronDownIcon, HighlighterIcon, Loader2Icon, Maximize2Icon, Minimize2Icon } from "lucide-react";
 import { ArticleHighlights } from "@/components/highlights/article-highlights";
+import { DialogContainerContext } from "@/components/highlights/dialog-container";
 import { useHighlights } from "@/components/highlights/highlights-provider";
-import { cleanSelectionText, readSelection, SelectionButton } from "@/components/highlights/selection-button";
+import { cleanSelectionText, readSelection, SELECTION_STATUS, SelectionButton } from "@/components/highlights/selection-button";
+import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
+import { inertOutside } from "@/lib/focus";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
+import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
 import { cn } from "cn";
+import { ExternalLink } from "@/components/external-link";
 
 type PdfLib = typeof import("pdfjs-dist");
 
@@ -30,13 +36,15 @@ interface LayoutProps {
   originalUrl: string;
   /** PDF embarquable par le lecteur du navigateur si le relais échoue (https, hôte public), sinon null : lien seul. */
   embedUrl: string | null;
+  /** Langue de l'article (attribut `lang` des phrases proposées et des passages). */
+  lang?: string;
 }
 
 /**
  * Lecteur à gauche, « Mes surlignages » à droite (défilable) ; sur mobile, la liste se replie au-dessus du lecteur.
  * « Plein écran » passe le lecteur en plein écran (API du navigateur, ou repli fixe quand elle manque, iPhone par exemple).
  */
-export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
+export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) {
   const { highlights } = useHighlights();
   const [open, setOpen] = useState(false);
   const [full, setFull] = useState(false);
@@ -64,6 +72,21 @@ export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
     return () => document.removeEventListener("keydown", onKey);
   }, [full, nativeFullscreen]);
 
+  // Plein écran (natif ou repli fixe) : le reste de la page, caché dessous, sort de l'ordre du focus et du lecteur
+  // d'écran, et ne défile plus derrière le lecteur (A11Y-29).
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!full || !wrap) return;
+    const restore = inertOutside(wrap);
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      restore();
+      root.style.overflow = overflow;
+    };
+  }, [full]);
+
   async function toggleFullscreen() {
     if (full) {
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
@@ -85,27 +108,30 @@ export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
 
   const fallback = full && !nativeFullscreen;
   return (
-    <div ref={wrapRef} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
-      {!full && (
-        <div className="lg:hidden">
-          <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
-            Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
-            <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
-          </Button>
+    // En plein écran natif, seul le conteneur s'affiche : les fenêtres des surlignages y sont montées, pas dans <body>.
+    <DialogContainerContext.Provider value={full ? wrapRef : undefined}>
+      <div ref={wrapRef} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
+        {!full && (
+          <div className="lg:hidden">
+            <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
+              Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
+              <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
+            </Button>
+          </div>
+        )}
+        <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", (!open || full) && "hidden", full && "lg:hidden")}>
+          <ArticleHighlights compact lang={lang} onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
+        </aside>
+        <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
+          <div className="mb-3 flex justify-end">
+            <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()}>
+              {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
+            </Button>
+          </div>
+          <PdfReader url={url} originalUrl={originalUrl} embedUrl={embedUrl} lang={lang} />
         </div>
-      )}
-      <aside id="lecteur-surlignages" className={cn("w-full lg:order-2 lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)] lg:w-80 lg:shrink-0 lg:overflow-y-auto lg:pr-1", (!open || full) && "hidden", full && "lg:hidden")}>
-        <ArticleHighlights compact onGoToPage={(page) => { setOpen(false); goToPage(page); }} />
-      </aside>
-      <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
-        <div className="mb-3 flex justify-end">
-          <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()} aria-pressed={full}>
-            {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
-          </Button>
-        </div>
-        <PdfReader url={url} originalUrl={originalUrl} embedUrl={embedUrl} />
       </div>
-    </div>
+    </DialogContainerContext.Provider>
   );
 }
 
@@ -225,11 +251,21 @@ interface ReaderProps {
   url: string;
   originalUrl: string;
   embedUrl: string | null;
+  lang?: string;
+}
+
+/**
+ * Connexion demandée depuis le lecteur : la fenêtre de connexion est montée dans <body>, invisible en plein écran natif.
+ * On quitte d'abord le plein écran.
+ */
+async function signInOutOfFullscreen(requestSignIn: () => void) {
+  if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
+  requestSignIn();
 }
 
 /** Affiche le PDF page par page (PDF.js) avec une couche texte sélectionnable ; une sélection propose « Surligner ». */
-export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
-  const { highlights, add } = useHighlights();
+export function PdfReader({ url, originalUrl, embedUrl, lang }: ReaderProps) {
+  const { enabled, highlights, add, requestSignIn } = useHighlights();
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -394,7 +430,10 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       const page = (e as CustomEvent<number>).detail;
       // Saut instantané : un défilement doux ferait rendre les pages traversées, dont la hauteur peut changer en route
       // (documents mêlant plusieurs formats), et la cible, calculée au départ, ne serait plus au bon endroit.
-      containerRef.current?.querySelector(`[data-page="${page}"]`)?.scrollIntoView({ behavior: "auto", block: "start" });
+      const el = containerRef.current?.querySelector<HTMLElement>(`[data-page="${page}"]`);
+      el?.scrollIntoView({ behavior: "auto", block: "start" });
+      // Le focus suit (« aller à la page » depuis « Mes surlignages ») : le lecteur d'écran lit la page, pas la barre latérale.
+      el?.focus({ preventScroll: true });
     };
     window.addEventListener(GOTO_EVENT, onGoto);
     return () => window.removeEventListener(GOTO_EVENT, onGoto);
@@ -415,6 +454,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
 
   async function save() {
     if (!selection) return;
+    if (!enabled) return void signInOutOfFullscreen(requestSignIn);
     setBusy(true);
     const created = await add({ source: "pdf", text: selection.text, page: selection.page, prefix: "", suffix: "", note: "" });
     setBusy(false);
@@ -422,6 +462,44 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       window.getSelection()?.removeAllRanges();
       setSelection(null);
     }
+  }
+
+  // Surligner sans sélection à la souris (A11Y-18) : les phrases d'une page, en cases à cocher.
+  const [picker, setPicker] = useState<{ page: number; input: string; text: string; sentences: Sentence[] | null; error: string | null } | null>(null);
+  const pickerLoad = useRef(0);
+
+  async function loadPickerPage(page: number, input = String(page)) {
+    if (!doc) return;
+    const run = ++pickerLoad.current;
+    setPicker({ page, input, text: "", sentences: null, error: null });
+    try {
+      const text = pdfPageText((await (await doc.getPage(page)).getTextContent()).items);
+      if (run === pickerLoad.current) setPicker({ page, input, text, sentences: splitSentences(text, lang ?? "fr"), error: null });
+    } catch {
+      if (run === pickerLoad.current) setPicker({ page, input, text: "", sentences: [], error: "Le texte de cette page n'a pas pu être lu." });
+    }
+  }
+
+  /** Page en haut de l'écran (sous l'en-tête collant) : point de départ du choix de phrases. */
+  function currentPage(): number {
+    const pages = containerRef.current?.querySelectorAll<HTMLElement>("[data-page]") ?? [];
+    for (const el of pages) if (el.getBoundingClientRect().bottom > 96) return Number(el.dataset.page) || 1;
+    return 1;
+  }
+
+  function changePickerPage(input: string) {
+    const n = Number(input);
+    if (doc && Number.isInteger(n) && n >= 1 && n <= doc.numPages) void loadPickerPage(n, input);
+    else setPicker((p) => (p ? { ...p, input } : p));
+  }
+
+  async function savePicked(indexes: number[]) {
+    if (!picker?.sentences) return false;
+    let ok = true;
+    for (const p of passagesFrom(picker.text, picker.sentences, indexes)) {
+      ok = Boolean(await add({ source: "pdf", text: p.text, page: picker.page, prefix: "", suffix: "", note: "" })) && ok;
+    }
+    return ok;
   }
 
   if (error) {
@@ -434,7 +512,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
     })();
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-dashed p-5 text-[15px]">
+        <div className="rounded-xl border border-dashed p-5 text-[0.9375rem]">
           <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
           <p className="mt-1 text-muted-foreground">
             {embedUrl
@@ -475,7 +553,7 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
             )}
             {progress && progress.total > 8 * 1024 * 1024 && (
               <p className="text-sm text-muted-foreground">
-                Gros fichier : vous pouvez aussi <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</a> en attendant.
+                Gros fichier : vous pouvez aussi <ExternalLink href={originalUrl} className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</ExternalLink> en attendant.
               </p>
             )}
           </div>
@@ -484,9 +562,14 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
       )}
       {doc && lib && width > 0 && (
         <>
-          <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner.</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner, ou choisissez des phrases.</p>
+            <Button variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(currentPage()) : signInOutOfFullscreen(requestSignIn))}>
+              <HighlighterIcon /> Surligner des phrases
+            </Button>
+          </div>
           {interrupted && (
-            <div role="alert" className="rounded-xl border border-dashed p-4 text-[15px]">
+            <div role="alert" className="rounded-xl border border-dashed p-4 text-[0.9375rem]">
               <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
               <p className="mt-1 text-muted-foreground">
                 Rechargez la page pour réessayer, ou{" "}
@@ -507,7 +590,40 @@ export function PdfReader({ url, originalUrl, embedUrl }: ReaderProps) {
           ))}
         </>
       )}
+      {/* Le bouton flottant apparaît sans prévenir : on l'annonce (texte fixe pendant que la sélection s'étend, lu une fois). */}
+      <p role="status" className="sr-only">{selection ? SELECTION_STATUS : ""}</p>
       <SelectionButton rect={selection?.rect ?? null} onClick={() => void save()} busy={busy} />
+      {doc && (
+        <SentencePickerDialog
+          open={picker !== null}
+          onOpenChange={(open) => {
+            if (open) return;
+            pickerLoad.current++;
+            setPicker(null);
+          }}
+          title="Surligner des phrases"
+          description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans « Mes citations », avec leur page."
+          sentences={picker?.sentences ?? null}
+          error={picker?.error}
+          lang={lang}
+          isHighlighted={(s) => isAlreadyHighlighted(s.text, (byPage.get(picker?.page ?? 0) ?? NO_HIGHLIGHTS).map((h) => h.text))}
+          onSave={savePicked}
+        >
+          <label className="flex items-center gap-2 text-sm font-medium">
+            Page
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={doc.numPages}
+              value={picker?.input ?? ""}
+              onChange={(e) => changePickerPage(e.target.value)}
+              className="h-9 w-24 text-base md:text-sm"
+            />
+            <span className="font-normal text-muted-foreground">sur {doc.numPages}</span>
+          </label>
+        </SentencePickerDialog>
+      )}
     </div>
   );
 }
@@ -536,6 +652,8 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
   const [failed, setFailed] = useState(false);
 
   // Rendu paresseux : une page se dessine quand elle approche de l'écran, et libère son canevas quand elle s'en éloigne.
+  // Sa couche texte reste (A11Y-22) : lecteur d'écran, recherche du navigateur (Ctrl+F) et navigation rapide trouvent
+  // le texte de toutes les pages déjà affichées, pas seulement des 3 ou 4 proches de l'écran.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -549,7 +667,6 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
             canvas.width = 0;
             canvas.height = 0;
           }
-          textRef.current?.replaceChildren();
           setRendered(false);
         }
       },
@@ -604,13 +721,22 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
     };
   }, [visible, width, doc, lib, pageNumber]);
 
+  // Largeur changée (rotation, fenêtre) : la couche texte gardée d'une page éloignée n'est plus à l'échelle (elle
+  // déborderait de la page et la recherche Ctrl+F viserait à côté). Elle sera refaite quand la page reviendra.
   useEffect(() => {
-    if (rendered && textRef.current) markSpans(textRef.current, highlights.map((h) => h.text));
+    if (!visible) textRef.current?.replaceChildren();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seulement au changement de largeur, pas quand la page s'éloigne
+  }, [width]);
+
+  useEffect(() => {
+    if (textRef.current) markSpans(textRef.current, highlights.map((h) => h.text));
   }, [rendered, highlights]);
 
   return (
-    <div ref={ref} data-page={pageNumber} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10" style={{ width, height: rendered ? undefined : width * aspect }}>
-      <canvas ref={canvasRef} aria-label={`Page ${pageNumber}`} />
+    // Repère « Page N » pour les lecteurs d'écran, focalisable par « aller à la page ». Le canevas redessine le texte de
+    // la couche texte : masqué, pour ne pas être lu comme une image de plus.
+    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative bg-white shadow-sm ring-1 ring-foreground/10 outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
+      <canvas ref={canvasRef} aria-hidden />
       <div ref={textRef} className="textLayer" />
       {!rendered && visible && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500" aria-live="polite">

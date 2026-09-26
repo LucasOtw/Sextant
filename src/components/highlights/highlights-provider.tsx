@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_HIGHLIGHT_TEXT, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
+import { undoToast } from "@/lib/undo-toast";
 
 export type NewHighlight = Omit<HighlightInput, "article">;
 
@@ -124,7 +125,8 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       try {
         await jsonOrError(await fetch(`/api/highlights/${id}`, { method: "DELETE" }));
         // « Annuler » recrée le passage (nouvel identifiant, même contenu).
-        toast("Citation supprimée.", removed ? { action: { label: "Annuler", onClick: () => void add({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix }) } } : undefined);
+        if (removed) undoToast("Citation supprimée.", () => void add({ text: removed.text, page: removed.page, note: removed.note, source: removed.source, prefix: removed.prefix, suffix: removed.suffix }));
+        else toast("Citation supprimée.");
         return true;
       } catch (e) {
         setHighlights(previous);

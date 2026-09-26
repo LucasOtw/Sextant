@@ -9,7 +9,13 @@ interface Props {
   busy?: boolean;
 }
 
-/** Bouton flottant « Surligner » au-dessus de la sélection courante. */
+/** Annonce (région `role="status"` du résumé et du lecteur PDF) quand une sélection fait apparaître le bouton. */
+export const SELECTION_STATUS = "Passage sélectionné : bouton « Surligner » disponible avec la touche Tab.";
+
+/**
+ * Bouton flottant « Surligner » au-dessus de la sélection courante. Un bouton seul : pas de rôle `toolbar`, qui
+ * promettrait une navigation aux flèches (A11Y-18). Son apparition est annoncée par le composant parent.
+ */
 export function SelectionButton({ rect, onClick, busy = false }: Props) {
   if (!rect) return null;
   // Au doigt, le menu natif (Copier, Rechercher…) occupe la zone au-dessus de la sélection : on se pose en bas de l'écran.
@@ -18,7 +24,7 @@ export function SelectionButton({ rect, onClick, busy = false }: Props) {
   const left = Math.min(Math.max(8, rect.left + rect.width / 2 - 56), window.innerWidth - 120);
   const style = coarse ? { bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)", left: "50%", transform: "translateX(-50%)" } : { top, left };
   return (
-    <div className="fixed z-50 animate-in fade-in zoom-in-95 duration-150" style={style} role="toolbar" aria-label="Sélection">
+    <div className="fixed z-50 animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none" style={style}>
       <Button size={coarse ? "lg" : "sm"} onPointerDown={(e) => e.preventDefault()} onClick={onClick} disabled={busy} className="shadow-lg">
         <HighlighterIcon /> Surligner
       </Button>

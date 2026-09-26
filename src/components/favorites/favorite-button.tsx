@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { clearPendingFavorite, useFavorites, writePendingFavorite } from "@/components/favorites/favorites-provider";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
+import { favoriteLabel } from "@/lib/labels";
 import { cn } from "cn";
 
 interface Props {
@@ -65,7 +66,9 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
           size="icon"
           onClick={onClick}
           aria-pressed={active}
-          aria-label="Favori"
+          // Nom qui cite l'article (A11Y-23) ; la clé retrouve le cœur de la carte voisine quand celle-ci disparaît (A11Y-19).
+          aria-label={favoriteLabel(snapshot.title)}
+          data-focus-key="favorite"
           title={active ? "Retirer des favoris" : "Enregistrer dans mes favoris"}
           className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}
         >

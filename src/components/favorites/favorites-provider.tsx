@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { sameIdSet, type Favorite, type FavoriteSnapshot } from "@/lib/favorites-shared";
 import { sameCollections, type Collection } from "@/lib/collections-shared";
 import type { ClientUser } from "@/lib/session-shared";
+import { undoToast } from "@/lib/undo-toast";
 import { useSession } from "@/components/auth/session-provider";
 
 /** Article à enregistrer dès que la connexion aboutit (clic sur un cœur sans compte). */
@@ -384,9 +385,7 @@ export function FavoritesProvider({ children }: Props) {
           if (res.status === 401) throw new Error("signin");
           if (!res.ok) throw new Error("La suppression a échoué.");
           const n = memberships.length;
-          toast(n ? `Retiré de vos favoris et de ${n} liste${n > 1 ? "s" : ""}.` : "Retiré de vos favoris.", {
-            action: { label: "Annuler", onClick: () => void restoreRef.current?.(snapshot, memberships) },
-          });
+          undoToast(n ? `Retiré de vos favoris et de ${n} liste${n > 1 ? "s" : ""}.` : "Retiré de vos favoris.", () => void restoreRef.current?.(snapshot, memberships));
           return "removed";
         }
         const favorite = await postFavorite(snapshot);

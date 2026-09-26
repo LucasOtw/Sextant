@@ -86,3 +86,27 @@ export function buildHref(base: string, sp: RawSearchParams, patch: Record<strin
   const qs = params.toString();
   return qs ? `${base}?${qs}` : base;
 }
+
+/** OpenAlex limite la pagination simple à 10 000 résultats. */
+export const MAX_RESULTS = 10_000;
+
+/** Numéro de la dernière page atteignable (au moins 1). */
+export function lastPageOf(total: number, perPage: number): number {
+  return Math.max(1, Math.ceil(Math.min(total, MAX_RESULTS) / perPage));
+}
+
+/**
+ * Titre d'une page de résultats : la page est ajoutée au-delà de la première, pour que le titre change à la pagination
+ * (l'annonceur de routes de Next ne lit que les titres qui changent, A11Y-12).
+ */
+export function pagedTitle(title: string, page: number | undefined): string {
+  return page && page > 1 ? `${title} — page ${page}` : title;
+}
+
+/** Message lu aux lecteurs d'écran à l'arrivée d'une liste de résultats (région d'annonce, WCAG 4.1.3). */
+export function resultsMessage(total: number, page: number, perPage: number, q?: string): string {
+  const n = new Intl.NumberFormat("fr-FR").format(total);
+  const count = `${n} résultat${total > 1 ? "s" : ""}${q ? ` pour « ${q} »` : ""}`;
+  const last = lastPageOf(total, perPage);
+  return last > 1 ? `${count}, page ${page} sur ${new Intl.NumberFormat("fr-FR").format(last)}.` : `${count}.`;
+}

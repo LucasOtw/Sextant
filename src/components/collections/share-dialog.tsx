@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { CheckIcon, CopyIcon, Link2Icon, Link2OffIcon, Loader2Icon } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { shareUrl, type Collection } from "@/lib/collections-shared";
+import { useCopy } from "@/hooks/use-copy";
+import { ExternalLink } from "@/components/external-link";
 
 interface Props {
   open: boolean;
@@ -19,18 +20,10 @@ interface Props {
 export function ShareDialog({ open, onOpenChange, collection }: Props) {
   const { setShared } = useFavorites();
   const [busy, setBusy] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const { copied, copy: copyText } = useCopy();
   const url = collection.shareToken ? shareUrl(typeof window === "undefined" ? "" : window.location.origin, collection.shareToken) : null;
 
-  async function copy(link: string) {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("Presse-papiers indisponible : sélectionnez le lien pour le copier.");
-    }
-  }
+  const copy = (link: string) => copyText(link, { message: "Lien de partage copié.", failure: "Presse-papiers indisponible : sélectionnez le lien pour le copier." });
 
   async function enable() {
     setBusy(true);
@@ -49,7 +42,7 @@ export function ShareDialog({ open, onOpenChange, collection }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogTitle className="title-display flex items-center gap-2 text-2xl"><Link2Icon className="size-5 text-accent-brand" aria-hidden /> Partager « {collection.name} »</DialogTitle>
-        <DialogDescription className="text-[15px] text-muted-foreground">
+        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
           Toute personne qui a le lien voit le nom de la liste, sa description et ses articles, sans compte. Vos notes, vos citations et votre
           profil ne sont jamais montrés. Vous pouvez désactiver le lien à tout moment.
         </DialogDescription>
@@ -60,7 +53,7 @@ export function ShareDialog({ open, onOpenChange, collection }: Props) {
               <Button className="h-10 shrink-0" onClick={() => void copy(url)}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}</Button>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <a href={url} target="_blank" rel="noreferrer" className="text-sm text-accent-brand underline underline-offset-3">Voir la page partagée</a>
+              <ExternalLink href={url} className="text-sm text-accent-brand underline underline-offset-3">Voir la page partagée</ExternalLink>
               <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={busy} onClick={() => void disable()}>
                 {busy ? <Loader2Icon className="animate-spin" /> : <Link2OffIcon />} Désactiver le lien
               </Button>
