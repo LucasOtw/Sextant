@@ -18,9 +18,11 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
   });
 
   it("titre : lien étiré, niveau demandé, interligne gardé quand on le redonne après la taille", () => {
+    /* eslint-disable react/no-children-prop -- createElement typé : `children` est une prop requise d'ArticleTitle. */
     const h2 = html(createElement(ArticleTitle, { href: "/article/W1", as: "h2", className: "text-xl leading-snug", children: "Titre" }));
     expect(h2).toMatch(/^<h2 class="title-display text-xl leading-snug"><a class="after:absolute after:inset-0 hover:text-accent-brand" href="\/article\/W1">Titre<\/a><\/h2>$/);
     expect(html(createElement(ArticleTitle, { href: "/article/W1", children: "T" }))).toMatch(/^<h3 /);
+    /* eslint-enable react/no-children-prop */
   });
 
   it("métadonnées : « Auteurs · Revue · Année », langue seulement si ce n'est pas l'anglais", () => {
