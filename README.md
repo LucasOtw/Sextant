@@ -19,7 +19,7 @@ Pour les étudiant·es, les doctorant·es, et toutes les personnes curieuses.
 
 ## 🧭 Le projet en une phrase
 
-Vous tapez quelques mots-clés, Sextant remonte des articles **évalués par les pairs**, des **thèses** et des **ouvrages universitaires**, avec des informations claires (auteurs, revue, année, citations), l'accès au **PDF quand il est libre**, et pour chaque article des **pistes pour continuer**. Pas de compte, pas de bruit, pas de presse.
+Vous tapez quelques mots-clés, Sextant remonte des articles **évalués par les pairs**, des **thèses** et des **ouvrages universitaires**, avec des informations claires (auteurs, revue, année, citations), l'accès au **PDF quand il est libre**, et pour chaque article des **pistes pour continuer**. Sans compte obligatoire, sans publicité, sans presse.
 
 > 🤝 **Un compagnon, pas un raccourci.** Sextant complète vos recherches sur Google Scholar, les bases de votre discipline et votre bibliothèque. Il ne les remplace pas.
 
@@ -91,11 +91,12 @@ Sur une fiche, un bouton condense le résumé original en quatre points : **ques
 
 ## 🔒 Vie privée
 
-- Aucun compte, aucun cookie de suivi, aucune mesure d'audience, aucune publicité.
-- Le mode d'affichage, le message d'accueil lu et l'historique de consultation restent **dans votre navigateur**.
-- Seuls vos mots-clés partent vers OpenAlex, et seul le résumé public d'un article part vers Mistral, quand vous le demandez.
+- **Utilisable sans compte.** Le compte Google est facultatif (Firebase Authentication) ; favoris, listes, citations et notes sont alors stockés dans Firestore, en Europe (Paris), et se téléchargent ou s'effacent depuis « Mon compte ».
+- **Un seul cookie, technique** : `sextant_session` (14 jours), avec un indice `sextant_signed_in` sans donnée personnelle. Aucun cookie de suivi, aucune mesure d'audience, aucune publicité.
+- **Dans votre navigateur** : l'affichage, l'historique de consultation et les suggestions écartées. Pour « Pour vous », les identifiants de ces articles (et de vos favoris) sont envoyés au serveur, qui ne les enregistre pas.
+- **Services tiers** : OpenAlex reçoit les recherches et les identifiants d'articles ; Mistral reçoit le titre et le résumé public d'un article, uniquement quand vous demandez un condensé.
 
-Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d'utilisation](src/app/conditions/page.tsx) · [À propos](src/app/a-propos/page.tsx)
+Détails : [Confidentialité](https://sextant-psi.vercel.app/confidentialite) · [Conditions d'utilisation](https://sextant-psi.vercel.app/conditions) · [Mentions légales](https://sextant-psi.vercel.app/mentions-legales)
 
 <br/>
 
@@ -131,7 +132,8 @@ Détails : [Confidentialité](src/app/confidentialite/page.tsx) · [Conditions d
 
 ```bash
 npm install
-cp .env.example .env.local   # OPENALEX_API_KEY (clé gratuite, évite les limites anonymes) ; MISTRAL_API_KEY pour le condensé
+cp .env.example .env.local   # OPENALEX_API_KEY (clé gratuite, évite les limites anonymes) ; MISTRAL_API_KEY pour le condensé ;
+                             # Firebase facultatif (NEXT_PUBLIC_FIREBASE_*, FIREBASE_SERVICE_ACCOUNT) : sans lui, la connexion est masquée
 npm run dev                  # http://localhost:3000
 ```
 
@@ -142,30 +144,49 @@ projet `demo-sextant`, Java 21, données effacées à l'arrêt ; arrêter `npm r
 
 ### Pages et API
 
-| Route | Rôle |
+| Page | Rôle |
 |---|---|
-| `/` | Recherche, thématiques, sélection du moment, consultés récemment |
+| `/` | Recherche, thématiques, « Pour vous », sélection du moment, consultés récemment |
 | `/search?q=…` | Résultats et filtres ; aussi `topic=`, `cites=`, `author=`, `lang=`, `type=`, `src=all` |
 | `/theme/[slug]` | Une thématique : sous-thèmes + résultats |
 | `/article/[id]` | Fiche article (identifiant OpenAlex `W…`) |
-| `/a-propos`, `/conditions`, `/confidentialite` | Pages de texte |
-| `GET /api/suggest?q=` | Suggestions de la barre de recherche |
-| `GET /api/author?id=` | Profil court d'un auteur |
-| `POST /api/summary` | Condensé par IA `{ id: "W…" }`, mis en cache |
+| `/article/[id]/lire` | Lecteur PDF intégré (accès ouvert), surlignage |
+| `/favoris`, `/citations`, `/compte` | Bibliothèque et compte (connexion requise) |
+| `/liste/[token]` | Liste partagée en lecture seule (non indexée) |
+| `/retours` | « Bugs et idées » : sujets publics et votes |
+| `/a-propos`, `/conditions`, `/confidentialite`, `/mentions-legales` | Pages de texte (statiques) |
+
+API, par préfixe (le détail de chaque route est dans le commentaire en tête de son `route.ts`) :
+
+| Préfixe | Rôle |
+|---|---|
+| `/api/suggest`, `/api/author`, `/api/summary` | Barre de recherche, carte auteur, condensé IA (mis en cache) |
+| `/api/recommendations` | « Pour vous » (calcul sans stockage, cache du navigateur seulement) |
+| `/api/pdf` | Relais des PDF en accès ouvert (requêtes `Range`) |
+| `/api/auth/*` | Session (`session`), déconnexion de tous les appareils (`sessions`), suppression du compte (`account`) |
+| `/api/account/*` | Clés d'assistant IA (`keys`), export RGPD (`export`) |
+| `/api/favorites`, `/api/collections/*`, `/api/highlights/*`, `/api/notes/[workId]` | Bibliothèque : favoris, listes (articles, partage), citations, notes |
+| `/api/feedback/*` | Sujets et votes de « Bugs et idées » |
+| `/api/mcp` | Serveur MCP (clé personnelle) |
+| `/api/csp-report` | Rapports de la CSP en Report-Only |
+| `/api/cron/retention` | Purge des comptes inactifs et des clés inutilisées (tâche planifiée, inactive tant que les durées ne sont pas décidées) |
 
 ### Organisation
 
 ```
 src/
-  app/            pages (App Router) + routes API
-  components/     composants métier et ui/ (shadcn)
-  lib/openalex.ts client OpenAlex typé (recherche, article, similaires, sujets, auteurs)
-  lib/ai.ts       fournisseurs du condensé (Mistral par défaut)
-  lib/format.ts   résumé, auteurs, APA / BibTeX, libellés
-  lib/themes.ts   les 16 thématiques (slug → field OpenAlex)
-  lib/recent.ts   historique local
-docs/             logo, captures d'écran
-tests/            tests unitaires (Vitest), fixtures et garde-fous
+  app/                pages (App Router) + routes API
+  components/         composants métier et ui/ (shadcn / Base UI)
+  hooks/              hooks React partagés
+  lib/*-shared.ts     types et validations communs au client et au serveur (favoris, listes, citations, notes, retours, clés…)
+  lib/<module>.ts     accès Firestore, marqués `import "server-only"` : favorites, collections, highlights, notes, feedback,
+                      shares, api-keys, account (suppression et purge), summaries
+  lib/firebase/       admin.ts (SDK Admin, garde-fous émulateur/production), client.ts (connexion Google), scan.ts
+  lib/auth.ts         session (cookie), garde stricte des écritures ; security.ts (CSRF, taille du corps) ; rate-limit.ts
+  lib/openalex.ts     client OpenAlex typé ; ai.ts (condensé) ; mcp-tools.ts (outils MCP) ; csp.ts ; site.ts (identité, licence)
+  lib/retention.ts    durées de conservation (décision de l'éditeur) ; report.ts (signalement DSA)
+docs/                 logo, captures d'écran, notes de lot (docs/handoffs/)
+tests/                unit/ (Vitest, sans base), emulator/ (transactions Firestore), a11y.spec.ts (Playwright + axe)
 ```
 
 ### Tests et CI
@@ -182,13 +203,13 @@ npm run build
 - Node 24 (`engines`, `.nvmrc`).
 - Les tests unitaires ne touchent **jamais** la base (la seule base Firestore est celle de la production) : `@/lib/firebase/admin` y est remplacé par un module qui lève une erreur, `firebase-admin/app` aussi, `fetch` est interdit, les variables de secrets sont effacées et les identifiants par défaut de gcloud rendus introuvables (`vitest.config.mts`, `tests/setup.ts`). Session et stockage se simulent avec `vi.mock` (exemple : `tests/unit/api-notes.test.ts`).
 - Les tests marqués `it.fails` décrivent un défaut connu de l'audit (QUAL-32) : le correctif retire `.fails`. Le DNS joker (`127.0.0.1.nip.io`) et les redirections vers une adresse privée sont couverts par `tests/unit/public-fetch.test.ts` (`node:dns` simulé, serveur local).
-- `npm run test:emulator` démarre les émulateurs Firestore et Auth sous le projet `demo-sextant` (`firebase emulators:exec`), jamais celui de `.firebaserc`. Garde-fous : `adminApp()` n'accepte qu'un projet `demo-…` quand `FIRESTORE_EMULATOR_HOST` est défini, et `tests/emulator/setup.ts` refuse de démarrer si `FIREBASE_SERVICE_ACCOUNT` est présent ou si les émulateurs ne sont pas désignés. Cas couverts : limite de 1 000 favoris, index `favoriteIds`, retrait en cascade des listes, `CollectionOrderError`, partage et révocation, votes (et leur retrait à la suppression du compte), `createdAt` posé par le serveur, plafond des notes et export paginé, suppression du compte. Les firebase-tools du projet exigent Java 21 (`JAVA_HOME` vers un JDK 21).
+- `npm run test:emulator` démarre les émulateurs Firestore et Auth sous le projet `demo-sextant` (`firebase emulators:exec`), jamais celui de `.firebaserc`. Garde-fous : `adminApp()` n'accepte qu'un projet `demo-…` quand `FIRESTORE_EMULATOR_HOST` est défini, et `tests/emulator/setup.ts` refuse de démarrer si `FIREBASE_SERVICE_ACCOUNT` est présent ou si les émulateurs ne sont pas désignés. Cas couverts : limite de 1 000 favoris, index `favoriteIds`, retrait en cascade des listes, `CollectionOrderError`, partage et révocation, votes (et leur retrait à la suppression du compte), `createdAt` posé par le serveur, plafond des notes et export paginé, données de l'export rangées hors de `users/{uid}`, suppression du compte, purge des comptes inactifs et des clés inutilisées. Les firebase-tools du projet exigent Java 21 (`JAVA_HOME` vers un JDK 21).
 - `npm run test:a11y` visite les pages publiques en clair et en sombre : échec sur les violations axe serious ou critical, sur `page-has-heading-one`, `landmark-one-main` et `region`, et sur tout débordement horizontal à 320 px. Toute requête autre que GET/HEAD est bloquée (les pages lisent la base de production). En local, avec le serveur de dev lancé : `PW_CHANNEL=chrome npm run test:a11y` (Chrome installé) ou `npx playwright install chromium` au préalable.
 - GitHub Actions : `.github/workflows/ci.yml` rejoue lint, typage, tests unitaires et build (job `ci`), puis les tests sur émulateur (job `emulator`, Java 21), à chaque push et pull request vers `dev` et `main`, sans aucun secret. `.github/workflows/a11y.yml` lance le banc d'accessibilité sur chaque aperçu Vercel réussi (`deployment_status`) ; si les aperçus sont protégés, il lit le secret `VERCEL_AUTOMATION_BYPASS_SECRET`. Dependabot (`.github/dependabot.yml`) propose chaque lundi des mises à jour groupées vers `dev` ; les montées majeures de Next, firebase-admin, TypeScript et ESLint se font à la main sur une branche dédiée.
 
 ### Réglages hors du code
 
-Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont listées dans les notes de lot de `docs/handoffs/`, section « À faire par le propriétaire » : lot 1 (pare-feu Vercel, clé Mistral, budget), lot 6 (sauvegarde Firestore, variables Vercel, fournisseurs de connexion, CSP et COOP) et lot 7 (index Firestore, cache au bord, CSP des pages en cache, plan Firebase).
+Les actions qui reviennent au propriétaire (Vercel, Firebase, GitHub) sont listées dans les notes de lot de `docs/handoffs/`, section « À faire par le propriétaire » : lot 1 (pare-feu Vercel, clé Mistral, budget), lot 6 (sauvegarde Firestore, variables Vercel, fournisseurs de connexion, CSP et COOP), lot 7 (index Firestore, cache au bord, CSP des pages en cache, plan Firebase) et lot 9 (licence du code, durées de conservation et purge planifiée, adresse de contact des signalements).
 
 ### Branches
 
@@ -206,7 +227,7 @@ Les condensés IA sont gardés dans la collection `aiSummaries` (un document par
 
 ### Variables d'environnement
 
-Voir [`.env.example`](.env.example). Sans clé IA, le bouton de condensé est simplement masqué.
+Voir [`.env.example`](.env.example) (versionné, sans aucune valeur : ne jamais y écrire de clé). Sans clé IA, le bouton de condensé est simplement masqué.
 
 </details>
 

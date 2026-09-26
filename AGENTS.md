@@ -7,3 +7,37 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Conventions du projet Sextant
+
+Section maintenue à la main, hors du bloc ci-dessus (régénéré par `next dev`). Présentation, commandes et routes : `README.md`.
+
+## Serveur et données
+- Tout module qui touche Firestore, Firebase Auth ou un secret commence par `import "server-only"` (`src/lib/<module>.ts`).
+- Types et validations communs au client et au serveur : `src/lib/<module>-shared.ts`, sans dépendance serveur. Le serveur
+  revalide toujours ce qui vient du client (instantanés d'article rechargés depuis OpenAlex, textes nettoyés et bornés).
+- Firestore n'est lu et écrit que par le serveur (SDK Admin) ; `firestore.rules` ferme tout au client.
+- Compteurs, votes, liens de partage, plafonds : dans une transaction (`db.runTransaction`), rejouable sans double compte.
+  Chaque transaction a son test dans `tests/emulator/`.
+- Données rattachées à un compte hors de `users/{uid}` (ex. `shares`, `apiKeys`, `feedback.authorUid`) : les ajouter à
+  `deleteAccountData` (`src/lib/account.ts`), à l'export RGPD (`src/app/api/account/export/route.ts`) et à la politique
+  de confidentialité.
+
+## Routes API
+- Garde standard d'une écriture, dans cet ordre : `rejectCrossSite(req) ?? rejectLargeBody(req, n)` (`lib/security.ts`),
+  `requireStrictUser()` (`lib/auth.ts`), `rateLimit(...)` (`lib/rate-limit.ts`), validation du corps, puis l'appel au module.
+- Réponses JSON : succès `{ ...données }`, erreur `{ error: "Phrase en français, avec vouvoiement." }` et statut HTTP juste
+  (400, 401, 403, 404, 413, 429, 502/503). Réponse personnelle : `cache-control: private, no-store`.
+- Erreurs serveur : `logError(portée, e)` (`lib/log.ts`), jamais de corps, jeton, clé, cookie ni e-mail dans les journaux.
+
+## Interface
+- Français, vouvoiement. Composants shadcn / Base UI de `src/components/ui/`, icônes Lucide, jetons de couleur du thème
+  (clair et sombre), pas de couleur en dur.
+- Accessibilité : règles `jsx-a11y` en erreur, `npm run test:a11y` ; nom accessible qui reprend le texte visible.
+
+## Qualité et livraison
+- Avant un commit : `npx tsc --noEmit -p .`, `npm run lint` (0 avertissement), `npm test`, `npm run build`.
+- Tests unitaires dans `tests/unit/` : jamais de base ni de réseau (tout se simule avec `vi.mock`).
+- Commentaires en français, qui disent pourquoi ; référence du constat d'audit entre parenthèses (ex. `SEC-13`).
+- Branches : `feat/<nom>` → pull request vers `dev` → `main` (production). Notes de travail dans `docs/handoffs/`.
+- Aucun secret dans le dépôt : `.env.example` est versionné et reste sans valeur.

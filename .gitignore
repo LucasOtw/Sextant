@@ -38,6 +38,8 @@ firestore-debug.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Modèle versionné, sans aucune valeur (QUAL-25) : la négation doit suivre le motif .env*.
+!.env.example
 
 # vercel
 .vercel
