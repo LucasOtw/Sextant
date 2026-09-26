@@ -52,11 +52,11 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   const addButton = (
     <div className="flex flex-wrap gap-2">
       {sentences.length > 0 && (
-        <Button variant="outline" size="default" onClick={() => (enabled ? setPicker(true) : requestSignIn())} className="bg-card">
+        <Button variant="outline" size="default" onClick={() => (enabled ? setPicker(true) : requestSignIn())}>
           <HighlighterIcon /> Surligner des phrases du résumé
         </Button>
       )}
-      <Button variant="outline" size={compact ? "sm" : "default"} onClick={() => (enabled ? setManual(true) : requestSignIn())} className="bg-card">
+      <Button variant="outline" size={compact ? "sm" : "default"} onClick={() => (enabled ? setManual(true) : requestSignIn())}>
         <PenLineIcon /> Ajouter une citation à la main
       </Button>
     </div>
@@ -70,14 +70,14 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
           {highlights.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 font-sans text-xs font-semibold text-secondary-foreground">{highlights.length}</span>}
         </h2>
         {enabled && highlights.length > 0 && (
-          <Link href="/citations" className="text-sm text-accent-brand underline underline-offset-3">Toutes mes citations</Link>
+          <Link href="/citations" className="link text-sm">Toutes mes citations</Link>
         )}
       </div>
 
       {!enabled ? (
         <p className="mt-2 max-w-measure-text text-meta text-muted-foreground">
           {where ? `Sélectionnez un passage ${where} pour le surligner, ou notez une citation à la main.` : "Notez vos citations à la main : le résumé et le texte intégral ne sont pas disponibles ici."} Elles sont gardées avec leur source, sur tous vos appareils.{" "}
-          <button type="button" onClick={requestSignIn} className="text-accent-brand underline underline-offset-3">Se connecter</button>
+          <Button variant="link" size="inline" onClick={requestSignIn}>Se connecter</Button>
         </p>
       ) : (
         <>

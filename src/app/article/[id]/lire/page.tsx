@@ -52,7 +52,7 @@ export default async function ReaderPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href={`/article/${wid}`} className={buttonVariants({ variant: "outline", size: "sm", className: "bg-card" })}>
+        <Link href={`/article/${wid}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
           <ArrowLeftIcon /> Fiche article
         </Link>
         {/* Sur mobile, le titre passe en entier sous les deux boutons au lieu d'être haché dans une colonne étroite. */}

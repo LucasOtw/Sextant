@@ -145,9 +145,8 @@ export function McpKeys() {
                 </p>
               </div>
               <Button
-                variant="ghost"
+                variant="destructive-ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-destructive"
                 data-focus-key="revoke"
                 onClick={(e) => {
                   revokeFrom.current = e.currentTarget;
@@ -176,7 +175,7 @@ export function McpKeys() {
           )}
         </Field>
         {/* Bouton grisé à la limite : la raison lui est reliée (A11Y-21). */}
-        <Button type="submit" className="h-10" disabled={busy || full} aria-describedby={full ? limitId : undefined}>
+        <Button type="submit" disabled={busy || full} aria-describedby={full ? limitId : undefined}>
           {busy ? <Loader2Icon className="animate-spin" /> : <PlusIcon />} Créer une clé
         </Button>
       </form>

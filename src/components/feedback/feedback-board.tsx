@@ -123,10 +123,10 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
         </div>
         <div className="flex gap-2">
           <Select items={SORTS} value={sort} onValueChange={(v) => setSort(String(v))}>
-            <SelectTrigger className="h-10! w-44" aria-label="Trier"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44" aria-label="Trier"><SelectValue /></SelectTrigger>
             <SelectContent>{SORTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
-          <Button className="h-10" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
+          <Button onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
         </div>
       </div>
 
@@ -142,7 +142,7 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
         <EmptyState
           title={items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}
           hint="Un bug repéré, une idée qui vous manque ? Soyez le premier à la proposer."
-          action={<Button variant="outline" className="mt-5 bg-card" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>}
+          action={<Button variant="outline" className="mt-5" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>}
         />
       ) : (
         <ul className="flex flex-col gap-3">
@@ -161,7 +161,7 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
 
       <p className="max-w-measure-text text-sm text-muted-foreground">
         Les sujets sont publics et sans nom d'auteur ; n'y mettez pas d'informations personnelles. Les votes sont anonymes. Un sujet
-        illicite ou hors sujet se signale par son lien «&nbsp;Signaler&nbsp;» (<Link href={REPORT_SECTION} className="underline underline-offset-3 hover:text-foreground">procédure</Link>).
+        illicite ou hors sujet se signale par son lien «&nbsp;Signaler&nbsp;» (<Link href={REPORT_SECTION} className="link-quiet">procédure</Link>).
       </p>
 
       <Composer
@@ -211,7 +211,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
           {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-tint text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
           {item.createdAt && <span className="text-xs text-muted-foreground">{DATE_SHORT.format(new Date(item.createdAt))}</span>}
           {/* Nom accessible qui commence par le texte visible (WCAG 2.5.3) et dit quel sujet est visé. */}
-          <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="ml-auto text-xs text-muted-foreground underline-offset-3 hover:text-foreground hover:underline">
+          <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="link-quiet ml-auto text-xs text-muted-foreground">
             Signaler
           </a>
         </div>
@@ -220,9 +220,9 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
           <>
             <p id={descriptionId} className={cn("mt-1 max-w-measure-text whitespace-pre-line text-meta leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
             {long && (
-              <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded} aria-controls={descriptionId}>
+              <Button variant="link" size="inline" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm" aria-expanded={expanded} aria-controls={descriptionId}>
                 {expanded ? "Réduire" : "Lire la suite"}
-              </button>
+              </Button>
             )}
           </>
         )}
@@ -317,7 +317,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             onChange={(e) => setTitle(e.target.value)}
             maxLength={MAX_FEEDBACK_TITLE}
             placeholder={kind === "bug" ? "Ex. Le PDF ne s'affiche pas sur iPhone" : "Ex. Exporter une liste au format RIS"}
-            className="h-10 text-base md:text-base"
+            className="text-base md:text-base"
           />
         )}
       </Field>

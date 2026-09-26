@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { CheckIcon, Loader2Icon, NotebookPenIcon } from "lucide-react";
 import { toast } from "sonner";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_ARTICLE_NOTE, type ArticleNote as Note } from "@/lib/notes-shared";
@@ -150,7 +151,7 @@ export function ArticleNote({ enabled, snapshot, initial }: Props) {
         </h2>
         <p className="mt-2 max-w-measure-text text-meta text-muted-foreground">
           Ce que vous retenez de cet article, pour vous : une idée, une réserve, où il se place dans votre travail.{" "}
-          <button type="button" onClick={() => setSignIn(true)} className="text-accent-brand underline underline-offset-3">Se connecter</button>
+          <Button variant="link" size="inline" onClick={() => setSignIn(true)}>Se connecter</Button>
         </p>
         {signIn && <SignInDialog open={signIn} onOpenChange={setSignIn} intro="Connectez-vous pour garder vos notes sur les articles, sur tous vos appareils." />}
       </section>

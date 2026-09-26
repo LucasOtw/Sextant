@@ -26,7 +26,7 @@ const IDENTITY_STALLED_MS = 5_000;
 
 function AccountFallback() {
   return (
-    <Link href="/compte" className={buttonVariants({ variant: "outline", size: "sm", className: "rounded-full max-sm:size-8 max-sm:px-0" })}>
+    <Link href="/compte" className={buttonVariants({ variant: "outline", size: "sm", className: "max-sm:size-9 max-sm:px-0" })}>
       <UserRoundIcon aria-hidden />
       <span className="sr-only sm:not-sr-only">Mon compte</span>
     </Link>
@@ -73,7 +73,7 @@ export function AuthButton() {
       <Button
         variant="outline"
         size="sm"
-        className={cn("rounded-full max-sm:size-8 max-sm:px-0", unknown && "[[data-session]_&]:hidden")}
+        className={cn("max-sm:size-9 max-sm:px-0", unknown && "[[data-session]_&]:hidden")}
         onClick={() => setOpen(true)}
       >
         {/* Icône seule sous sm (bouton carré) ; le libellé reste le nom accessible. */}

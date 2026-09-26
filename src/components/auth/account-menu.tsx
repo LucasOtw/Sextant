@@ -32,7 +32,7 @@ export default function AccountMenu({ user }: { user: ClientUser }) {
     <DropdownMenu>
       <DropdownMenuTrigger
         aria-label="Mon compte"
-        render={<Button variant="ghost" size="icon" className="rounded-full" />}
+        render={<Button variant="ghost" size="icon-sm" />}
       >
         <Avatar className="size-8">
           {user.picture && <AvatarImage src={user.picture} alt="" referrerPolicy="no-referrer" />}

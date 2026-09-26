@@ -20,7 +20,7 @@ export function FavoritesLink({ className }: { className?: string }) {
       aria-label={`Mes favoris${count ? `, ${count}` : ""}`}
       aria-current={current ? "page" : undefined}
       className={cn(
-        "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground",
+        "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground",
         current ? "bg-muted text-foreground" : "text-muted-foreground",
         pending && "hidden [[data-session]_&]:inline-flex",
         className,

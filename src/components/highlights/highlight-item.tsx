@@ -82,7 +82,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
   }
 
   const source = h.page && onGoToPage ? (
-    <button type="button" onClick={() => onGoToPage(h.page!)} className="underline underline-offset-2 hover:text-foreground">{sourceLabel(h)}</button>
+    <Button variant="link" size="inline" onClick={() => onGoToPage(h.page!)}>{sourceLabel(h)}</Button>
   ) : (
     <span>{sourceLabel(h)}</span>
   );
@@ -97,9 +97,9 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
         </div>
       </blockquote>
       {long && (
-        <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 pl-6 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" aria-expanded={expanded} aria-controls={passageId}>
+        <Button variant="link" size="inline" onClick={() => setExpanded((e) => !e)} className="mt-1 ml-6 text-xs" aria-expanded={expanded} aria-controls={passageId}>
           {expanded ? "Réduire" : "Lire le passage en entier"}
-        </button>
+        </Button>
       )}
       <div className="mt-2.5 flex flex-wrap items-center gap-x-2 pl-6 text-xs text-muted-foreground">
         {source}
@@ -150,7 +150,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
         )}
         {/* Le nom commence par le texte visible et suit « Copié » (A11Y-26) ; l'annonce de la copie vient de useCopy. */}
         <Button variant="ghost" size="sm" onClick={copy} aria-label={copied ? "Copié" : `Copier avec la référence : « ${excerpt(h.text)} »`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
-        <Button variant="ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
+        <Button variant="destructive-ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`}><Trash2Icon /> Supprimer</Button>
       </div>
     </li>
   );

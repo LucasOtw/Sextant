@@ -117,13 +117,13 @@ export default async function SharedListPage({ params }: Props) {
         )}
 
         <p className="mt-10 text-sm text-muted-foreground">
-          Liste partagée avec <Link href="/" className="text-accent-brand underline underline-offset-3">Sextant</Link>, un moteur de recherche
+          Liste partagée avec <Link href="/" className="link">Sextant</Link>, un moteur de recherche
           d'articles scientifiques évalués par les pairs. Le cœur enregistre un article dans vos propres favoris.
         </p>
         {/* Contenu publié par un utilisateur : signalement à portée de main (DSA art. 16, SEC-13). */}
         <p className="mt-2 text-sm text-muted-foreground">
           Cette liste contient un contenu illicite ?{" "}
-          <a href={reportHref(SITE.contactEmail, "liste partagée", `${SITE.url}/liste/${token}`)} className="underline underline-offset-3 hover:text-foreground">
+          <a href={reportHref(SITE.contactEmail, "liste partagée", `${SITE.url}/liste/${token}`)} className="link-quiet">
             Signaler cette liste
           </a>
         </p>

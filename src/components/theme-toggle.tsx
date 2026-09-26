@@ -64,12 +64,11 @@ export function ThemeToggle() {
     <Button
       ref={button}
       variant="ghost"
-      size="icon"
+      size="icon-sm"
       aria-label={THEME_LABEL}
       title={THEME_LABEL}
       aria-haspopup="menu"
       aria-expanded={false}
-      className="rounded-full"
       onPointerEnter={load}
       onFocus={load}
       onClick={() => {

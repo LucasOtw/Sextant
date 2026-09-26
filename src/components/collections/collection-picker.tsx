@@ -39,11 +39,11 @@ export function CollectionPicker({ snapshot, variant = "icon", className }: Prop
   const trigger =
     variant === "icon" ? (
       // Icône seule, répétée sur chaque carte : le nom cite l'article, l'infobulle garde le libellé court (A11Y-23).
-      <Button variant="ghost" size="icon" aria-label={withArticle(label, snapshot.title)} title={label} className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}>
+      <Button variant="ghost" size="icon" aria-label={withArticle(label, snapshot.title)} title={label} className={cn("bg-card/80 hover:bg-accent sm:size-9", className)}>
         <Icon className={cn("size-[18px]", inLists ? "text-accent-brand" : "text-muted-foreground")} />
       </Button>
     ) : (
-      <Button variant="outline" size="lg" className={cn("bg-card", className)} aria-label={label}>
+      <Button variant="outline" size="lg" className={className} aria-label={label}>
         <Icon className={inLists ? "text-accent-brand" : undefined} />
         {status}
       </Button>

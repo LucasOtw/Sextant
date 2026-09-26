@@ -64,7 +64,7 @@ function NameForm({ initialName, initialDescription, submitLabel, onSubmit, onCl
             onChange={(e) => setName(e.target.value)}
             maxLength={MAX_COLLECTION_NAME}
             placeholder="Ex. Mémoire 2026, Santé, À lire…"
-            className="h-10 text-base md:text-base"
+            className="text-base md:text-base"
           />
         )}
       </Field>

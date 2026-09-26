@@ -174,11 +174,11 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
             className={cn(
               "bg-card",
-              hero ? "h-13 rounded-xl pl-12 text-lg md:text-lg shadow-sm" : "h-10 pl-9 text-base md:text-base",
+              hero ? "h-13 pl-12 text-lg md:text-lg shadow-sm" : "pl-9 text-base md:text-base",
             )}
           />
         </div>
-        <Button type="submit" size="lg" className={cn(hero ? "h-13 rounded-xl px-6 text-base" : "h-10 px-4")}>
+        <Button type="submit" size={hero ? "lg" : "default"} className={cn(hero && "h-13 px-6")}>
           Rechercher
         </Button>
       </form>
@@ -211,7 +211,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
                 onClick={() => setOpen(false)}
                 className={cn(
                   "flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
-                  i === active ? "bg-accent text-accent-foreground" : "hover:bg-muted",
+                  i === active ? "bg-accent text-accent-foreground" : "hover:bg-accent",
                 )}
               >
                 <span className="mt-0.5 shrink-0 text-muted-foreground [&_svg]:size-4">

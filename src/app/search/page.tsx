@@ -70,7 +70,7 @@ function ContextLine({ label, value, clearHref }: { label: string; value: string
   return (
     <p className="text-meta text-muted-foreground">
       {label} : <span className="text-foreground">{value}</span>{" "}
-      <Link href={clearHref} className="underline underline-offset-2 hover:text-foreground">
+      <Link href={clearHref} className="link-quiet">
         (retirer)
       </Link>
     </p>

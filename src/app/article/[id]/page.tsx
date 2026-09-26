@@ -156,7 +156,7 @@ export default async function ArticlePage({ params }: Props) {
           </Badge>
           {work.is_retracted && <Badge variant="destructive">Rétracté</Badge>}
           {theme && (
-            <Link href={`/theme/${theme.slug}`} className="ml-1 text-muted-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">
+            <Link href={`/theme/${theme.slug}`} className="link-quiet ml-1 text-muted-foreground">
               {theme.name}
             </Link>
           )}
@@ -181,7 +181,7 @@ export default async function ArticlePage({ params }: Props) {
 
         <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-meta">
           <Stat icon={<QuoteIcon />} label="Citations">
-            <Link href={`/search?cites=${shortId(work.id)}`} className="underline underline-offset-2 hover:text-accent-brand">
+            <Link href={`/search?cites=${shortId(work.id)}`} className="link-quiet">
               {formatCount(work.cited_by_count)}
             </Link>
           </Stat>
@@ -190,7 +190,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {doiUrl && (
             <Stat label="DOI">
-              <ExternalLink href={doiUrl} className="wrap-anywhere tabular-nums underline underline-offset-2 hover:text-accent-brand">
+              <ExternalLink href={doiUrl} className="link-quiet wrap-anywhere tabular-nums">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
                 {doiPath(work.doi ?? doiUrl)}
               </ExternalLink>
@@ -199,26 +199,26 @@ export default async function ArticlePage({ params }: Props) {
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && inline && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
+          {oa && inline && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} />}
           {oa && oa.isPdf && !inline && (
-            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg" })}>
               <FileTextIcon /> Lire le PDF
             </ExternalLink>
           )}
           {oa && !oa.isPdf && (
-            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg" })}>
               <FileTextIcon /> Lire en accès ouvert
             </ExternalLink>
           )}
           {publisher && (
-            <ExternalLink href={publisher} className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
+            <ExternalLink href={publisher} className={buttonVariants({ variant: "outline", size: "lg" })}>
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
             </ExternalLink>
           )}
-          <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
-          <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
-          {isAuthEnabled() && <FavoriteButton snapshot={snapshot} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
-          {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" className="px-3.5" />}
+          <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" />
+          <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" />
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshot} variant="button" initialActive={initiallyFavorite} />}
+          {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" />}
         </div>
         {!oa && (
           <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-meta sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
@@ -230,7 +230,7 @@ export default async function ArticlePage({ params }: Props) {
             </div>
             <ExternalLink
               href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? doiPath(work.doi) : workTitle(work))}`}
-              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
+              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
             >
               <SearchIcon /> Chercher une version libre
             </ExternalLink>

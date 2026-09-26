@@ -5,6 +5,7 @@ import Link from "next/link";
 import { EyeIcon, EyeOffIcon, SparklesIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { WorkCard } from "@/components/work-card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shortId } from "@/lib/ids";
 import { readRecent } from "@/lib/recent";
@@ -136,7 +137,7 @@ export function ForYou() {
                             <Link
                               href={`/article/${seed.id}`}
                               aria-label={`« ${seed.title} »`}
-                              className="underline underline-offset-2 hover:text-foreground"
+                              className="link-quiet"
                             >
                               «&nbsp;{shortTitle(seed.title)}&nbsp;»
                             </Link>
@@ -147,9 +148,9 @@ export function ForYou() {
                       reasonText(item.reason)
                     )}
                   </p>
-                  <button type="button" data-focus-key="dismiss" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
-                    <EyeOffIcon className="size-3.5" aria-hidden /> Pas intéressé
-                  </button>
+                  <Button variant="ghost" size="xs" data-focus-key="dismiss" onClick={() => dismiss(item)} className="text-muted-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
+                    <EyeOffIcon aria-hidden /> Pas intéressé
+                  </Button>
                 </div>
                 <WorkCard work={item.work} variant="compact" />
               </li>
@@ -158,9 +159,9 @@ export function ForYou() {
         </ul>
       )}
       {state.status === "ready" && hiddenCount > 0 && (
-        <button type="button" onClick={showHidden} className="mt-4 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground">
-          <EyeIcon className="size-4" aria-hidden /> Réafficher les suggestions écartées ({hiddenCount})
-        </button>
+        <Button variant="ghost" size="sm" onClick={showHidden} className="mt-4 text-muted-foreground">
+          <EyeIcon aria-hidden /> Réafficher les suggestions écartées ({hiddenCount})
+        </Button>
       )}
     </section>
   );

@@ -118,7 +118,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
                 <span className="shimmer inline-block h-3.5 w-40 rounded" />
               ) : profile?.institution ? (
                 profile.institution.homepage ? (
-                  <ExternalLink href={profile.institution.homepage} className="underline underline-offset-2 hover:text-accent-brand">
+                  <ExternalLink href={profile.institution.homepage} className="link-quiet">
                     {profile.institution.name}
                     <ExternalLinkIcon className="ml-1 inline size-3" aria-hidden />
                   </ExternalLink>

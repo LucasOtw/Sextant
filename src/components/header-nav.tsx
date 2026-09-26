@@ -15,7 +15,7 @@ export function HeaderNav() {
         aria-current={active ? "page" : undefined}
         className={cn(
           "rounded-full px-3.5 py-1.5 text-meta font-semibold transition-colors duration-200",
-          active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
         )}
       >
         Recherche

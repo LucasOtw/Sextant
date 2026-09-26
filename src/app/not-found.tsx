@@ -23,10 +23,10 @@ export default function NotFound() {
       <SearchBox className="mx-auto w-full max-w-lg" />
       <div className="flex flex-wrap justify-center gap-2">
         <Link href="/" className={buttonVariants({ size: "lg" })}><HomeIcon /> Retour à l'accueil</Link>
-        <Link href="/#themes" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card" })}><CompassIcon /> Explorer les thématiques</Link>
+        <Link href="/#themes" className={buttonVariants({ variant: "outline", size: "lg" })}><CompassIcon /> Explorer les thématiques</Link>
       </div>
       <p className="text-center text-sm text-muted-foreground">
-        Un lien cassé sur Sextant&#8239;? <Link href="/retours" className="text-accent-brand underline underline-offset-3">Signalez-le dans Bugs et idées</Link>.
+        Un lien cassé sur Sextant&#8239;? <Link href="/retours" className="link">Signalez-le dans Bugs et idées</Link>.
       </p>
     </div>
   );

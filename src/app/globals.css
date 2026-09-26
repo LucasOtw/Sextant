@@ -180,8 +180,9 @@
   * {
     @apply border-border outline-ring;
   }
-  /* Focus clavier : contour plein de 2 px, décollé, contrasté (≥ 3:1) sur tous les éléments. Les composants ui/*
-     portent outline-none (couche utilities, prioritaire) et gardent leur propre anneau. */
+  /* Focus clavier : contour plein de 2 px, décollé de 2 px, en --ring (6,24:1 en clair, 7,60:1 en sombre, blanc sur
+     .surface-brand), le même pour tous les éléments, composants ui/* compris : un contour, contrairement à un halo en
+     box-shadow, reste visible en couleurs forcées. */
   :focus-visible {
     outline-style: solid;
     outline-width: 2px;
@@ -294,6 +295,64 @@
   @media (width >= 40rem) {
     .lead { font-size: 1.25rem; }
   }
+  /* Un seul style de lien (C18) : bleu foncé (6,24:1 fond, 5,68:1 teinte), soulignement de 1,5 px décalé de 3 px,
+     plus foncé au survol. Liens des pages de texte compris, et boutons variant="link". */
+  .link,
+  .prose-sextant a {
+    color: var(--link);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    transition: color 150ms;
+  }
+  .link:hover,
+  .prose-sextant a:hover {
+    color: var(--link-hover);
+  }
+  /* Lien discret, dans un texte secondaire (métadonnées, aides) : couleur du texte, soulignement atténué, bleu au survol. */
+  .link-quiet {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    text-decoration-color: color-mix(in oklch, currentColor 50%, transparent);
+    transition: color 150ms;
+  }
+  .link-quiet:hover {
+    color: var(--link);
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Notifications (Sonner, feuille injectée hors couche) : ombre flottante, bouton « Annuler » en pilule aux couleurs du
+   bouton plein, focus commun du site à la place des halos gris de Sonner. Sélecteurs plus précis que les siens. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  box-shadow: var(--elevation-float);
+  font-size: 0.9375rem;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button] {
+  height: 2rem;
+  padding-inline: 0.875rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color 150ms;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button]:hover {
+  background: var(--primary-hover);
+}
+[data-sonner-toaster] [data-sonner-toast]:focus-visible,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button]:focus-visible,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button]:focus-visible {
+  box-shadow: var(--elevation-float);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button]:focus-visible,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button]:focus-visible {
+  box-shadow: none;
 }
 
 /* Barres de chargement animées (synthèse IA) */
@@ -338,8 +397,6 @@
 .prose-sextant p { margin-bottom: 1rem; }
 .prose-sextant ul { margin: 0 0 1rem 1.25rem; list-style: disc; }
 .prose-sextant li { margin-bottom: 0.35rem; }
-.prose-sextant a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, currentColor, transparent 60%); }
-.prose-sextant a:hover { color: var(--accent-brand); }
 
 /* Tailwind 4 laisse le curseur par défaut sur les boutons : tout ce qui se clique montre la main. */
 @layer base {

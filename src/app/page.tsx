@@ -38,7 +38,7 @@ export default function HomePage() {
           Essayez :{" "}
           {EXAMPLES.map((q, i) => (
             <span key={q}>
-              <Link href={`/search?q=${encodeURIComponent(q)}`} prefetch={false} className="underline underline-offset-2 hover:text-foreground">
+              <Link href={`/search?q=${encodeURIComponent(q)}`} prefetch={false} className="link-quiet">
                 {q}
               </Link>
               {i < EXAMPLES.length - 1 && " · "}

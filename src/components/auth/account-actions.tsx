@@ -109,7 +109,8 @@ export function AccountActions() {
       <Button variant="outline" onClick={logout} disabled={pending}>
         {pending ? <Loader2Icon className="animate-spin" /> : <LogOutIcon />} Se déconnecter
       </Button>
-      <Button variant="outline" onClick={() => setConfirmAll(true)}>
+      {/* Libellé long : il passe sur deux lignes plutôt que de déborder à 320 px. */}
+      <Button variant="outline" onClick={() => setConfirmAll(true)} className="h-auto min-h-10 shrink py-2 whitespace-normal">
         <MonitorSmartphoneIcon /> Se déconnecter de tous les appareils
       </Button>
       <Button variant="destructive" onClick={() => setConfirm(true)} disabled={busy}>

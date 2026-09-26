@@ -286,7 +286,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         title="Aucun favori pour l'instant."
         hint="Le cœur sur une carte ou une fiche article l'enregistre ici, retrouvable sur tous vos appareils."
         action={
-          <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
+          <Link href="/search" className="link mt-5 inline-flex items-center gap-2">
             <SearchIcon className="size-4" /> Lancer une recherche
           </Link>
         }
@@ -306,9 +306,9 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             </h2>
             {collection.description && <p className="mt-1 text-meta text-muted-foreground">{collection.description}</p>}
             {collection.shareToken && (
-              <button type="button" onClick={() => setSharing(true)} className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-accent-brand underline underline-offset-3">
+              <Button variant="link" size="inline" onClick={() => setSharing(true)} className="mt-1.5 gap-1.5 text-sm">
                 <Link2Icon className="size-3.5" aria-hidden /> Partagée par lien
-              </button>
+              </Button>
             )}
           </div>
           <DropdownMenu>
@@ -334,11 +334,11 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             onChange={(e) => setQ(e.target.value)}
             placeholder={collection ? `Filtrer dans « ${collection.name} »…` : "Filtrer mes favoris…"}
             aria-label={collection ? `Filtrer dans la liste ${collection.name}` : "Filtrer mes favoris"}
-            className="h-10 pl-9 text-base md:text-base"
+            className="pl-9 text-base md:text-base"
           />
         </div>
         <Select items={sorts} value={activeSort} onValueChange={(v) => setSort(String(v))}>
-          <SelectTrigger className="h-10! sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
           <SelectContent>{sorts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
         <BibtexActions
@@ -346,8 +346,8 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
           retracted={retracted}
           filename={collection ? `sextant-${fileSlug(collection.name)}.bib` : "sextant-favoris.bib"}
           copiedMessage={`BibTeX copié : ${shown.length} référence${shown.length > 1 ? "s" : ""}.`}
-          className="flex-nowrap"
-          buttonClassName="h-10"
+          // Sur une ligne dès sm ; sous 360 px, les deux boutons pilule ne tiennent pas côte à côte et passent l'un sous l'autre.
+          className="max-sm:flex-wrap sm:flex-nowrap"
         />
       </div>
 
@@ -431,8 +431,8 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
           {manualOrder && (
             <>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("up", f.title)} data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("down", f.title)} data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
+              <Button variant="ghost" size="icon-sm" className="sm:size-8" aria-label={moveLabel("up", f.title)} data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
+              <Button variant="ghost" size="icon-sm" className="sm:size-8" aria-label={moveLabel("down", f.title)} data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
             </>
           )}
           <CollectionPicker snapshot={f} />

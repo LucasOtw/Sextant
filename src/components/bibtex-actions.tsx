@@ -21,7 +21,7 @@ interface Props {
 }
 
 /** Export BibTeX d'une liste d'articles (favoris, liste, liste partagée) : copier ou télécharger le .bib (QUAL-13). */
-export function BibtexActions({ articles, filename, retracted = [], copiedMessage = "BibTeX copié.", className, buttonClassName = "h-10 bg-card" }: Props) {
+export function BibtexActions({ articles, filename, retracted = [], copiedMessage = "BibTeX copié.", className, buttonClassName }: Props) {
   const { copied, copy: copyText } = useCopy();
   const retractedIds = useMemo(() => new Set(retracted), [retracted]);
   const bib = () => bibtexAll(articles, retractedIds);

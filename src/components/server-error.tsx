@@ -36,23 +36,24 @@ export function ServerError({ error, retry }: Props) {
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Button size="lg" onClick={() => retry()}><RotateCwIcon /> Réessayer</Button>
-        <Link href="/" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card" })}><HomeIcon /> Retour à l'accueil</Link>
+        <Link href="/" className={buttonVariants({ variant: "outline", size: "lg" })}><HomeIcon /> Retour à l'accueil</Link>
       </div>
       <div className="flex flex-col items-center gap-1.5 text-center text-sm text-muted-foreground">
         <p>
-          Ça persiste&#8239;? <Link href="/retours" className="text-accent-brand underline underline-offset-3">Signalez-le dans Bugs et idées</Link>
+          Ça persiste&#8239;? <Link href="/retours" className="link">Signalez-le dans Bugs et idées</Link>
           {reference && <>, en indiquant la référence ci-dessous</>}.
         </p>
         {reference && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             // Presse-papiers indisponible : la référence reste lisible.
             onClick={() => void copy(reference, { message: "Référence copiée." })}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs tabular-nums hover:bg-secondary hover:text-foreground"
+            className="font-normal tabular-nums text-muted-foreground"
             aria-label={copied ? "Référence copiée" : `Copier la référence ${reference}`}
           >
-            Référence&nbsp;: {reference} {copied ? <CheckIcon className="size-3.5" aria-hidden /> : <CopyIcon className="size-3.5" aria-hidden />}
-          </button>
+            Référence&nbsp;: {reference} {copied ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
+          </Button>
         )}
       </div>
     </div>

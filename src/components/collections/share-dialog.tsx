@@ -50,12 +50,12 @@ export function ShareDialog({ open, onOpenChange, collection }: Props) {
         {url ? (
           <div className="mt-2 flex flex-col gap-3">
             <div className="flex gap-2">
-              <Input readOnly value={url} aria-label="Lien de partage" onFocus={(e) => e.currentTarget.select()} className="h-10 text-base tabular-nums md:text-sm" />
-              <Button className="h-10 shrink-0" onClick={() => void copy(url)}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}</Button>
+              <Input readOnly value={url} aria-label="Lien de partage" onFocus={(e) => e.currentTarget.select()} className="text-base tabular-nums md:text-sm" />
+              <Button className="shrink-0" onClick={() => void copy(url)}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier"}</Button>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <ExternalLink href={url} className="text-sm text-accent-brand underline underline-offset-3">Voir la page partagée</ExternalLink>
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" disabled={busy} onClick={() => void disable()}>
+              <ExternalLink href={url} className="link text-sm">Voir la page partagée</ExternalLink>
+              <Button variant="destructive-ghost" size="sm" disabled={busy} onClick={() => void disable()}>
                 {busy ? <Loader2Icon className="animate-spin" /> : <Link2OffIcon />} Désactiver le lien
               </Button>
             </div>

@@ -135,7 +135,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
         title="Aucune citation pour l'instant."
         hint="Sur une fiche article, sélectionnez un passage du résumé ou du PDF : un bouton «&nbsp;Surligner&nbsp;» apparaît. Le passage est gardé ici, avec l'article, la page et la date."
         action={
-          <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
+          <Link href="/search" className="link mt-5 inline-flex items-center gap-2">
             <SearchIcon className="size-4" /> Lancer une recherche
           </Link>
         }
@@ -148,15 +148,15 @@ export function CitationsList({ initial, collections, loadError = false, retract
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrer mes citations…" aria-label="Filtrer mes citations" className="h-10 pl-9 text-base md:text-base" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filtrer mes citations…" aria-label="Filtrer mes citations" className="pl-9 text-base md:text-base" />
         </div>
         {collections.length > 0 && (
           <Select items={listItems} value={list} onValueChange={(v) => setList(String(v))}>
-            <SelectTrigger className="h-10! sm:w-56" aria-label="Filtrer par liste"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="sm:w-56" aria-label="Filtrer par liste"><SelectValue /></SelectTrigger>
             <SelectContent>{listItems.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
         )}
-        <Button variant="outline" className="h-10" onClick={copyAll} disabled={shown.length === 0}><CopyIcon /> Tout copier</Button>
+        <Button variant="outline" onClick={copyAll} disabled={shown.length === 0}><CopyIcon /> Tout copier</Button>
       </div>
 
       <p ref={countRef} tabIndex={-1} className="text-meta text-muted-foreground outline-none" aria-live="polite">

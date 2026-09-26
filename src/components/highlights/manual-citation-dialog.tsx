@@ -78,7 +78,7 @@ function Form({ onClose }: { onClose: () => void }) {
         </Field>
         <Field label="Note" optional className="min-w-0 flex-1">
           {(control) => (
-            <Input {...control} value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Pour vous" className="h-10 text-base md:text-base" />
+            <Input {...control} value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Pour vous" className="text-base md:text-base" />
           )}
         </Field>
       </div>

@@ -56,7 +56,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
         <nav aria-label="Fil d'Ariane">
           <ol className="flex items-center gap-2 text-meta text-muted-foreground">
             <li>
-              <Link href="/#themes" className="underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">Thématiques</Link>
+              <Link href="/#themes" className="link-quiet">Thématiques</Link>
             </li>
             <li aria-hidden>/</li>
             <li className="flex items-center gap-2">

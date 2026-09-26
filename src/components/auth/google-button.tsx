@@ -9,7 +9,8 @@ interface Props extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 /**
  * Bouton « Se connecter avec Google » conforme à la charte Google (thème clair) :
- * fond blanc, bordure #747775, texte #1F1F1F, logo G 20 px, hauteur 40 px.
+ * fond blanc, bordure #747775, texte #1F1F1F, logo G 20 px, hauteur 40 px. Seul le focus suit Sextant : le contour commun
+ * du site (globals.css), comme partout ailleurs.
  */
 export function GoogleButton({ busy, className, children, ...props }: Props) {
   return (
@@ -19,7 +20,7 @@ export function GoogleButton({ busy, className, children, ...props }: Props) {
       disabled={busy || props.disabled}
       className={cn(
         "inline-flex h-10 w-full items-center justify-center gap-3 rounded-full border border-[#747775] bg-white px-4 text-meta font-medium text-[#1F1F1F] transition-colors",
-        "hover:bg-[#F2F2F2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4285F4] disabled:opacity-60",
+        "hover:bg-[#F2F2F2] disabled:opacity-60",
         "dark:border-[#8E918F] dark:bg-[#131314] dark:text-[#E3E3E3] dark:hover:bg-[#1E1F20]",
         className,
       )}

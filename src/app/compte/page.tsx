@@ -99,11 +99,11 @@ export default async function AccountPage() {
                 connexion et de dernier usage d'une clé d'assistant IA, et ce que vous enregistrez dans Sextant : favoris, le dernier
                 favori retiré et les dates des favoris retirés récemment (pour «&nbsp;Annuler&nbsp;»), listes et leurs liens de partage, citations, notes, clés d'assistants IA, vos sujets et
                 vos votes sur «&nbsp;Bugs et idées&nbsp;». Aucun suivi. Détails dans la{" "}
-                <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
+                <Link href="/confidentialite" className="link-quiet">politique de confidentialité</Link>.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 pl-8">
-              <a href="/api/account/export" download className={buttonVariants({ variant: "outline", className: "bg-card" })}>
+              <a href="/api/account/export" download className={buttonVariants({ variant: "outline" })}>
                 <DownloadIcon /> Télécharger mes données
               </a>
               <span className="text-sm text-muted-foreground">Un fichier JSON avec tout ce que Sextant conserve pour vous.</span>
@@ -135,7 +135,7 @@ function Tile({ icon, label, value, hint, href }: { icon: React.ReactNode; label
   return (
     <li className="rounded-xl bg-card border border-border">
       {href ? (
-        <Link href={href} className="flex h-full flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-muted/60">{body}</Link>
+        <Link href={href} className="flex h-full flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-accent">{body}</Link>
       ) : (
         <div className="flex h-full flex-col gap-1 p-4">{body}</div>
       )}
