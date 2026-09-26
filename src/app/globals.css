@@ -29,6 +29,7 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-input-border: var(--input-border);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -71,9 +72,13 @@
   --muted-foreground: oklch(0.5 0.02 262);
   --accent: oklch(0.94 0.01 85);
   --accent-foreground: oklch(0.2 0.015 262);
-  --destructive: oklch(0.577 0.245 27.325);
+  /* Rouge assombri (#b3000b) : 6,7:1 sur le fond, 5,5:1 sur ses propres teintes à 10 %, 4,5:1 au survol à 20 % (A11Y-15). */
+  --destructive: oklch(0.48 0.2 27.3);
   --border: oklch(0.9 0.01 85);
+  /* Remplissage des champs et bordure des boutons outline en sombre : trop pâle pour délimiter un champ. */
   --input: oklch(0.86 0.012 85);
+  /* Contour des champs de saisie (Input, Textarea, Select) : 3,3:1 sur le fond, 3,5:1 sur une carte (WCAG 1.4.11, A11Y-17). */
+  --input-border: oklch(0.63 0.012 85);
   --ring: oklch(0.5 0.16 262);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -113,6 +118,8 @@
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
+  /* 3,5:1 sur le fond et sur une carte, 3,2:1 contre le remplissage du champ (A11Y-17). */
+  --input-border: oklch(1 0 0 / 38%);
   --ring: oklch(0.7 0.12 262);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
