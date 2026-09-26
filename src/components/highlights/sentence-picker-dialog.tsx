@@ -48,11 +48,17 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
   const [checked, setChecked] = useState<Set<number>>(() => new Set());
   const [shown, setShown] = useState(sentences);
   const [busy, setBusy] = useState(false);
+  /**
+   * Échec d'enregistrement dit dans la fenêtre : le toast d'erreur est monté dans <body>, invisible et inerte quand le
+   * lecteur PDF est en plein écran natif (seul son conteneur s'affiche), où la fenêtre restait ouverte sans explication.
+   */
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Autre page du PDF : nouvelles phrases, on repart d'une liste vierge.
   if (shown !== sentences) {
     setShown(sentences);
     setChecked(new Set());
+    setSaveError(null);
   }
 
   function toggle(i: number, on: boolean) {
@@ -71,9 +77,11 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
     e.preventDefault();
     if (pending.length === 0 || busy) return;
     setBusy(true);
+    setSaveError(null);
     const ok = await onSave(pending);
     setBusy(false);
     if (ok) onClose();
+    else setSaveError(`${pending.length > 1 ? "Certaines phrases n'ont" : "La phrase n'a"} pas pu être surlignée${pending.length > 1 ? "s" : ""}. Réessayez.`);
   }
 
   return (
@@ -116,6 +124,7 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
           </ul>
         </fieldset>
       )}
+      {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
       <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy || pending.length === 0}>

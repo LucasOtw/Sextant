@@ -6,6 +6,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { MAX_HIGHLIGHT_TEXT, type Highlight, type HighlightInput } from "@/lib/highlights-shared";
 import { undoToast } from "@/lib/undo-toast";
+import { passagesSavedToast } from "@/lib/sentences";
 import { api, errorMessage, needsSignIn } from "@/lib/client/api";
 
 type NewHighlight = Omit<HighlightInput, "article">;
@@ -17,7 +18,12 @@ interface HighlightsContext {
   /** Article rétracté (OpenAlex) : les références copiées le signalent. */
   retracted: boolean;
   highlights: Highlight[];
-  add: (input: NewHighlight) => Promise<Highlight | null>;
+  add: (input: NewHighlight, options?: { silent?: boolean }) => Promise<Highlight | null>;
+  /**
+   * Enregistre plusieurs passages (choix de phrases), l'un après l'autre, avec un seul toast de réussite pour le lot
+   * (« 2 passages surlignés. ») au lieu d'un par passage. true si tous ont été enregistrés.
+   */
+  addMany: (inputs: NewHighlight[]) => Promise<boolean>;
   updateNote: (id: string, note: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   requestSignIn: () => void;
@@ -66,7 +72,7 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
   }, [enabled, snapshot.id]);
 
   const add = useCallback<HighlightsContext["add"]>(
-    async (input) => {
+    async (input, options) => {
       if (!enabled) {
         setSignIn(true);
         return null;
@@ -79,9 +85,11 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       try {
         const { highlight: created } = await api<{ highlight: Highlight }>("/api/highlights", { method: "POST", json: { ...input, article: snapshot } });
         setHighlights((prev) => [created, ...prev]);
-        toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
-          description: "Retrouvez-le dans « Mes citations », avec sa source.",
-        });
+        if (!options?.silent) {
+          toast.success(input.source === "manual" ? "Citation enregistrée." : "Passage surligné.", {
+            description: "Retrouvez-le dans « Mes citations », avec sa source.",
+          });
+        }
         return created;
       } catch (e) {
         if (needsSignIn(e)) setSignIn(true);
@@ -90,6 +98,16 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
       }
     },
     [enabled, snapshot],
+  );
+
+  const addMany = useCallback<HighlightsContext["addMany"]>(
+    async (inputs) => {
+      let saved = 0;
+      for (const input of inputs) if (await add(input, { silent: true })) saved++;
+      if (saved > 0) toast.success(...passagesSavedToast(saved));
+      return saved === inputs.length;
+    },
+    [add],
   );
 
   const updateNote = useCallback<HighlightsContext["updateNote"]>(async (id, note) => {
@@ -129,8 +147,8 @@ export function HighlightsProvider({ enabled, snapshot, retracted = false, initi
   );
 
   const value = useMemo<HighlightsContext>(
-    () => ({ enabled, snapshot, retracted, highlights, add, updateNote, remove, requestSignIn }),
-    [enabled, snapshot, retracted, highlights, add, updateNote, remove, requestSignIn],
+    () => ({ enabled, snapshot, retracted, highlights, add, addMany, updateNote, remove, requestSignIn }),
+    [enabled, snapshot, retracted, highlights, add, addMany, updateNote, remove, requestSignIn],
   );
 
   return (

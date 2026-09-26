@@ -27,7 +27,7 @@ interface Props {
 
 /** « Mes surlignages » pour un article : la liste, l'ajout à la main, le lien vers toutes les citations. */
 export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = true, hasPdf = compact, abstract, lang }: Props) {
-  const { enabled, retracted, highlights, add, updateNote, remove, requestSignIn } = useHighlights();
+  const { enabled, retracted, highlights, addMany, updateNote, remove, requestSignIn } = useHighlights();
   const [manual, setManual] = useState(false);
   const [picker, setPicker] = useState(false);
   /** Passage supprimé sous le focus : « Supprimer » du suivant, sinon du précédent, sinon le titre (A11Y-19). */
@@ -45,11 +45,8 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   const abstractHighlights = highlights.filter((h) => h.source === "abstract").map((h) => h.text);
   async function saveSentences(indexes: number[]) {
     if (!abstract) return false;
-    let ok = true;
-    for (const p of passagesFrom(abstract, sentences, indexes)) {
-      ok = Boolean(await add({ source: "abstract", text: p.text, prefix: p.prefix, suffix: p.suffix, page: null, note: "" })) && ok;
-    }
-    return ok;
+    // Un seul toast pour le lot (« 2 passages surlignés. »), pas un par passage.
+    return addMany(passagesFrom(abstract, sentences, indexes).map((p) => ({ source: "abstract", text: p.text, prefix: p.prefix, suffix: p.suffix, page: null, note: "" })));
   }
 
   const addButton = (

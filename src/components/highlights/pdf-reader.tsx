@@ -15,6 +15,7 @@ import { useClientValue } from "@/hooks/use-client-value";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
+import { pageAtTop, parsePickerPage } from "@/lib/pdf-pages";
 import { inertOutside } from "@/lib/focus";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
@@ -268,7 +269,7 @@ async function signInOutOfFullscreen(requestSignIn: () => void) {
 
 /** Affiche le PDF page par page (PDF.js) avec une couche texte sélectionnable ; une sélection propose « Surligner ». */
 function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
-  const { enabled, highlights, add, requestSignIn } = useHighlights();
+  const { enabled, highlights, add, addMany, requestSignIn } = useHighlights();
   const [lib, setLib] = useState<PdfLib | null>(null);
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -484,26 +485,47 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
     }
   }
 
-  /** Page en haut de l'écran (sous l'en-tête collant) : point de départ du choix de phrases. */
-  function currentPage(): number {
-    const pages = containerRef.current?.querySelectorAll<HTMLElement>("[data-page]") ?? [];
-    for (const el of pages) if (el.getBoundingClientRect().bottom > 96) return Number(el.dataset.page) || 1;
-    return 1;
-  }
+  /**
+   * Dernière page lue (en haut de l'écran, sous l'en-tête collant) : point de départ du choix de phrases. Suivie au
+   * défilement, parce que le bouton « Surligner des phrases » est au-dessus de la page 1 : l'atteindre au clavier fait
+   * remonter le document, et une mesure prise au clic donnerait toujours la page 1. Le défilement causé par le focus
+   * du bouton est donc ignoré.
+   */
+  const lastPageRef = useRef(1);
+  const pickerButtonRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!doc) return;
+    let frame = 0;
+    const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (document.activeElement === pickerButtonRef.current) return;
+        lastPageRef.current = pageAtTop(containerRef.current?.querySelectorAll<HTMLElement>("[data-page]") ?? []);
+      });
+    };
+    // Capture : le défilement du plein écran (conteneur) comme celui de la page.
+    document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+    return () => {
+      document.removeEventListener("scroll", onScroll, { capture: true });
+      cancelAnimationFrame(frame);
+    };
+  }, [doc]);
 
   function changePickerPage(input: string) {
-    const n = Number(input);
-    if (doc && Number.isInteger(n) && n >= 1 && n <= doc.numPages) void loadPickerPage(n, input);
-    else setPicker((p) => (p ? { ...p, input } : p));
+    if (!doc) return;
+    const parsed = parsePickerPage(input, doc.numPages);
+    if ("page" in parsed) return void loadPickerPage(parsed.page, input);
+    // Page vide ou hors bornes : on le dit, et la liste de la page précédente n'est plus proposée (le champ et les
+    // phrases affichées diraient deux pages différentes, et un enregistrement rangerait les phrases sous l'autre).
+    pickerLoad.current++;
+    setPicker((p) => (p ? { ...p, input, text: "", sentences: [], error: parsed.error } : p));
   }
 
   async function savePicked(indexes: number[]) {
     if (!picker?.sentences) return false;
-    let ok = true;
-    for (const p of passagesFrom(picker.text, picker.sentences, indexes)) {
-      ok = Boolean(await add({ source: "pdf", text: p.text, page: picker.page, prefix: "", suffix: "", note: "" })) && ok;
-    }
-    return ok;
+    // Un seul toast pour le lot (« 2 passages surlignés. »), pas un par passage.
+    return addMany(passagesFrom(picker.text, picker.sentences, indexes).map((p) => ({ source: "pdf", text: p.text, page: picker.page, prefix: "", suffix: "", note: "" })));
   }
 
   if (error) {
@@ -568,7 +590,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
         <>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""} · sélectionnez un passage pour le surligner, ou choisissez des phrases.</p>
-            <Button variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(currentPage()) : signInOutOfFullscreen(requestSignIn))}>
+            <Button ref={pickerButtonRef} variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(lastPageRef.current) : signInOutOfFullscreen(requestSignIn))}>
               <HighlighterIcon /> Surligner des phrases
             </Button>
           </div>

@@ -99,3 +99,10 @@ export function pdfPageText(items: readonly unknown[]): string {
   }
   return joinFragments(fragments).text;
 }
+
+/** Toast de réussite d'un lot de passages (choix de phrases) : un seul pour le lot, au singulier ou au pluriel. */
+export function passagesSavedToast(n: number): [string, { description: string }] {
+  return n > 1
+    ? [`${n} passages surlignés.`, { description: "Retrouvez-les dans « Mes citations », avec leur source." }]
+    : ["Passage surligné.", { description: "Retrouvez-le dans « Mes citations », avec sa source." }];
+}
