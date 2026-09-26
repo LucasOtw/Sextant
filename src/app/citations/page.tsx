@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { HighlighterIcon } from "lucide-react";
-import { SignInPrompt } from "@/components/favorites/sign-in-prompt";
+import { SignInPrompt } from "@/components/auth/sign-in-prompt";
 import { CitationsList } from "@/components/highlights/citations-list";
 import { TooManyRequests } from "@/components/too-many-requests";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";

@@ -78,7 +78,7 @@ export default async function AccountPage() {
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Tile icon={<BookmarkIcon />} label="Favoris" value={favoritesCount === null ? "—" : String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
             <Tile icon={<FolderIcon />} label="Listes" value={collectionsCount === null ? "—" : String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
-            <Tile icon={<HighlighterIcon />} label="Citations" value={highlightsCount === null ? "—" : String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
+            <Tile icon={<HighlighterIcon />} label="Mes citations" value={highlightsCount === null ? "—" : String(highlightsCount)} hint="Passages surlignés, gardés avec leur source." href="/citations" />
             <Tile icon={<NotebookPenIcon />} label="Notes" value={notesCount === null ? "—" : String(notesCount)} hint="Ce que vous retenez d'un article, sur sa fiche." />
             <Tile icon={<HistoryIcon />} label="Consultés" value="—" hint="Aujourd'hui gardé sur cet appareil ; bientôt synchronisé." />
           </ul>

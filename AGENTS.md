@@ -12,6 +12,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 Section maintenue à la main, hors du bloc ci-dessus (régénéré par `next dev`). Présentation, commandes et routes : `README.md`.
 
+## Glossaire (code ↔ interface)
+Les noms du code, de Firestore, de l'API, de l'export et des outils MCP sont des contrats stables : on ne les renomme
+pas pour suivre l'interface (QUAL-38).
+- `collections` (Firestore, `/api/collections`, type `Collection`, `lib/collections*.ts`) = « listes » dans l'interface
+  (`?liste=`, `/liste/[token]`), clé `lists` de l'export RGPD, outils MCP `list_my_lists` et `get_list`.
+- `highlights` (Firestore, `/api/highlights`, type `Highlight`, `components/highlights/`) = « surlignages » ou
+  « citations » dans l'interface (page `/citations`, « Mes citations »), clé `citations` de l'export, outil MCP
+  `get_my_citations`.
+- `cited_by_count` / `citedByCount` (OpenAlex) = nombre de citations bibliométriques d'un article ou d'un auteur, sans
+  rapport avec les passages retenus.
+
 ## Serveur et données
 - Tout module qui touche Firestore, Firebase Auth, un secret ou un service tiers (OpenAlex, fournisseur IA) commence par
   `import "server-only"` (`src/lib/<module>.ts`). Ce qui sert aux deux côtés va dans un `*-shared.ts` ou un module sans
@@ -35,6 +46,10 @@ Section maintenue à la main, hors du bloc ci-dessus (régénéré par `next dev
 - Erreurs serveur : `logError(portée, e)` (`lib/log.ts`), jamais de corps, jeton, clé, cookie ni e-mail dans les journaux.
 
 ## Interface
+- Stockage du navigateur : `lib/client/storage.ts` (jamais de try/catch recopié) ; valeur connue seulement du
+  navigateur et fixe pendant la visite : `useClientValue` (`hooks/use-client-value.ts`) plutôt qu'un effet (QUAL-31).
+- Textes reçus : `cleanText` / `tooLong` / `fold` de `lib/text.ts` ; dates affichées : formats de `lib/dates.ts`
+  (heure de Paris), jamais un `Intl.DateTimeFormat` local (QUAL-30).
 - Français, vouvoiement. Composants shadcn / Base UI de `src/components/ui/`, icônes Lucide, jetons de couleur du thème
   (clair et sombre), pas de couleur en dur.
 - Accessibilité : règles `jsx-a11y` en erreur, `npm run test:a11y` ; nom accessible qui reprend le texte visible.

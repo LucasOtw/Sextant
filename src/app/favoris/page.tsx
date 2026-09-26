@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { FavoritesList } from "@/components/favorites/favorites-list";
-import { SignInPrompt } from "@/components/favorites/sign-in-prompt";
+import { SignInPrompt } from "@/components/auth/sign-in-prompt";
 import { TooManyRequests } from "@/components/too-many-requests";
 import { getCurrentUser, isAuthEnabled } from "@/lib/auth";
 import { listCollections } from "@/lib/collections";
