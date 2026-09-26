@@ -32,3 +32,8 @@ export function excerpt(text: string, max = 40): string {
   const clean = text.replace(/\s+/g, " ").trim();
   return clean.length > max ? `${clean.slice(0, max).trimEnd()}…` : clean;
 }
+
+/** Bouton de vote d'un retour : nom fixe (l'état passe par aria-pressed), titre complet et nombre de votes. */
+export function voteLabel(title: string, votes: number): string {
+  return `Voter : ${title.replace(/\s+/g, " ").trim()} (${votes} vote${votes > 1 ? "s" : ""})`;
+}

@@ -118,3 +118,23 @@ export function neighbourEquivalent(container: HTMLElement | null, rowSelector: 
   const row = rows[f.row + 1] ?? rows[f.row - 1];
   return row ? equivalentIn(row, f.key) : null;
 }
+
+/**
+ * Rend inerte (`inert` : ni focus, ni clic, ni lecteur d'écran) tout ce qui entoure `el` dans la page : ses frères à
+ * chaque niveau jusqu'au `<body>`, puis l'en-tête, le pied de page et le lien d'évitement. Les autres enfants de
+ * `<body>` restent actifs : toasts (et leur « Annuler »), région d'annonce, fenêtres et menus en portail. Sert au lecteur
+ * en plein écran, où Tab mènerait sinon à des liens cachés dessous (A11Y-29). Renvoie de quoi tout rétablir ; un
+ * élément déjà inerte n'est pas touché.
+ */
+export function inertOutside(el: Element): () => void {
+  const targets: Element[] = [];
+  for (let node = el; node.parentElement && node.parentElement !== document.body; node = node.parentElement) {
+    for (const sibling of node.parentElement.children) if (sibling !== node) targets.push(sibling);
+  }
+  targets.push(...document.querySelectorAll("body > header, body > footer, body > a[href^='#']"));
+  const fresh = targets.filter((t) => !t.contains(el) && !t.hasAttribute("inert"));
+  for (const t of fresh) t.setAttribute("inert", "");
+  return () => {
+    for (const t of fresh) t.removeAttribute("inert");
+  };
+}

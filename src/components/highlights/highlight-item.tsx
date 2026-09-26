@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CheckIcon, CopyIcon, PenLineIcon, QuoteIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCopy } from "@/hooks/use-copy";
@@ -32,6 +32,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
   const [note, setNote] = useState(h.note);
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const passageId = useId();
   /** Vrai dès que l'édition se ferme : le blur émis par Chrome au démontage du champ ne doit pas ré-enregistrer. */
   const closedRef = useRef(false);
   /** Bouton qui ouvre l'édition (« Ajouter une note… » ou « Modifier la note ») : le focus y revient à la fermeture. */
@@ -89,12 +90,12 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
       <blockquote className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-[15px]")}>
         <QuoteIcon className="absolute left-0 top-[0.35em] size-3.5 text-highlight-foreground" aria-hidden />
         {/* Le repli porte sur un bloc ; le trait de surligneur reste sur le texte en ligne, fragment par fragment. */}
-        <div className={cn("whitespace-pre-line", long && !expanded && "line-clamp-6")}>
+        <div id={passageId} className={cn("whitespace-pre-line", long && !expanded && "line-clamp-6")}>
           <span className="hl-text">{h.text}</span>
         </div>
       </blockquote>
       {long && (
-        <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 pl-6 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" aria-expanded={expanded}>
+        <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 pl-6 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" aria-expanded={expanded} aria-controls={passageId}>
           {expanded ? "Réduire" : "Lire le passage en entier"}
         </button>
       )}

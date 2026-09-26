@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { pdfjsAssetsBase } from "@/components/highlights/pdfjs-assets";
 import type { Highlight } from "@/lib/highlights-shared";
 import { markSpans } from "@/lib/pdf-marks";
+import { inertOutside } from "@/lib/focus";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
 import { cn } from "cn";
@@ -67,6 +68,21 @@ export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
     return () => document.removeEventListener("keydown", onKey);
   }, [full, nativeFullscreen]);
 
+  // Plein écran (natif ou repli fixe) : le reste de la page, caché dessous, sort de l'ordre du focus et du lecteur
+  // d'écran, et ne défile plus derrière le lecteur (A11Y-29).
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!full || !wrap) return;
+    const restore = inertOutside(wrap);
+    const root = document.documentElement;
+    const overflow = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      restore();
+      root.style.overflow = overflow;
+    };
+  }, [full]);
+
   async function toggleFullscreen() {
     if (full) {
       if (document.fullscreenElement) await document.exitFullscreen().catch(() => undefined);
@@ -102,7 +118,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl }: LayoutProps) {
       </aside>
       <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
         <div className="mb-3 flex justify-end">
-          <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()} aria-pressed={full}>
+          <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()}>
             {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
           </Button>
         </div>

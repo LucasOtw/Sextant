@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { BugIcon, ChevronUpIcon, LightbulbIcon, Loader2Icon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind } from "@/lib/feedback-shared";
 import { announce } from "@/lib/announce";
+import { voteLabel } from "@/lib/labels";
 import { cn } from "cn";
 
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" });
@@ -155,6 +156,7 @@ export function FeedbackBoard({ initial, initialVoted, signedIn, loadError = fal
 
 function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted: boolean; busy: boolean; onVote: () => void }) {
   const [expanded, setExpanded] = useState(false);
+  const descriptionId = useId();
   const long = item.description.length > 280;
   const status = STATUS_LABEL[item.status];
   return (
@@ -162,8 +164,9 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
       <button
         type="button"
         onClick={onVote}
+        // Nom fixe, l'état est dit par aria-pressed (« Voter : …, enfoncé ») : un nom qui change le dirait deux fois (A11Y-30).
         aria-pressed={voted}
-        aria-label={`${voted ? "Retirer mon vote" : "Voter"} : ${item.title} (${item.votes} vote${item.votes > 1 ? "s" : ""})`}
+        aria-label={voteLabel(item.title, item.votes)}
         // aria-disabled plutôt que disabled : un bouton désactivé perd le focus (A11Y-19) ; vote() ignore déjà le double clic.
         aria-disabled={busy || undefined}
         className={cn(
@@ -185,9 +188,9 @@ function FeedbackRow({ item, voted, busy, onVote }: { item: FeedbackItem; voted:
         <h2 className="mt-1.5 text-[17px] font-semibold leading-snug">{item.title}</h2>
         {item.description && (
           <>
-            <p className={cn("mt-1 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
+            <p id={descriptionId} className={cn("mt-1 whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
             {long && (
-              <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded}>
+              <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded} aria-controls={descriptionId}>
                 {expanded ? "Réduire" : "Lire la suite"}
               </button>
             )}
@@ -220,6 +223,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
   /** Envoi tenté avec un titre trop court : l'indication passe en erreur (A11Y-21). */
   const [showError, setShowError] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
+  const kindName = useId();
   const length = feedbackTitleLength(title);
   const valid = length >= MIN_FEEDBACK_TITLE;
 
@@ -252,27 +256,26 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
 
   return (
     <form onSubmit={submit} className="mt-1 flex flex-col gap-3">
-      <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Type de sujet">
+      {/* Boutons radio natifs : un seul arrêt de tabulation, les flèches changent le type (A11Y-30). */}
+      <fieldset className="grid grid-cols-2 gap-2">
+        <legend className="sr-only">Type de sujet</legend>
         {([
           ["bug", "Un bug", "Quelque chose ne marche pas", BugIcon],
           ["idea", "Une idée", "Une amélioration, une fonctionnalité", LightbulbIcon],
         ] as const).map(([value, label, hint, Icon]) => (
-          <button
+          <label
             key={value}
-            type="button"
-            role="radio"
-            aria-checked={kind === value}
-            onClick={() => setKind(value)}
             className={cn(
-              "flex flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors",
+              "relative flex cursor-pointer flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2",
               kind === value ? "bg-accent-brand/8 ring-2 ring-accent-brand" : "ring-foreground/15 hover:ring-foreground/30",
             )}
           >
+            <input type="radio" name={kindName} value={value} checked={kind === value} onChange={() => setKind(value)} className="sr-only" />
             <span className="flex items-center gap-1.5 font-medium"><Icon className="size-4" aria-hidden /> {label}</span>
             <span className="text-xs text-muted-foreground">{hint}</span>
-          </button>
+          </label>
         ))}
-      </div>
+      </fieldset>
       <Field label="Titre" hint={feedbackTitleHint(length, showError && !valid)} invalid={showError && !valid}>
         {(control) => (
           <Input
