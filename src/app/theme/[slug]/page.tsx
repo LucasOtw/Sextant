@@ -8,7 +8,6 @@ import { toggleChip } from "@/components/ui/toggle-chip";
 import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
 import { themeBySlug, themePageMeta } from "@/lib/themes";
-import { cn } from "@/lib/cn";
 import { recover } from "@/lib/log";
 
 interface Props {
@@ -60,7 +59,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
             </li>
             <li aria-hidden>/</li>
             <li className="flex items-center gap-2">
-              <span className={cn("size-2 rounded-full", theme.tone)} aria-hidden />
+              <span className="size-2 rounded-full bg-brand" aria-hidden />
               <span aria-current="page" className="text-foreground">{theme.name}</span>
             </li>
           </ol>

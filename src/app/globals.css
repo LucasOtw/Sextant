@@ -50,6 +50,7 @@
   --color-brand-surface: var(--brand-surface);
   --color-brand-foreground: var(--brand-foreground);
   --color-sun: var(--sun);
+  --color-favorite: var(--favorite);
   --color-overlay: var(--overlay);
   --color-disabled: var(--disabled);
   --color-disabled-foreground: var(--disabled-foreground);
@@ -107,6 +108,8 @@
   --brand-foreground: #EEF1FB;
   /* Jaune : étoile et vague, décoratif uniquement et toujours opaque (2,06:1 : jamais du texte). */
   --sun: #D7A848;
+  /* Cœur des favoris enregistré, en bleu de marque plutôt qu'en rose (P2) : 6,63:1 carte, 6,24:1 fond, 5,68:1 teinte. */
+  --favorite: #3E54B8;
   --overlay: rgb(13 17 26 / 0.3);
   /* Contrôles désactivés (exemptés de contraste par WCAG) : pas d'opacité, qui salirait le bleu. */
   --disabled: #ECEAE2;
@@ -147,6 +150,8 @@
   /* Un aplat #566ED1 éclairerait trop : surface bleue profonde, texte #EEF1FB à 10,30:1. */
   --brand-surface: #27346F;
   --brand-foreground: #EEF1FB;
+  /* Cœur éclairci : #3E54B8 ne ressortirait qu'à 2,85:1 sur l'encre. 7,60:1 fond, 6,92:1 carte, 5,78:1 teinte. */
+  --favorite: #8FA1EA;
   --overlay: rgb(0 0 0 / 0.6);
   /* Plein désactivé : garde sa forme partout (1,45:1 fond, 1,32:1 carte, 1,24:1 fenêtre) ; libellé à 3,46:1. */
   --disabled: #2A3142;
@@ -459,27 +464,30 @@
   }
 }
 
-/* Surlignages : un jaune de fluo discret, lisible sur crème comme sur sombre. */
+/* Surlignages. `--highlight` : fond du passage ; `--highlight-foreground` : trait dessous ; `--highlight-text-line` : trait
+   du passage cité dans une carte (.hl-text), qui n'en a pas en clair. */
 :root {
-  --highlight: oklch(0.92 0.17 96);
+  /* Clair : jaune de fluo discret, voilé à 55 % sur la crème. */
+  --highlight: color-mix(in oklch, oklch(0.92 0.17 96) 55%, transparent);
   --highlight-foreground: oklch(0.6 0.13 80);
-  --highlight-alpha: 55%;
+  --highlight-text-line: transparent;
   /* Page du PDF : le papier reste blanc quel que soit le thème, son surligneur ne change donc pas en sombre. */
   --highlight-paper: oklch(0.92 0.17 96);
   --highlight-paper-line: oklch(0.6 0.13 80);
 }
+/* Sombre (option A de T15) : un voile jaune virait à l'olive sur l'encre. Fond bleu profond opaque (texte #F9F8F2 à
+   10,92:1) et trait jaune --sun opaque (5,30:1 sur ce fond, 8,62:1 sur l'encre, 7,85:1 sur la carte). */
 .dark {
-  --highlight: oklch(0.78 0.16 92);
-  --highlight-foreground: oklch(0.86 0.15 92);
-  /* 30 % : le texte blanc reste au-dessus de 4,5:1 sur le fond sombre. */
-  --highlight-alpha: 30%;
+  --highlight: #27346F;
+  --highlight-foreground: var(--sun);
+  --highlight-text-line: var(--sun);
 }
 @theme inline {
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
 }
 mark[data-highlight] {
-  background: color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent);
+  background: var(--highlight);
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
@@ -488,7 +496,7 @@ mark[data-highlight] {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
-/* Couleurs forcées (Windows) : le surlignage système, opaque, à la place du jaune translucide. */
+/* Couleurs forcées (Windows) : le surlignage système à la place de celui du thème. */
 @media (forced-colors: active) {
   mark[data-highlight] {
     background: Mark;
@@ -521,7 +529,9 @@ mark[data-highlight] {
 
 /* Passage cité dans une carte : un trait de surligneur sous la ligne, qui suit les retours à la ligne. */
 .hl-text {
-  background-image: linear-gradient(transparent 52%, color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent) 52%);
+  background-image: linear-gradient(transparent 52%, var(--highlight) 52%);
+  /* Sombre : trait jaune sous la bande bleue, comme sur le résumé ; transparent en clair. */
+  box-shadow: inset 0 -2px 0 var(--highlight-text-line);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   /* Marge intérieure seulement : une marge négative serait rognée par le repli du texte (line-clamp). */

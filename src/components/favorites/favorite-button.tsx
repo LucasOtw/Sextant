@@ -54,7 +54,7 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
 
   const icon = (
     <HeartIcon
-      className={cn("size-[18px] transition-transform", active ? "fill-rose-500 text-rose-500" : "text-muted-foreground", pending && "scale-90")}
+      className={cn("size-[18px] transition-transform", active ? "fill-favorite text-favorite" : "text-muted-foreground", pending && "scale-90")}
       aria-hidden
     />
   );
