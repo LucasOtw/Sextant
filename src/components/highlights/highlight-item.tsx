@@ -142,15 +142,17 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
           Ajouter une note…
         </button>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1 pl-4">
+      {/* Marge serrée des boutons (px-2.5), rattrapée par -ml-2.5 : l'icône du premier bouton s'aligne sur celle de la
+          citation, et « Copier avec la référence » et « Supprimer » tiennent sur une ligne à 375 px. */}
+      <div className="mt-2.5 -ml-2.5 flex flex-wrap items-center gap-1">
         {h.note && !editing && (
-          <Button ref={noteButtonRef} variant="ghost" size="sm" onClick={startEditing}>
+          <Button ref={noteButtonRef} variant="ghost" size="sm" className="px-2.5" onClick={startEditing}>
             <PenLineIcon /> Modifier la note
           </Button>
         )}
         {/* Le nom commence par le texte visible et suit « Copié » (A11Y-26) ; l'annonce de la copie vient de useCopy. */}
-        <Button variant="ghost" size="sm" onClick={copy} aria-label={copied ? "Copié" : `Copier avec la référence : « ${excerpt(h.text)} »`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
-        <Button variant="destructive-ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`}><Trash2Icon /> Supprimer</Button>
+        <Button variant="ghost" size="sm" className="px-2.5" onClick={copy} aria-label={copied ? "Copié" : `Copier avec la référence : « ${excerpt(h.text)} »`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
+        <Button variant="destructive-ghost" size="sm" className="px-2.5" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`}><Trash2Icon /> Supprimer</Button>
       </div>
     </li>
   );

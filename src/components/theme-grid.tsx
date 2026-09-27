@@ -7,7 +7,8 @@ export function ThemeGrid({ limit, className }: { limit?: number; className?: st
   // Pas de préchargement : /theme/[slug] est dynamique et sans loading.tsx, il ne rapporterait que l'en-tête
   // de la page, au prix d'une invocation serverless par vignette visible (PERF-18).
   return (
-    <ul className={cn("grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4", className)}>
+    // Une colonne sous 360 px : sur deux, « Informatique » ou « management » se coupaient au milieu du mot (zoom fort).
+    <ul className={cn("grid grid-cols-1 gap-3 min-[22.5rem]:grid-cols-2 sm:grid-cols-3 lg:grid-cols-4", className)}>
       {themes.map((t) => (
         <li key={t.slug}>
           <Link

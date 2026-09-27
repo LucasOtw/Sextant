@@ -18,6 +18,8 @@ interface Props {
   /** Paramètres à conserver (sujet, citations…) lors d'une nouvelle recherche. */
   hidden?: Record<string, string | undefined>;
   className?: string;
+  /** Nom du repère de recherche, quand la page en compte deux (en-tête et page). */
+  label?: string;
 }
 
 type Item =
@@ -25,7 +27,7 @@ type Item =
   | { kind: "theme"; label: string; description: string; href: string }
   | { kind: "work"; label: string; hint: string | null; citations: number; href: string };
 
-export function SearchBox({ defaultValue = "", size = "compact", hidden, className }: Props) {
+export function SearchBox({ defaultValue = "", size = "compact", hidden, className, label }: Props) {
   const router = useRouter();
   const listId = useId();
   const [query, setQuery] = useState(defaultValue);
@@ -135,6 +137,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
     >
       <form
         role="search"
+        aria-label={label}
         className="flex w-full items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -174,7 +177,7 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
             aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
             className={cn(
               "bg-card",
-              hero ? "h-13 pl-12 text-lg md:text-lg shadow-sm" : "pl-9 text-base md:text-base",
+              hero ? "h-13 pl-12 text-lg md:text-lg" : "pl-9 text-base md:text-base",
             )}
           />
         </div>
@@ -209,8 +212,9 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => setOpen(false)}
+                // Contour intérieur sur l'option active en plus de la teinte (1,17:1 seule) : il reste en couleurs forcées.
                 className={cn(
-                  "flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+                  "flex items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors aria-selected:outline-2 aria-selected:-outline-offset-2 aria-selected:outline-ring",
                   i === active ? "bg-accent text-accent-foreground" : "hover:bg-accent",
                 )}
               >

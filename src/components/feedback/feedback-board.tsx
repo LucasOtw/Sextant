@@ -114,7 +114,7 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
               onClick={() => setFilter(value)}
               className={cn(
                 "inline-flex h-9 items-center gap-1.5 rounded-full border border-transparent px-3.5 text-sm transition-colors",
-                filter === value ? "bg-primary text-primary-foreground" : "border-border bg-card hover:border-foreground/25",
+                filter === value ? "bg-primary text-primary-foreground" : "border-border bg-card hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
               )}
             >
               {label} <span className={filter === value ? undefined : "text-muted-foreground"}>{counts[value]}</span>
@@ -296,7 +296,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             key={value}
             className={cn(
               "relative flex cursor-pointer flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2",
-              kind === value ? "bg-tint ring-2 ring-accent-brand" : "ring-foreground/15 hover:ring-foreground/30",
+              kind === value ? "bg-tint ring-2 ring-accent-brand" : "ring-border hover:ring-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
             )}
           >
             <input type="radio" name={kindName} value={value} checked={kind === value} onChange={() => setKind(value)} className="sr-only" />
@@ -334,7 +334,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
           />
         )}
       </Field>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy}>{busy && <Loader2Icon className="animate-spin" />} Publier</Button>
       </div>

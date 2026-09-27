@@ -23,7 +23,7 @@ interface Props {
 /** Filtres + liste + pagination. La liste est chargée en streaming. */
 export function Results({ base, sp, params, filterDefaults, skipLink = true }: Props) {
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       {skipLink && <SkipToResults />}
       <aside aria-labelledby="filtres-titre" className="lg:sticky lg:top-20 lg:self-start">
         <h2 id="filtres-titre" className="sr-only">Filtres</h2>

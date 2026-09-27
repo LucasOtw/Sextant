@@ -129,7 +129,7 @@ export function AccountActions() {
               {errorAll}
             </p>
           )}
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmAll(false)} disabled={busyAll}>Annuler</Button>
             <Button onClick={() => void logoutEverywhere()} disabled={busyAll} aria-describedby={errorAll ? errorAllId : undefined}>
               {busyAll && <Loader2Icon className="animate-spin" />} Tout déconnecter
@@ -149,7 +149,7 @@ export function AccountActions() {
               {error}
             </p>
           )}
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirm(false)} disabled={busy}>Annuler</Button>
             <Button variant="destructive" onClick={() => void deleteAccount()} disabled={busy} aria-describedby={error ? errorId : undefined}>
               {busy && <Loader2Icon className="animate-spin" />} Supprimer définitivement

@@ -82,7 +82,7 @@ function Form({ onClose }: { onClose: () => void }) {
           )}
         </Field>
       </div>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy || !text.trim()}>
           {busy && <Loader2Icon className="animate-spin" />} Enregistrer

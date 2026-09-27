@@ -59,7 +59,7 @@ function DialogContent({
         // Le titre se tient à l'écart de la croix (in-data-with-close:pr-10 sur DialogTitle).
         data-with-close={showCloseButton || undefined}
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-3xl bg-popover p-5 text-sm text-popover-foreground border border-border shadow-float duration-100 outline-none sm:max-w-sm sm:p-6 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 motion-reduce:animate-none!",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-x-hidden overflow-y-auto rounded-3xl bg-popover p-5 text-sm text-popover-foreground border border-border shadow-float duration-100 outline-none sm:max-w-sm sm:p-6 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95 motion-reduce:animate-none!",
           className
         )}
         {...props}

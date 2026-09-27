@@ -13,7 +13,7 @@ const badgeVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground [a]:hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))] [a]:hover:text-link",
         destructive:
-          "bg-destructive/10 text-destructive dark:bg-destructive/20 [a]:hover:bg-destructive/20",
+          "bg-destructive/10 text-destructive dark:bg-destructive/12 [a]:hover:bg-destructive/20",
         outline:
           "border-border text-foreground [a]:hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))] [a]:hover:text-link",
         ghost:

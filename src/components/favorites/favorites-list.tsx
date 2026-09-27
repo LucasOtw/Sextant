@@ -152,6 +152,9 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const countRef = useRef<HTMLParagraphElement>(null);
   /** Suppression confirmée : la fenêtre rend le focus au compteur, pas au déclencheur disparu. */
   const listDeleted = useRef(false);
+  /** Déclencheurs des fenêtres de liste, qui ne sont pas des Dialog.Trigger : la fermeture leur rend le focus. */
+  const newListRef = useRef<HTMLButtonElement>(null);
+  const manageRef = useRef<HTMLButtonElement>(null);
   useFocusRecovery(listRef, ":scope > li", () => countRef.current);
   /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
   const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
@@ -207,9 +210,10 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         </Chip>
       ))}
       <button
+        ref={newListRef}
         type="button"
         onClick={() => setCreating(true)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-dashed px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))] hover:text-foreground"
       >
         <PlusIcon className="size-3.5" aria-hidden /> Nouvelle liste
       </button>
@@ -221,6 +225,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       <CollectionDialog
         open={creating}
         onOpenChange={setCreating}
+        finalFocus={newListRef}
         title="Nouvelle liste"
         description="Par exemple «&nbsp;Mémoire 2026&nbsp;», «&nbsp;Santé&nbsp;», «&nbsp;À lire&nbsp;»."
         submitLabel="Créer"
@@ -233,6 +238,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       <CollectionDialog
         open={renaming && Boolean(collection)}
         onOpenChange={setRenaming}
+        finalFocus={manageRef}
         initialName={collection?.name ?? ""}
         initialDescription={collection?.description ?? ""}
         title="Modifier la liste"
@@ -256,7 +262,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
           <DialogDescription className="text-meta text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
           </DialogDescription>
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleting(false)}>Annuler</Button>
             <Button
               variant="destructive"
@@ -310,7 +316,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             )}
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label={`Gérer la liste ${collection.name}`} />}>
+            <DropdownMenuTrigger render={<Button ref={manageRef} variant="outline" size="lg" aria-label={`Gérer la liste ${collection.name}`} />}>
               <SettingsIcon /> Gérer
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -443,7 +449,7 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
                   type="button"
                   onClick={() => onSelect(c.id)}
                   aria-label={`Ouvrir la liste ${c.name}`}
-                  className="relative z-10 inline-flex min-h-7 max-w-48 items-center truncate rounded-full bg-secondary px-2.5 text-xs text-secondary-foreground transition-shadow hover:ring-1 hover:ring-foreground/25"
+                  className="relative z-10 inline-flex min-h-7 max-w-48 items-center truncate rounded-full bg-secondary px-2.5 text-xs text-secondary-foreground transition-shadow hover:ring-1 hover:ring-[color-mix(in_oklch,var(--brand)_40%,var(--border))]"
                 >
                   {c.name}
                 </button>
@@ -465,7 +471,7 @@ function Chip({ active, onClick, count, icon = false, shared = false, children }
       title={children}
       className={cn(
         "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm transition-colors",
-        active ? "bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-foreground/25",
+        active ? "bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
       )}
     >
       {icon && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}

@@ -210,7 +210,7 @@ export function McpKeys() {
             L'assistant qui utilise cette clé perdra immédiatement l'accès à votre bibliothèque. Il faudra créer une nouvelle clé et
             reconfigurer le connecteur.
           </DialogDescription>
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirming(false)}>Annuler</Button>
             <Button variant="destructive" onClick={confirmRevoke}>
               <Trash2Icon /> Révoquer la clé
@@ -220,7 +220,11 @@ export function McpKeys() {
       </Dialog>
 
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
-        <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
+        <DialogContent
+          className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg"
+          // « Créer une clé », grisé pendant la création, a perdu le focus : il revient au champ du nom, pas à <body>.
+          finalFocus={() => (nameRef.current?.isConnected ? nameRef.current : true)}
+        >
           <DialogTitle className="title-display">Votre clé est prête</DialogTitle>
           <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Copiez l'adresse ci-dessous maintenant : elle contient votre clé et ne sera plus jamais affichée.

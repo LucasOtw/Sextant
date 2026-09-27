@@ -9,10 +9,13 @@ import { AuthButton } from "@/components/auth/auth-button";
 import { FavoritesLink } from "@/components/favorites/favorites-link";
 import { isAuthEnabled } from "@/lib/auth";
 
-/** En-tête commun, identique pour tous (pages en cache) : le compte s'affiche côté client (AuthButton, PERF-01). */
+/**
+ * En-tête commun, identique pour tous (pages en cache) : le compte s'affiche côté client (AuthButton, PERF-01).
+ * Fond à 85 % au moins : un texte secondaire garde 4,5:1 quand une page blanche (PDF) ou une figure noire passe dessous.
+ */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
         <Link href="/" prefetch={false} className="flex items-center gap-2.5" aria-label="Sextant, accueil">
           <LogoMark className="size-9 text-foreground" />

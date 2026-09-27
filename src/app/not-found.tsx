@@ -20,7 +20,7 @@ export default function NotFound() {
           Faites le point et repartez d'ici.
         </p>
       </div>
-      <SearchBox className="mx-auto w-full max-w-lg" />
+      <SearchBox label="Rechercher depuis cette page" className="mx-auto w-full max-w-lg" />
       <div className="flex flex-wrap justify-center gap-2">
         <Link href="/" className={buttonVariants({ size: "lg" })}><HomeIcon /> Retour à l'accueil</Link>
         <Link href="/#themes" className={buttonVariants({ variant: "outline", size: "lg" })}><CompassIcon /> Explorer les thématiques</Link>
