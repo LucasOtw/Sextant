@@ -57,24 +57,24 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-3xl">
-        <h1 className="title-display text-4xl sm:text-5xl">Mon compte</h1>
+        <h1 className="title-display type-h1">Mon compte</h1>
 
-        <section className="mt-8 flex items-center gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <section className="surface-card mt-8 flex items-center gap-4 rounded-2xl p-5">
           <Avatar className="size-16">
             {user.picture && <AvatarImage src={user.picture} alt="" referrerPolicy="no-referrer" />}
             <AvatarFallback className="text-lg">{initials}</AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="truncate text-xl font-semibold">{user.name ?? "Sans nom"}</p>
+            <p className="title-display truncate text-xl">{user.name ?? "Sans nom"}</p>
             {user.email && <p className="truncate text-muted-foreground">{user.email}</p>}
             <p className="mt-1 text-sm text-muted-foreground">
-              Connecté avec Google{since && <> · membre depuis le {since}</>}
+              Connecté avec Google{since && <>, membre depuis le {since}</>}
             </p>
           </div>
         </section>
 
         <section className="mt-10" aria-labelledby="bibliotheque">
-          <h2 id="bibliotheque" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Ma bibliothèque</h2>
+          <h2 id="bibliotheque" className="section-title">Ma bibliothèque</h2>
           <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Tile icon={<BookmarkIcon />} label="Favoris" value={favoritesCount === null ? "—" : String(favoritesCount)} hint="Le cœur sur un article l'enregistre ici." href="/favoris" />
             <Tile icon={<FolderIcon />} label="Listes" value={collectionsCount === null ? "—" : String(collectionsCount)} hint="Classez vos favoris : mémoire, santé, à lire…" href="/favoris" />
@@ -85,25 +85,25 @@ export default async function AccountPage() {
         </section>
 
         <section className="mt-10" aria-labelledby="assistants">
-          <h2 id="assistants" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Assistants IA (MCP)</h2>
+          <h2 id="assistants" className="section-title">Assistants IA (MCP)</h2>
           <div className="mt-3"><McpKeys /></div>
         </section>
 
         <section className="mt-10" aria-labelledby="donnees">
-          <h2 id="donnees" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Données et confidentialité</h2>
-          <div className="mt-3 flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+          <h2 id="donnees" className="section-title">Données et confidentialité</h2>
+          <div className="surface-card mt-3 flex flex-col gap-4 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <ShieldCheckIcon className="mt-0.5 size-5 shrink-0 text-accent-brand" aria-hidden />
-              <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+              <p className="max-w-measure-text text-meta leading-relaxed text-muted-foreground">
                 Votre compte contient votre nom, votre e-mail et votre photo Google, les dates de création du compte, de dernière
                 connexion et de dernier usage d'une clé d'assistant IA, et ce que vous enregistrez dans Sextant : favoris, le dernier
-                favori retiré et les dates des favoris retirés récemment (pour « Annuler »), listes et leurs liens de partage, citations, notes, clés d'assistants IA, vos sujets et
-                vos votes sur « Bugs et idées ». Aucun suivi. Détails dans la{" "}
-                <Link href="/confidentialite" className="underline underline-offset-2 hover:text-foreground">politique de confidentialité</Link>.
+                favori retiré et les dates des favoris retirés récemment (pour «&nbsp;Annuler&nbsp;»), listes et leurs liens de partage, citations, notes, clés d'assistants IA, vos sujets et
+                vos votes sur «&nbsp;Bugs et idées&nbsp;». Aucun suivi. Détails dans la{" "}
+                <Link href="/confidentialite" className="link-quiet">politique de confidentialité</Link>.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 pl-8">
-              <a href="/api/account/export" download className={buttonVariants({ variant: "outline", className: "bg-card" })}>
+              <a href="/api/account/export" download className={buttonVariants({ variant: "outline" })}>
                 <DownloadIcon /> Télécharger mes données
               </a>
               <span className="text-sm text-muted-foreground">Un fichier JSON avec tout ce que Sextant conserve pour vous.</span>
@@ -112,9 +112,9 @@ export default async function AccountPage() {
         </section>
 
         <section className="mt-10" aria-labelledby="session">
-          <h2 id="session" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Session et compte</h2>
-          <p className="mb-4 mt-2 text-[0.9375rem] text-muted-foreground">
-            La déconnexion ferme la session sur cet appareil. « Se déconnecter de tous les appareils » ferme aussi les autres sessions
+          <h2 id="session" className="section-title">Session et compte</h2>
+          <p className="mb-4 mt-2 max-w-measure-text text-meta text-muted-foreground">
+            La déconnexion ferme la session sur cet appareil. «&nbsp;Se déconnecter de tous les appareils&nbsp;» ferme aussi les autres sessions
             et révoque vos clés d'assistant IA. La suppression efface immédiatement votre compte et toutes ses données.
           </p>
           <AccountActions />
@@ -128,16 +128,16 @@ function Tile({ icon, label, value, hint, href }: { icon: React.ReactNode; label
   const body = (
     <>
       <span className="flex items-center gap-2 text-sm text-muted-foreground [&_svg]:size-4">{icon}{label}</span>
-      <span className="text-3xl font-semibold tracking-tight">{value}</span>
+      <span className="title-display text-3xl tabular-nums">{value}</span>
       <span className="text-xs text-muted-foreground">{hint}</span>
     </>
   );
   return (
-    <li className="rounded-xl bg-card ring-1 ring-foreground/10">
+    <li>
       {href ? (
-        <Link href={href} className="flex h-full flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-muted/60">{body}</Link>
+        <Link href={href} className="surface-tint card-link flex h-full flex-col gap-1 rounded-xl p-4">{body}</Link>
       ) : (
-        <div className="flex h-full flex-col gap-1 p-4">{body}</div>
+        <div className="surface-tint flex h-full flex-col gap-1 rounded-xl p-4">{body}</div>
       )}
     </li>
   );

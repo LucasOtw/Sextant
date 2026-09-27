@@ -4,7 +4,7 @@ import { abstractFromInvertedIndex, contentLang, formatAuthors, titleLang, trunc
 import { ArticleBadges, ArticleMeta, ArticleTitle, CitationCount } from "@/components/article-card";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   work: Work;
@@ -21,14 +21,14 @@ export function WorkCard({ work, variant = "list" }: Props) {
   return (
     <article
       className={cn(
-        "group relative flex flex-col gap-2 rounded-xl wrap-break-word bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25",
+        "surface-card card-link relative flex flex-col gap-2 wrap-break-word p-4",
         compact ? "h-full" : "sm:p-5",
       )}
     >
       {/* pr-10 : place du cœur, toujours proposé (sans session, il ouvre la connexion). */}
       <ArticleBadges type={work.type} isOa={work.open_access.is_oa} topic={compact ? null : work.primary_topic?.display_name} className="pr-10" />
 
-      <ArticleTitle href={href} lang={titleLang(work)} className={compact ? "text-lg" : "text-xl sm:text-[1.4rem]"}>
+      <ArticleTitle href={href} lang={titleLang(work)} className={compact ? "text-lg" : "text-xl sm:text-[1.375rem]"}>
         {workTitle(work)}
       </ArticleTitle>
       {/* Le cœur suit le titre dans le DOM (on sait de quel article il s'agit avant d'y arriver), en haut à droite à l'écran (A11Y-23). */}
@@ -39,7 +39,7 @@ export function WorkCard({ work, variant = "list" }: Props) {
       <ArticleMeta authors={formatAuthors(work, compact ? 2 : 3)} venue={venue} year={work.publication_year} language={work.language} />
 
       {!compact && abstract && (
-        <p lang={contentLang(work.language)} className="text-[0.9375rem] leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
+        <p lang={contentLang(work.language)} className="max-w-measure-text text-meta leading-relaxed text-foreground/80">{truncateWords(abstract, 45)}</p>
       )}
 
       <div className="mt-auto flex items-center gap-1 pt-1 text-sm text-muted-foreground">

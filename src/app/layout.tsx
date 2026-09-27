@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
+import { fontVariables } from "./fonts";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -11,8 +11,6 @@ import { PRE_HYDRATION_SCRIPT } from "@/lib/pre-hydration";
 import { ANNOUNCER_ID } from "@/lib/announce";
 import { SkipLink } from "@/components/skip-link";
 import { SITE } from "@/lib/site";
-
-const sans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
   // Base des adresses relatives (canoniques, image de partage) : l'adresse de production, y compris sur un déploiement de
@@ -30,11 +28,14 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image" },
 };
 
-/** Barre du navigateur mobile aux couleurs du fond (--background clair / sombre) ; suit le thème du système, pas la bascule du site. */
+/**
+ * Barre du navigateur mobile aux couleurs du fond (--background clair / sombre de globals.css) selon le système ; la
+ * bascule du site la recale ensuite (lib/theme.ts).
+ */
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F9F6F1" },
-    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+    { media: "(prefers-color-scheme: light)", color: "#F9F8F2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0D111A" },
   ],
 };
 
@@ -46,7 +47,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`${sans.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="fr" className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
       <head>
         {/* Thème et indice de connexion appliqués avant le premier rendu (lib/pre-hydration.ts), autorisé par la CSP via son empreinte. */}
         <script dangerouslySetInnerHTML={{ __html: PRE_HYDRATION_SCRIPT }} />

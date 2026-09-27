@@ -23,7 +23,7 @@ interface Props {
 /** Filtres + liste + pagination. La liste est chargée en streaming. */
 export function Results({ base, sp, params, filterDefaults, skipLink = true }: Props) {
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 sm:gap-8 lg:grid-cols-[220px_minmax(0,1fr)]">
       {skipLink && <SkipToResults />}
       <aside aria-labelledby="filtres-titre" className="lg:sticky lg:top-20 lg:self-start">
         <h2 id="filtres-titre" className="sr-only">Filtres</h2>
@@ -83,19 +83,15 @@ async function List({ base, sp, params }: Props) {
     <div className="flex flex-col gap-3">
       <ResultsStatus message={resultsMessage(total, current, perPage, params.q)} />
       {/* Titre de la liste, focalisable : cible du focus après un changement de page (sinon renvoyé sur la page, A11Y-12). */}
-      <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-[0.9375rem] font-normal text-muted-foreground outline-none">
+      <h2 id={RESULTS_ID} tabIndex={-1} className="scroll-mt-20 text-meta font-normal text-muted-foreground outline-none">
         {formatInteger(total)} résultat{total > 1 ? "s" : ""}
-        {params.q && <> pour « {params.q} »</>}
+        {params.q && <> pour «&nbsp;{params.q}&nbsp;»</>}
         {/* Lu quand le titre prend le focus après la pagination, à la place d'une annonce qui répéterait le nombre. */}
         {last > 1 && <span className="sr-only">, page {current} sur {formatInteger(last)}</span>}
       </h2>
       <ul className="flex flex-col gap-3">
-        {page.results.map((w, i) => (
-          <li
-            key={w.id}
-            className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none"
-            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-          >
+        {page.results.map((w) => (
+          <li key={w.id}>
             <WorkCard work={w} />
           </li>
         ))}

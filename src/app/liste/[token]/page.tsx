@@ -67,8 +67,8 @@ export default async function SharedListPage({ params }: Props) {
   if (list === "unavailable") {
     return (
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6">
-        <h1 className="title-display text-3xl">Liste indisponible</h1>
-        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
+        <h1 className="title-display type-h2">Liste indisponible</h1>
+        <p className="mt-3 text-meta text-muted-foreground">
           Les listes partagées ne sont pas disponibles sur cette instance. En local, lancez <code>npm run dev:emu</code> ou
           définissez <code>ALLOW_PROD_DB=1</code>.
         </p>
@@ -83,23 +83,23 @@ export default async function SharedListPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-4xl">
-        <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <FolderIcon className="size-4 text-accent-brand" aria-hidden /> Liste partagée
         </p>
-        <h1 className="title-display mt-2 text-4xl sm:text-5xl">{list.name}</h1>
-        {list.description && <p className="mt-3 text-lg text-muted-foreground">{list.description}</p>}
+        <h1 className="title-display type-h1 mt-2">{list.name}</h1>
+        {list.description && <p className="lead mt-3">{list.description}</p>}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[0.9375rem] text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
+          <p className="text-meta text-muted-foreground">{n} article{n > 1 ? "s" : ""}</p>
           <BibtexActions articles={list.articles} filename={`sextant-${fileSlug(list.name)}.bib`} retracted={[...retracted]} />
         </div>
 
         {n === 0 ? (
-          <div className="mt-6 rounded-xl border border-dashed p-10 text-center text-muted-foreground">Cette liste est vide pour le moment.</div>
+          <div className="surface-tint mt-6 rounded-2xl p-10 text-center text-muted-foreground">Cette liste est vide pour le moment.</div>
         ) : (
           <ul className="mt-6 flex flex-col gap-3">
             {list.articles.map((a) => (
               <li key={a.id}>
-                <article className="relative flex flex-col gap-2 rounded-xl bg-card p-4 pr-16 ring-1 ring-foreground/10 transition-all duration-200 motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5 sm:pr-16">
+                <article className="surface-card card-link relative flex flex-col gap-2 p-4 pr-16 sm:p-5 sm:pr-16">
                   <ArticleBadges type={a.type} isOa={a.isOa} retracted={retracted.has(a.id)} topic={a.topic} />
                   <ArticleTitle href={`/article/${a.id}`} as="h2" className="text-xl leading-snug">{a.title}</ArticleTitle>
                   {/* Le cœur suit le titre dans le DOM, en haut à droite à l'écran (A11Y-23). */}
@@ -117,13 +117,13 @@ export default async function SharedListPage({ params }: Props) {
         )}
 
         <p className="mt-10 text-sm text-muted-foreground">
-          Liste partagée avec <Link href="/" className="text-accent-brand underline underline-offset-3">Sextant</Link>, un moteur de recherche
+          Liste partagée avec <Link href="/" className="link">Sextant</Link>, un moteur de recherche
           d'articles scientifiques évalués par les pairs. Le cœur enregistre un article dans vos propres favoris.
         </p>
         {/* Contenu publié par un utilisateur : signalement à portée de main (DSA art. 16, SEC-13). */}
         <p className="mt-2 text-sm text-muted-foreground">
           Cette liste contient un contenu illicite ?{" "}
-          <a href={reportHref(SITE.contactEmail, "liste partagée", `${SITE.url}/liste/${token}`)} className="underline underline-offset-3 hover:text-foreground">
+          <a href={reportHref(SITE.contactEmail, "liste partagée", `${SITE.url}/liste/${token}`)} className="link-quiet">
             Signaler cette liste
           </a>
         </p>

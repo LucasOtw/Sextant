@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { LockOpenIcon, QuoteIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { formatCount, typeLabel } from "@/lib/format";
-import { cn } from "cn";
+import { formatCount, languageName, typeLabel } from "@/lib/format";
+import { cn } from "@/lib/cn";
 
 /**
  * Blocs communs des cartes d'article (QUAL-13) : résultats de recherche (WorkCard), /favoris et page publique d'une
@@ -21,7 +21,12 @@ export function ArticleBadges({ type, isOa, retracted = false, topic, className 
         </Badge>
       )}
       {retracted && <Badge variant="destructive">Rétracté</Badge>}
-      {topic && <span className="truncate">· {topic}</span>}
+      {/* Sujet : étiquette discrète de la famille des badges, sans séparateur ; tronquée si elle dépasse la ligne. */}
+      {topic && (
+        <Badge variant="outline" className="max-w-full shrink font-semibold text-muted-foreground">
+          <span className="min-w-0 truncate">{topic}</span>
+        </Badge>
+      )}
     </div>
   );
 }
@@ -33,24 +38,30 @@ export function ArticleBadges({ type, isOa, retracted = false, topic, className 
 export function ArticleTitle({ href, as: Tag = "h3", lang, className, children }: { href: string; as?: "h2" | "h3"; lang?: string; className?: string; children: ReactNode }) {
   return (
     <Tag lang={lang} className={cn("title-display leading-snug", className)}>
-      <Link href={href} className="after:absolute after:inset-0 hover:text-accent-brand">
+      <Link href={href} className="card-title after:absolute after:inset-0 hover:text-link">
         {children}
       </Link>
     </Tag>
   );
 }
 
-/** « Auteurs · Revue · Année », et la langue quand elle n'est pas l'anglais. */
+/**
+ * Deux lignes lisibles plutôt qu'une chaîne à points médians : les auteurs, puis « *Revue*, 1988, en portugais ».
+ * La langue n'est écrite (en mots) que lorsqu'elle n'est pas l'anglais ; une ligne sans contenu n'est pas rendue.
+ */
 export function ArticleMeta({ authors, venue, year, language, className }: { authors: ReactNode; venue: string | null; year: number | null; language?: string | null; className?: string }) {
+  const details = [year, language && language !== "en" ? `en ${languageName(language)}` : null].filter(Boolean).join(", ");
   return (
-    <p className={cn("text-[0.9375rem] text-muted-foreground", className)}>
-      {authors}
-      {venue && <> · <span className="italic">{venue}</span></>}
-      {year && <> · {year}</>}
-      {language && language !== "en" && (
-        <> · <span className="font-medium uppercase">{language}</span></>
+    <div className={cn("max-w-measure-text text-meta text-muted-foreground", className)}>
+      {authors && <p>{authors}</p>}
+      {(venue || details) && (
+        <p>
+          {venue && <span className="italic">{venue}</span>}
+          {venue && details && ", "}
+          {details}
+        </p>
       )}
-    </p>
+    </div>
   );
 }
 

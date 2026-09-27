@@ -23,8 +23,9 @@ import { ShowMore, useRevealFocus } from "@/components/show-more";
 import { moveLabel } from "@/lib/labels";
 import { filterFolded, foldedIndex, nextPage, PAGE_SIZE, visibleCount, type PageState } from "@/lib/list-filter";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { DATE_SHORT } from "@/lib/dates";
+import { frSpaces } from "@/lib/text";
 
 const SORTS = [
   { value: "added", label: "Ajout récent" },
@@ -34,8 +35,6 @@ const SORTS = [
   { value: "title", label: "Titre" },
 ];
 
-/** Seules les premières cartes entrent en animation : au-delà, des centaines d'animations partiraient ensemble. */
-const ANIMATED_ROWS = 12;
 const NO_LISTS: Collection[] = [];
 
 function deleteHint(n: number) {
@@ -153,6 +152,9 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
   const countRef = useRef<HTMLParagraphElement>(null);
   /** Suppression confirmée : la fenêtre rend le focus au compteur, pas au déclencheur disparu. */
   const listDeleted = useRef(false);
+  /** Déclencheurs des fenêtres de liste, qui ne sont pas des Dialog.Trigger : la fermeture leur rend le focus. */
+  const newListRef = useRef<HTMLButtonElement>(null);
+  const manageRef = useRef<HTMLButtonElement>(null);
   useFocusRecovery(listRef, ":scope > li", () => countRef.current);
   /** Carte déplacée au clavier : son bouton reprend le focus après le nouveau rendu (voir l'effet plus bas). */
   const moved = useRef<{ id: string; delta: -1 | 1 } | null>(null);
@@ -208,9 +210,10 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         </Chip>
       ))}
       <button
+        ref={newListRef}
         type="button"
         onClick={() => setCreating(true)}
-        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-dashed px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+        className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-3 text-sm text-muted-foreground transition-colors hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))] hover:text-foreground"
       >
         <PlusIcon className="size-3.5" aria-hidden /> Nouvelle liste
       </button>
@@ -222,8 +225,9 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       <CollectionDialog
         open={creating}
         onOpenChange={setCreating}
+        finalFocus={newListRef}
         title="Nouvelle liste"
-        description="Par exemple « Mémoire 2026 », « Santé », « À lire »."
+        description="Par exemple «&nbsp;Mémoire 2026&nbsp;», «&nbsp;Santé&nbsp;», «&nbsp;À lire&nbsp;»."
         submitLabel="Créer"
         onSubmit={async (name, description) => {
           const created = await favorites.createCollection(name, { description });
@@ -234,6 +238,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
       <CollectionDialog
         open={renaming && Boolean(collection)}
         onOpenChange={setRenaming}
+        finalFocus={manageRef}
         initialName={collection?.name ?? ""}
         initialDescription={collection?.description ?? ""}
         title="Modifier la liste"
@@ -253,11 +258,11 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             return deleted && countRef.current?.isConnected ? countRef.current : true;
           }}
         >
-          <DialogTitle className="title-display text-2xl">Supprimer « {collection?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces(`Supprimer « ${collection?.name ?? ""} » ?`)}</DialogTitle>
+          <DialogDescription className="text-meta text-muted-foreground">
             {deleteHint(collection?.articleIds.length ?? 0)}{collection?.shareToken && " Son lien de partage cessera de fonctionner."}
           </DialogDescription>
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setDeleting(false)}>Annuler</Button>
             <Button
               variant="destructive"
@@ -285,7 +290,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
         title="Aucun favori pour l'instant."
         hint="Le cœur sur une carte ou une fiche article l'enregistre ici, retrouvable sur tous vos appareils."
         action={
-          <Link href="/search" className="mt-5 inline-flex items-center gap-2 text-accent-brand underline underline-offset-3">
+          <Link href="/search" className="link mt-5 inline-flex items-center gap-2">
             <SearchIcon className="size-4" /> Lancer une recherche
           </Link>
         }
@@ -303,15 +308,15 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             <h2 className="title-display flex min-w-0 items-center gap-2 text-2xl">
               <FolderIcon className="size-5 shrink-0 text-accent-brand" aria-hidden /> <span className="min-w-0 line-clamp-2 wrap-break-word">{collection.name}</span>
             </h2>
-            {collection.description && <p className="mt-1 text-[0.9375rem] text-muted-foreground">{collection.description}</p>}
+            {collection.description && <p className="mt-1 text-meta text-muted-foreground">{collection.description}</p>}
             {collection.shareToken && (
-              <button type="button" onClick={() => setSharing(true)} className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-accent-brand underline underline-offset-3">
+              <Button variant="link" size="inline" onClick={() => setSharing(true)} className="mt-1.5 gap-1.5 text-sm">
                 <Link2Icon className="size-3.5" aria-hidden /> Partagée par lien
-              </button>
+              </Button>
             )}
           </div>
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="lg" aria-label={`Gérer la liste ${collection.name}`} />}>
+            <DropdownMenuTrigger render={<Button ref={manageRef} variant="outline" size="lg" aria-label={`Gérer la liste ${collection.name}`} />}>
               <SettingsIcon /> Gérer
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-48">
@@ -333,11 +338,11 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
             onChange={(e) => setQ(e.target.value)}
             placeholder={collection ? `Filtrer dans « ${collection.name} »…` : "Filtrer mes favoris…"}
             aria-label={collection ? `Filtrer dans la liste ${collection.name}` : "Filtrer mes favoris"}
-            className="h-10 pl-9 text-base md:text-base"
+            className="pl-9 text-base md:text-base"
           />
         </div>
         <Select items={sorts} value={activeSort} onValueChange={(v) => setSort(String(v))}>
-          <SelectTrigger className="h-10! sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="sm:w-48" aria-label="Trier"><SelectValue /></SelectTrigger>
           <SelectContent>{sorts.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
         </Select>
         <BibtexActions
@@ -345,21 +350,21 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
           retracted={retracted}
           filename={collection ? `sextant-${fileSlug(collection.name)}.bib` : "sextant-favoris.bib"}
           copiedMessage={`BibTeX copié : ${shown.length} référence${shown.length > 1 ? "s" : ""}.`}
-          className="flex-nowrap"
-          buttonClassName="h-10"
+          // Sur une ligne dès sm ; sous 360 px, les deux boutons pilule ne tiennent pas côte à côte et passent l'un sous l'autre.
+          className="max-sm:flex-wrap sm:flex-nowrap"
         />
       </div>
 
-      <p ref={countRef} tabIndex={-1} className="text-[0.9375rem] text-muted-foreground outline-none" aria-live="polite">
-        {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour « {q} »</>}
-        {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
+      <p ref={countRef} tabIndex={-1} className="text-meta text-muted-foreground outline-none" aria-live="polite">
+        {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour «&nbsp;{q}&nbsp;»</>}
+        {manualOrder && shown.length > 1 && <span className="block">Les flèches changent l'ordre de la liste.</span>}
       </p>
 
       {shown.length === 0 && collection && !q && (
         <EmptyState
           className="p-8"
           title="Cette liste est vide."
-          hint={<>Depuis « Tous » ou une fiche article, l'icône dossier range un article dans « {collection.name} ».</>}
+          hint={<>Depuis «&nbsp;Tous&nbsp;» ou une fiche article, l'icône dossier range un article dans «&nbsp;{collection.name}&nbsp;».</>}
         />
       )}
 
@@ -411,16 +416,11 @@ interface RowProps {
  * sélecteurs de liste (abonnés au contexte), pas le reste de chaque carte (PERF-12).
  */
 const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, manualOrder, titleAs, lists, retracted, onSelect, onMove }: RowProps) {
-  const animated = i < ANIMATED_ROWS;
   return (
-    <li
-      data-id={f.id}
-      className={cn(animated && "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none")}
-      style={animated ? { animationDelay: `${Math.min(i, 8) * 40}ms` } : undefined}
-    >
+    <li data-id={f.id}>
       <article
         className={cn(
-          "relative flex flex-col gap-2 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all duration-200 [contain-intrinsic-size:auto_180px] [content-visibility:auto] motion-safe:hover:-translate-y-0.5 hover:shadow-md hover:ring-foreground/25 sm:p-5",
+          "surface-card card-link relative flex flex-col gap-2 p-4 [contain-intrinsic-size:auto_180px] [content-visibility:auto] sm:p-5",
           manualOrder ? "pr-44 sm:pr-48" : "pr-24 sm:pr-28",
         )}
       >
@@ -430,8 +430,8 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <div className="absolute right-3 top-3 z-10 flex items-center gap-1">
           {manualOrder && (
             <>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("up", f.title)} data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
-              <Button variant="ghost" size="icon" className="size-9 rounded-full sm:size-8" aria-label={moveLabel("down", f.title)} data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
+              <Button variant="ghost" size="icon-sm" className="sm:size-8" aria-label={moveLabel("up", f.title)} data-move="up" disabled={i === 0} onClick={() => onMove(f.id, -1)}><ArrowUpIcon /></Button>
+              <Button variant="ghost" size="icon-sm" className="sm:size-8" aria-label={moveLabel("down", f.title)} data-move="down" disabled={isLast} onClick={() => onMove(f.id, 1)}><ArrowDownIcon /></Button>
             </>
           )}
           <CollectionPicker snapshot={f} />
@@ -440,17 +440,16 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <ArticleMeta authors={f.authors} venue={f.venue} year={f.year} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-1"><CitationCount count={f.citedByCount} /></span>
-          {f.addedAt && <span>· ajouté le {DATE_SHORT.format(new Date(f.addedAt))}</span>}
+          {f.addedAt && <span>Ajouté le {DATE_SHORT.format(new Date(f.addedAt))}</span>}
           {lists.length > 0 && (
             <span className="flex flex-wrap items-center gap-1.5">
-              ·{" "}
               {lists.map((c) => (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => onSelect(c.id)}
                   aria-label={`Ouvrir la liste ${c.name}`}
-                  className="relative z-10 inline-flex min-h-7 max-w-48 items-center truncate rounded-full bg-secondary px-2.5 text-xs text-secondary-foreground transition-shadow hover:ring-1 hover:ring-foreground/25"
+                  className="relative z-10 inline-flex min-h-7 max-w-48 items-center truncate rounded-full bg-secondary px-2.5 text-xs text-secondary-foreground transition-shadow hover:ring-1 hover:ring-[color-mix(in_oklch,var(--brand)_40%,var(--border))]"
                 >
                   {c.name}
                 </button>
@@ -471,14 +470,14 @@ function Chip({ active, onClick, count, icon = false, shared = false, children }
       onClick={onClick}
       title={children}
       className={cn(
-        "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full px-3 text-sm transition-colors",
-        active ? "bg-primary text-primary-foreground" : "bg-card text-foreground ring-1 ring-foreground/10 hover:ring-foreground/25",
+        "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm transition-colors",
+        active ? "bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
       )}
     >
       {icon && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
       <span className="truncate">{children}</span>
       {shared && <Link2Icon className="size-3.5 shrink-0" aria-label="partagée par lien" />}
-      <span className={active ? "text-primary-foreground/75" : "text-muted-foreground"}>{count}</span>
+      <span className={active ? undefined : "text-muted-foreground"}>{count}</span>
     </button>
   );
 }

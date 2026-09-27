@@ -45,7 +45,7 @@ export default function ThemeMenu({ defaultOpen, takeFocus }: ThemeMenuProps) {
         ref={trigger}
         aria-label={THEME_LABEL}
         title={THEME_LABEL}
-        render={<Button variant="ghost" size="icon" className="rounded-full" />}
+        render={<Button variant="ghost" size="icon-sm" />}
       >
         <ThemeIcon />
       </DropdownMenuTrigger>

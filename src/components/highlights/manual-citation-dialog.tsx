@@ -22,9 +22,9 @@ export function ManualCitationDialog({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent container={container} className="sm:max-w-lg">
-        <DialogTitle className="title-display text-2xl">Ajouter une citation</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
-          Recopiez le passage et indiquez la page : vous le retrouverez dans « Mes citations », avec sa référence.
+        <DialogTitle className="title-display">Ajouter une citation</DialogTitle>
+        <DialogDescription className="text-meta text-muted-foreground">
+          Recopiez le passage et indiquez la page : vous le retrouverez dans «&nbsp;Mes citations&nbsp;», avec sa référence.
         </DialogDescription>
         <Form onClose={() => onOpenChange(false)} />
       </DialogContent>
@@ -78,11 +78,11 @@ function Form({ onClose }: { onClose: () => void }) {
         </Field>
         <Field label="Note" optional className="min-w-0 flex-1">
           {(control) => (
-            <Input {...control} value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Pour vous" className="h-10 text-base md:text-base" />
+            <Input {...control} value={note} onChange={(e) => setNote(e.target.value)} maxLength={MAX_NOTE} placeholder="Pour vous" className="text-base md:text-base" />
           )}
         </Field>
       </div>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy || !text.trim()}>
           {busy && <Loader2Icon className="animate-spin" />} Enregistrer

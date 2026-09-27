@@ -13,6 +13,7 @@ import { useClientValue } from "@/hooks/use-client-value";
 import { useCopy } from "@/hooks/use-copy";
 import { neighbourEquivalent } from "@/lib/focus";
 import { DATE_SHORT } from "@/lib/dates";
+import { frSpaces } from "@/lib/text";
 
 const COPY_FAILURE = "Presse-papiers indisponible : sélectionnez le texte pour le copier.";
 
@@ -36,9 +37,9 @@ function CopyBlock({ label, value }: { label: string; value: string }) {
 function ConnectorUrl({ url }: { url: string }) {
   const { copied, copy } = useCopy();
   return (
-    <div className="flex flex-col gap-3 rounded-xl bg-accent-brand/8 p-4 ring-1 ring-accent-brand/25">
+    <div className="surface-tint flex flex-col gap-3 rounded-xl p-4">
       <p className="text-sm font-semibold">Adresse à coller dans Claude</p>
-      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 font-mono text-[0.8125rem] leading-relaxed ring-1 ring-foreground/10">{url}</p>
+      <p className="select-all break-all rounded-lg bg-card px-3 py-2.5 text-sm tabular-nums leading-relaxed border border-border">{url}</p>
       <Button size="lg" className="w-full" onClick={() => void copy(url, { message: "Adresse copiée.", failure: COPY_FAILURE })}>
         {copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Adresse copiée" : "Copier l'adresse"}
       </Button>
@@ -104,7 +105,7 @@ export function McpKeys() {
     try {
       const res = await fetch(`/api/account/keys/${k.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      toast("Clé révoquée.", { description: `« ${k.name} » ne donne plus accès à votre bibliothèque.` });
+      toast("Clé révoquée.", { description: frSpaces(`« ${k.name} » ne donne plus accès à votre bibliothèque.`) });
     } catch {
       setKeys(previous);
       toast.error("La révocation a échoué, réessayez.");
@@ -123,8 +124,8 @@ export function McpKeys() {
   const full = keys !== null && keys.length >= MAX_API_KEYS;
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-      <p className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+    <div className="surface-card flex flex-col gap-4 rounded-2xl p-5">
+      <p className="max-w-measure-text text-meta leading-relaxed text-muted-foreground">
         Donnez à Claude, ChatGPT ou un autre assistant compatible MCP l'accès, en lecture seule, à votre bibliothèque Sextant (favoris,
         listes, citations, notes) et à la recherche d'articles. Chaque assistant reçoit sa propre clé, révocable à tout moment.
       </p>
@@ -132,21 +133,20 @@ export function McpKeys() {
       {keys === null ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2Icon className="size-4 animate-spin" aria-hidden /> Chargement…</p>
       ) : keys.length > 0 ? (
-        <ul ref={listRef} className="flex flex-col divide-y rounded-lg ring-1 ring-foreground/10">
+        <ul ref={listRef} className="flex flex-col divide-y rounded-lg border border-border">
           {keys.map((k) => (
             <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-medium"><KeyRoundIcon className="size-4 text-accent-brand" aria-hidden /> {k.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  <code>{k.prefix}…</code>
-                  {k.createdAt && <> · créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
-                  {" · "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
+                  <span className="tabular-nums">{k.prefix}…</span>
+                  {k.createdAt && <>, créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
+                  {", "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
               </div>
               <Button
-                variant="ghost"
+                variant="destructive-ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-destructive"
                 data-focus-key="revoke"
                 onClick={(e) => {
                   revokeFrom.current = e.currentTarget;
@@ -175,17 +175,17 @@ export function McpKeys() {
           )}
         </Field>
         {/* Bouton grisé à la limite : la raison lui est reliée (A11Y-21). */}
-        <Button type="submit" className="h-10" disabled={busy || full} aria-describedby={full ? limitId : undefined}>
+        <Button type="submit" disabled={busy || full} aria-describedby={full ? limitId : undefined}>
           {busy ? <Loader2Icon className="animate-spin" /> : <PlusIcon />} Créer une clé
         </Button>
       </form>
       {full && <p id={limitId} className="text-sm text-muted-foreground">Limite de {MAX_API_KEYS} clés atteinte : révoquez-en une pour en créer une autre.</p>}
 
       <details className="text-sm">
-        <summary className="font-medium">Comment brancher Sextant à mon assistant ?</summary>
+        <summary className="font-medium">Comment brancher Sextant à mon assistant&#8239;?</summary>
         <div className="mt-3 flex flex-col gap-2 text-muted-foreground">
-          <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages → Connecteurs → Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
-          <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans « Autres méthodes ».</p>
+          <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages, puis Connecteurs, puis Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
+          <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans «&nbsp;Autres méthodes&nbsp;».</p>
         </div>
       </details>
 
@@ -205,12 +205,12 @@ export function McpKeys() {
             return target?.isConnected ? target : true;
           }}
         >
-          <DialogTitle className="title-display text-2xl">Révoquer « {revoking?.name} » ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces(`Révoquer « ${revoking?.name ?? ""} » ?`)}</DialogTitle>
+          <DialogDescription className="text-meta text-muted-foreground">
             L'assistant qui utilise cette clé perdra immédiatement l'accès à votre bibliothèque. Il faudra créer une nouvelle clé et
             reconfigurer le connecteur.
           </DialogDescription>
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirming(false)}>Annuler</Button>
             <Button variant="destructive" onClick={confirmRevoke}>
               <Trash2Icon /> Révoquer la clé
@@ -220,16 +220,20 @@ export function McpKeys() {
       </Dialog>
 
       <Dialog open={created !== null} onOpenChange={(o) => !o && setCreated(null)}>
-        <DialogContent className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg">
-          <DialogTitle className="title-display text-2xl">Votre clé est prête</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+        <DialogContent
+          className="max-h-[92dvh] min-w-0 overflow-x-hidden overflow-y-auto sm:max-w-lg"
+          // « Créer une clé », grisé pendant la création, a perdu le focus : il revient au champ du nom, pas à <body>.
+          finalFocus={() => (nameRef.current?.isConnected ? nameRef.current : true)}
+        >
+          <DialogTitle className="title-display">Votre clé est prête</DialogTitle>
+          <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Copiez l'adresse ci-dessous maintenant : elle contient votre clé et ne sera plus jamais affichée.
           </DialogDescription>
           {created && (
             <div className="mt-1 flex min-w-0 flex-col gap-5">
               <ConnectorUrl url={`${endpoint}?key=${created.key}`} />
 
-              <ol className="flex flex-col gap-2.5 text-[0.9375rem]">
+              <ol className="flex flex-col gap-2.5 text-meta">
                 {[
                   <>Dans Claude, ouvrez <strong>Réglages</strong>, puis <strong>Connecteurs</strong>.</>,
                   <>Cliquez sur <strong>Ajouter un connecteur personnalisé</strong>.</>,
@@ -243,7 +247,7 @@ export function McpKeys() {
               </ol>
 
               <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                Même démarche dans ChatGPT : Réglages → Connecteurs → Créer (mode développeur), sans authentification.
+                Même démarche dans ChatGPT : Réglages, puis Connecteurs, puis Créer (mode développeur), sans authentification.
                 Cette adresse vaut mot de passe : ne la partagez pas. En cas de doute, révoquez la clé et créez-en une autre.
               </p>
 
@@ -257,7 +261,7 @@ export function McpKeys() {
                     value={`printf 'Clé Sextant : '; read -rs SEXTANT_KEY; echo; claude mcp add --transport http sextant ${endpoint} --header "Authorization: Bearer $SEXTANT_KEY"; unset SEXTANT_KEY`}
                   />
                   <p className="-mt-2 text-muted-foreground">
-                    Quand le terminal demande la clé, collez celle du bloc « Clé seule » : elle ne s'affiche pas et ne reste pas dans l'historique. Claude Code la garde ensuite dans sa configuration (~/.claude.json) : en cas de doute, révoquez-la.
+                    Quand le terminal demande la clé, collez celle du bloc «&nbsp;Clé seule&nbsp;» : elle ne s'affiche pas et ne reste pas dans l'historique. Claude Code la garde ensuite dans sa configuration (~/.claude.json) : en cas de doute, révoquez-la.
                   </p>
                   <CopyBlock
                     label="Claude Desktop, fichier claude_desktop_config.json"

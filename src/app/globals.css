@@ -7,141 +7,182 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Nunito pour le texte et l'interface, Fredoka pour les titres et les accroches (app/fonts.ts). Chaque pile finit sans
+     serif : un glyphe absent (grec, indices) ou une variable manquante ne retombe jamais en Times (Y2, Y4). */
+  --font-sans: var(--font-nunito, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-fredoka, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
+  /* Monospace réservé au JSON de configuration des assistants IA (Y12). */
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* Échelle du texte (§ 3.3) : petits textes à 13 px au moins (la hauteur d'x de Nunito est plus petite que celle de
+     Geist, Y11), métadonnées à 15 px, lecture à 17 px. */
+  --text-xs: 0.8125rem;
+  --text-xs--line-height: 1.45;
+  --text-meta: 0.9375rem;
+  --text-meta--line-height: 1.5;
+  --text-read: 1.0625rem;
+  --text-read--line-height: 1.65;
+  /* Mesures de ligne (Y6), en ch de la police de l'élément : en Nunito, 1ch vaut environ 1,36 caractère, d'où des
+     valeurs qui paraissent basses. 52ch ≈ 70 caractères (prose), 54ch ≈ 73 (résumé, condensé), 56ch ≈ 76 (textes
+     d'interface, aides), 48ch pour les accroches en Fredoka. Utilitaires max-w-measure-*. */
+  --container-measure-prose: 52ch;
+  --container-measure-read: 54ch;
+  --container-measure-text: 56ch;
+  --container-measure-lead: 48ch;
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-tint: var(--tint);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-accent-brand: var(--accent-brand);
   --color-accent-brand-foreground: var(--accent-brand-foreground);
+  --color-brand: var(--brand);
+  --color-brand-surface: var(--brand-surface);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-sun: var(--sun);
+  --color-overlay: var(--overlay);
+  --color-disabled: var(--disabled);
+  --color-disabled-foreground: var(--disabled-foreground);
+  --color-destructive: var(--destructive);
   --color-oa: var(--oa);
   --color-oa-foreground: var(--oa-foreground);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
+  --color-border: var(--border);
   --color-input: var(--input);
   --color-input-border: var(--input-border);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --color-ring: var(--ring);
+  /* Une seule ombre, bleutée, réservée aux calques flottants (menus, suggestions, popovers) : pas d'ombre sur les cartes. */
+  --shadow-float: var(--elevation-float);
+  /* Rayons hiérarchisés (DA) : petits éléments serrés, champs et menus à 14 px, cartes à 20, blocs à 24, dialogues à 28.
+     Boutons, badges et puces : rounded-full. */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2rem;
 }
 
+/* Palette unique de la direction artistique (docs/handoffs/2026-09-26-da-audit.md, § 3.1). Contrastes WCAG indiqués
+   contre le fond, puis la carte. Aucune couleur de l'interface ne se code ailleurs qu'ici. */
 :root {
-  --accent-brand: oklch(0.47 0.16 262);
-  --accent-brand-foreground: oklch(0.98 0 0);
-  --oa: oklch(0.93 0.06 160);
-  --oa-foreground: oklch(0.35 0.1 160);
-  --background: oklch(0.975 0.008 85);
-  --foreground: oklch(0.18 0.02 262);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 262);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.2 0.015 262);
-  --primary-foreground: oklch(0.985 0.005 85);
-  --secondary: oklch(0.94 0.01 85);
-  --secondary-foreground: oklch(0.3 0.02 262);
-  --muted: oklch(0.955 0.01 85);
-  --muted-foreground: oklch(0.5 0.02 262);
-  --accent: oklch(0.94 0.01 85);
-  --accent-foreground: oklch(0.2 0.015 262);
+  --background: #F9F8F2;
+  --foreground: #0D111A; /* 17,75:1 fond, 18,88:1 carte, 16,17:1 teinte */
+  --card: #FFFFFF;
+  --card-foreground: var(--foreground);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--foreground);
+  /* Bouton plein : bleu foncé, libellé #EEF1FB à 5,88:1 (7,32:1 au survol). */
+  --primary: #3E54B8;
+  --primary-foreground: #EEF1FB;
+  --primary-hover: #34479E;
+  /* Teinte bleue : zones secondaires, survols légers, élément actif. */
+  --tint: #EAEDF9;
+  --secondary: var(--tint);
+  --secondary-foreground: var(--foreground);
+  --accent: var(--tint);
+  --accent-foreground: var(--foreground);
+  /* Neutre chaud : squelettes et fonds passifs, pas les survols. */
+  --muted: #EFEDE5;
+  --muted-foreground: #4A5160; /* 7,48:1 fond, 7,96:1 carte, 6,82:1 teinte */
+  /* Liens, petits textes et icônes bleus : #566ED1 n'atteint pas 4,5:1 en petit texte (6,24:1 fond, 5,68:1 teinte). */
+  --link: #3E54B8;
+  --link-hover: #2E3F8C;
+  --accent-brand: var(--link);
+  --accent-brand-foreground: #EEF1FB;
+  /* Bleu de marque : aplats, graphismes, gros textes seulement (≥ 24 px, ou ≥ 19 px gras : 4,34:1 sur le fond). */
+  --brand: #566ED1;
+  /* Surface bleue qui porte du texte courant : #3E54B8 (texte #EEF1FB à 5,88:1) ; #566ED1 reste aux aplats sans texte. */
+  --brand-surface: #3E54B8;
+  --brand-foreground: #EEF1FB;
+  /* Jaune : étoile et vague, décoratif uniquement et toujours opaque (2,06:1 : jamais du texte). */
+  --sun: #D7A848;
+  --overlay: rgb(13 17 26 / 0.3);
+  /* Contrôles désactivés (exemptés de contraste par WCAG) : pas d'opacité, qui salirait le bleu. */
+  --disabled: #ECEAE2;
+  --disabled-foreground: #8A8F99;
   /* Rouge assombri (#b3000b) : 6,7:1 sur le fond, 5,5:1 sur ses propres teintes à 10 %, 4,5:1 au survol à 20 % (A11Y-15). */
   --destructive: oklch(0.48 0.2 27.3);
-  --border: oklch(0.9 0.01 85);
-  /* Remplissage des champs et bordure des boutons outline en sombre : trop pâle pour délimiter un champ. */
-  --input: oklch(0.86 0.012 85);
-  /* Contour des champs de saisie (Input, Textarea, Select) : 3,3:1 sur le fond, 3,5:1 sur une carte (WCAG 1.4.11, A11Y-17). */
-  --input-border: oklch(0.63 0.012 85);
-  --ring: oklch(0.5 0.16 262);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --oa: oklch(0.93 0.06 160);
+  --oa-foreground: oklch(0.35 0.1 160);
+  /* Filets et bordures de cartes : décoratifs (1,24:1), ils ne délimitent jamais un champ. */
+  --border: #E2E0D6;
+  /* Remplissage des contrôles et bordure des boutons outline en sombre : trop pâle pour délimiter un champ. */
+  --input: #D6D3C8;
+  /* Contour des champs de saisie (Input, Textarea, Select) : 3,52:1 fond, 3,75:1 carte, 3,21:1 teinte (WCAG 1.4.11, A11Y-17). */
+  --input-border: #7D8494;
+  /* Focus : 6,24:1 sur le fond. */
+  --ring: #3E54B8;
+  --elevation-float: 0 12px 32px -12px oklch(0.3 0.08 265 / 0.28);
+  --radius: 0.875rem;
 }
 
+/* Sombre dérivé de l'encre bleutée #0D111A, pas d'un gris neutre. */
 .dark {
-  --accent-brand: oklch(0.74 0.12 262);
-  --accent-brand-foreground: oklch(0.15 0 0);
-  --oa: oklch(0.3 0.06 160);
-  --oa-foreground: oklch(0.85 0.1 160);
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.93 0.005 85);
-  --primary-foreground: oklch(0.18 0.015 262);
-  --secondary: oklch(0.28 0.01 262);
-  --secondary-foreground: oklch(0.9 0.01 85);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.28 0.01 262);
-  --accent-foreground: oklch(0.93 0.005 85);
+  --background: #0D111A;
+  --foreground: #F9F8F2; /* 17,75:1 fond, 16,16:1 carte, 13,48:1 teinte */
+  --card: #161B28;
+  --popover: #1B2130;
+  /* Bouton plein clair sur l'encre : libellé encre à 7,60:1 (9,15:1 au survol) ; #3E54B8 ne se détacherait qu'à 2,85:1. */
+  --primary: #8FA1EA;
+  --primary-foreground: #0D111A;
+  --primary-hover: #A3B2EF;
+  --tint: #20284A;
+  --muted: #1E2433;
+  --muted-foreground: #A3AAB8; /* 8,09:1 fond, 7,37:1 carte, 6,15:1 teinte */
+  --link: #8FA1EA; /* 7,60:1 fond, 6,92:1 carte, 5,78:1 teinte */
+  --link-hover: #A3B2EF;
+  --accent-brand-foreground: #0D111A;
+  --brand: #6F8BE8; /* 5,87:1 fond */
+  /* Un aplat #566ED1 éclairerait trop : surface bleue profonde, texte #EEF1FB à 10,30:1. */
+  --brand-surface: #27346F;
+  --brand-foreground: #EEF1FB;
+  --overlay: rgb(0 0 0 / 0.6);
+  /* Plein désactivé : garde sa forme partout (1,45:1 fond, 1,32:1 carte, 1,24:1 fenêtre) ; libellé à 3,46:1. */
+  --disabled: #2A3142;
+  --disabled-foreground: #7C8496;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  /* 3,5:1 sur le fond et sur une carte, 3,2:1 contre le remplissage du champ (A11Y-17). */
-  --input-border: oklch(1 0 0 / 38%);
-  --ring: oklch(0.7 0.12 262);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --oa: #12352A;
+  --oa-foreground: #8FDDB5; /* 8,40:1 */
+  /* Filets opaques : un blanc translucide variait selon la surface. */
+  --border: #262C3A;
+  /* Contour des boutons outline (dark:border-input) : 1,66:1 fond, 1,51:1 carte, 1,41:1 fenêtre. */
+  --input: #333A4B;
+  /* Contour des champs : 4,58:1 fond, 4,17:1 carte. */
+  --input-border: #767D8E;
+  --ring: #8FA1EA; /* 7,60:1 ; le #3E54B8 du clair tomberait à 2,85:1 */
+  --elevation-float: 0 12px 32px -12px oklch(0 0 0 / 0.6);
+}
+
+/* Surface bleue (section ou bande forte) : texte, liens et focus passent en clair pour rester lisibles. Prête, pas encore
+   utilisée (section forte à valider). */
+.surface-brand {
+  background-color: var(--brand-surface);
+  color: var(--brand-foreground);
+  --link: #FFFFFF;
+  --link-hover: #FFFFFF;
+  --accent-brand: #FFFFFF;
+  --ring: #FFFFFF;
+  --muted-foreground: var(--brand-foreground);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring;
   }
-  /* Focus clavier : contour plein de 2 px, décollé, contrasté (≥ 3:1) sur tous les éléments. Les composants ui/*
-     portent outline-none (couche utilities, prioritaire) et gardent leur propre anneau. */
+  /* Focus clavier : contour plein de 2 px, décollé de 2 px, en --ring (6,24:1 en clair, 7,60:1 en sombre, blanc sur
+     .surface-brand), le même pour tous les éléments, composants ui/* compris : un contour, contrairement à un halo en
+     box-shadow, reste visible en couleurs forcées. */
   :focus-visible {
     outline-style: solid;
     outline-width: 2px;
@@ -153,26 +194,210 @@
   /* En-tête collant de 64 px : l'élément focalisé ou l'ancre visée s'arrête dessous (5rem = en-tête + marge). */
   html {
     @apply font-sans scroll-pt-20;
+    /* Cases à cocher, boutons radio, curseurs natifs aux couleurs du bouton plein. */
+    accent-color: var(--primary);
+  }
+  ::selection {
+    background-color: color-mix(in oklch, var(--brand) 30%, transparent);
   }
 }
-/* Titres : sans, graisse marquée, interlettrage resserré ; un mot trop long (sigles, URL) se coupe au lieu de déborder à 320 px */
-.title-display {
-  font-weight: 600;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
-  overflow-wrap: break-word;
+
+/* Mouvement réduit : aucune animation ni transition ne dure, où qu'elle soit déclarée (composants tiers compris). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Rôles typographiques (§ 3.3), en couche components : un utilitaire posé sur l'élément (taille, graisse, marge) les
+   remplace sans !important (Y3). Tailles mobiles d'abord, puis à partir de sm (40rem). */
+@layer components {
+  /* Titres : Fredoka 600, interlettrage normal (resserré à -0,01em sur les seuls rôles de 24 px et plus, Y3) ; un mot
+     trop long (sigles, URL) se coupe au lieu de déborder à 320 px. */
+  .title-display {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    letter-spacing: normal;
+    /* L'espace de Fredoka est étroite (0,24 em) : « 2024 VI » se lisait « 2024VI ». */
+    word-spacing: 0.05em;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+  }
+  /* Titre de l'accueil : 40 / 56 / 64 px, interligne 1,1 (les accents de Fredoka ne se touchent pas, Y9). */
+  .type-hero {
+    font-size: 2.5rem;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  /* h1 de page : 36 / 48 px. */
+  .type-h1 {
+    font-size: 2.25rem;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  /* h1 d'une fiche d'article, souvent long : 28 / 40 px. */
+  .type-h1-article {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  /* h2 de section : 26 / 32 px. */
+  .type-h2 {
+    font-size: 1.625rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+  /* Titre de bloc, intertitre, titre de dialogue : 20 / 22 px. */
+  .type-h3 {
+    font-size: 1.25rem;
+    line-height: 1.25;
+  }
+  /* Titre de carte : 18 / 20 px. */
+  .type-card {
+    font-size: 1.125rem;
+    line-height: 1.3;
+  }
+  @media (width >= 40rem) {
+    .type-hero { font-size: 3.5rem; }
+    .type-h1 { font-size: 3rem; }
+    .type-h1-article { font-size: 2.5rem; }
+    .type-h2 { font-size: 2rem; }
+    .type-h3 { font-size: 1.375rem; }
+    .type-card { font-size: 1.25rem; }
+  }
+  @media (width >= 64rem) {
+    .type-hero { font-size: 4rem; }
+  }
+  /* Intertitre d'une page (Résumé, Sujets, Ma note, sections du compte) : en casse normale et en Fredoka, à la place des
+     petites majuscules espacées (Y5). */
+  .section-title {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    word-spacing: 0.05em;
+    font-size: 1.25rem;
+    line-height: 1.25;
+    color: var(--foreground);
+  }
+  @media (width >= 40rem) {
+    .section-title { font-size: 1.375rem; }
+  }
+  /* Accroche sous un titre : Fredoka 500, 18 / 20 px, texte secondaire, 48ch (Y7). */
+  .lead {
+    font-family: var(--font-heading);
+    font-weight: 500;
+    word-spacing: 0.05em;
+    font-size: 1.125rem;
+    line-height: 1.45;
+    color: var(--muted-foreground);
+    max-width: 48ch;
+    text-wrap: balance;
+  }
+  @media (width >= 40rem) {
+    .lead { font-size: 1.25rem; }
+  }
+  /* Un seul style de lien (C18) : bleu foncé (6,24:1 fond, 5,68:1 teinte), soulignement de 1,5 px décalé de 3 px,
+     plus foncé au survol. Liens des pages de texte compris, et boutons variant="link". */
+  .link,
+  .prose-sextant a {
+    color: var(--link);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    transition: color 150ms;
+  }
+  .link:hover,
+  .prose-sextant a:hover {
+    color: var(--link-hover);
+  }
+  /* Lien discret, dans un texte secondaire (métadonnées, aides) : couleur du texte, soulignement atténué, bleu au survol. */
+  .link-quiet {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    text-decoration-color: color-mix(in oklch, currentColor 50%, transparent);
+    transition: color 150ms;
+  }
+  .link-quiet:hover {
+    color: var(--link);
+    text-decoration-color: currentColor;
+  }
+  /* Carte (C8) : fond carte, filet, 20 px, ni ombre ni soulèvement. Résultats, favoris, listes, articles consultés,
+     citations, sujets des retours. Un bloc de section reprend la classe avec rounded-2xl (24 px, C11). */
+  .surface-card {
+    background-color: var(--card);
+    color: var(--card-foreground);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+  }
+  /* Zone teintée (tuiles de thématiques, condensé IA, états vides, encarts) : aucun filet visible, mais une bordure
+     transparente, que les couleurs forcées dessinent quand le fond disparaît. Rayon posé par l'élément. */
+  .surface-tint {
+    background-color: var(--tint);
+    border: 1px solid transparent;
+  }
+  /* Carte ou tuile cliquable : au survol, bordure bleue (40 % du bleu de marque) et titre (.card-title) en bleu des liens. */
+  .card-link {
+    transition: border-color 150ms, color 150ms;
+  }
+  .card-link:hover {
+    border-color: color-mix(in oklch, var(--brand) 40%, var(--border));
+  }
+  .card-link:hover .card-title {
+    color: var(--link);
+  }
+}
+
+/* Notifications (Sonner, feuille injectée hors couche) : ombre flottante, bouton « Annuler » en pilule aux couleurs du
+   bouton plein, focus commun du site à la place des halos gris de Sonner. Sélecteurs plus précis que les siens. */
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  box-shadow: var(--elevation-float);
+  font-size: 0.9375rem;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button] {
+  height: 2rem;
+  padding-inline: 0.875rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color 150ms;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button]:hover {
+  background: var(--primary-hover);
+}
+[data-sonner-toaster] [data-sonner-toast]:focus-visible,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button]:focus-visible,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button]:focus-visible {
+  box-shadow: var(--elevation-float);
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button]:focus-visible,
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button]:focus-visible {
+  box-shadow: none;
 }
 
 /* Barres de chargement animées (synthèse IA) */
+/* Sur la teinte (condensé IA), la base passe à --card pour garder l'écart avec le fond. */
 .shimmer {
+  --shimmer-base: var(--muted);
   background: linear-gradient(
     90deg,
-    var(--muted) 0%,
-    color-mix(in oklch, var(--muted), var(--foreground) 12%) 50%,
-    var(--muted) 100%
+    var(--shimmer-base) 0%,
+    color-mix(in oklch, var(--shimmer-base), var(--foreground) 12%) 50%,
+    var(--shimmer-base) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.3s ease-in-out infinite;
+}
+.surface-tint .shimmer {
+  --shimmer-base: var(--card);
 }
 @keyframes shimmer {
   0% { background-position: 200% 0; }
@@ -182,24 +407,30 @@
   .shimmer { animation: none; }
 }
 
-/* Pages de texte */
+/* Pages de texte : lecture en 17 px, 52ch par ligne (≈ 70 caractères, Y6) ; intertitres en Fredoka 21 / 24 px (Y10). */
 .prose-sextant {
   font-size: 1.0625rem;
-  line-height: 1.7;
+  line-height: 1.65;
+  max-width: 52ch;
 }
 .prose-sextant h2 {
   margin-top: 2.25rem;
   margin-bottom: 0.75rem;
-  font-size: 1.375rem;
+  font-family: var(--font-heading);
+  word-spacing: 0.05em;
+  font-size: 1.3125rem;
   font-weight: 600;
-  letter-spacing: -0.015em;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+@media (width >= 40rem) {
+  .prose-sextant h2 { font-size: 1.5rem; }
 }
 .prose-sextant h2:first-child { margin-top: 0; }
 .prose-sextant p { margin-bottom: 1rem; }
 .prose-sextant ul { margin: 0 0 1rem 1.25rem; list-style: disc; }
 .prose-sextant li { margin-bottom: 0.35rem; }
-.prose-sextant a { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: color-mix(in oklch, currentColor, transparent 60%); }
-.prose-sextant a:hover { color: var(--accent-brand); }
 
 /* Tailwind 4 laisse le curseur par défaut sur les boutons : tout ce qui se clique montre la main. */
 @layer base {
@@ -233,6 +464,9 @@
   --highlight: oklch(0.92 0.17 96);
   --highlight-foreground: oklch(0.6 0.13 80);
   --highlight-alpha: 55%;
+  /* Page du PDF : le papier reste blanc quel que soit le thème, son surligneur ne change donc pas en sombre. */
+  --highlight-paper: oklch(0.92 0.17 96);
+  --highlight-paper-line: oklch(0.6 0.13 80);
 }
 .dark {
   --highlight: oklch(0.78 0.16 92);
@@ -262,6 +496,17 @@ mark[data-highlight] {
   }
 }
 
+/* Couleurs forcées : l'état sélectionné (liste active, filtre, sujet, vote donné, page courante) ne tenait qu'à son fond
+   bleu, que le système efface. Il reprend la sélection système. Les Button (data-slot) gardent leur propre repère. */
+@media (forced-colors: active) {
+  :is(button[aria-pressed="true"]:not([data-slot="button"]), a[aria-current="page"], a[aria-current="true"]) {
+    forced-color-adjust: none;
+    background: SelectedItem;
+    color: SelectedItemText;
+    border-color: SelectedItem;
+  }
+}
+
 /* Passage cité dans une carte : un trait de surligneur sous la ligne, qui suit les retours à la ligne. */
 .hl-text {
   background-image: linear-gradient(transparent 52%, color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent) 52%);
@@ -270,6 +515,13 @@ mark[data-highlight] {
   /* Marge intérieure seulement : une marge négative serait rognée par le repli du texte (line-clamp). */
   padding: 0 0.18em;
   border-radius: 2px;
+}
+/* Couleurs forcées : l'image de fond disparaît, le passage cité reprend le surlignage système (C28). */
+@media (forced-colors: active) {
+  .hl-text {
+    background: Mark;
+    color: MarkText;
+  }
 }
 
 /* Lecteur en plein écran : fond, défilement et marges gérés ici (Fullscreen API), ou par le repli fixe sur les navigateurs sans API. */
@@ -328,7 +580,7 @@ mark[data-highlight] {
   bottom: 0;
   transform: translateY(100%);
   padding-top: 0.125rem;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--muted-foreground);
   pointer-events: none;
 }
@@ -345,27 +597,11 @@ mark[data-highlight] {
   user-select: none;
 }
 .textLayer ::selection {
-  background: color-mix(in oklch, var(--accent-brand) 35%, transparent);
+  background: color-mix(in oklch, var(--brand) 35%, transparent);
 }
 .textLayer .hl {
-  /* Jaune fixe : le papier du PDF est blanc quel que soit le thème. */
-  background: oklch(0.92 0.17 96);
+  background: var(--highlight-paper);
   /* Trait sous le fragment, comme sur le résumé : le passage se repère sans compter sur la seule couleur (A11Y-31). */
-  box-shadow: inset 0 -2px 0 oklch(0.6 0.13 80);
+  box-shadow: inset 0 -2px 0 var(--highlight-paper-line);
   border-radius: 2px;
-}
-
-/* Fil pointillé de l'annonce MCP : les points avancent du sextant vers l'assistant. */
-@keyframes mcp-flow {
-  to { stroke-dashoffset: -20; }
-}
-
-/* Pages d'erreur : le sextant flotte (404) ou tangue (erreur serveur). */
-@keyframes sextant-bob {
-  0%, 100% { transform: translateY(0) rotate(-4deg); }
-  50% { transform: translateY(-6px) rotate(2deg); }
-}
-@keyframes sextant-roll {
-  0%, 100% { transform: translateY(0) rotate(-9deg); }
-  50% { transform: translateY(-4px) rotate(9deg); }
 }

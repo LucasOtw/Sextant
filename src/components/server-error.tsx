@@ -27,32 +27,33 @@ export function ServerError({ error, retry }: Props) {
     <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
       <ErrorScene variant="storm" />
       <div className="flex flex-col items-center gap-3 text-center" role="alert">
-        <p className="text-sm font-semibold uppercase tracking-wide text-accent-brand">Erreur serveur</p>
-        <h1 className="title-display text-4xl leading-tight sm:text-5xl">Mer agitée, visibilité réduite</h1>
-        <p className="max-w-lg text-balance text-lg text-muted-foreground">
+        <p className="text-sm font-semibold text-accent-brand">Erreur serveur</p>
+        <h1 className="title-display type-h1">Mer agitée, visibilité réduite</h1>
+        <p className="lead">
           Sextant n'a pas pu afficher cette page. Le plus souvent, une source de données comme OpenAlex répond mal ou trop lentement :
           réessayez dans un instant.
         </p>
       </div>
       <div className="flex flex-wrap justify-center gap-2">
         <Button size="lg" onClick={() => retry()}><RotateCwIcon /> Réessayer</Button>
-        <Link href="/" className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card" })}><HomeIcon /> Retour à l'accueil</Link>
+        <Link href="/" className={buttonVariants({ variant: "outline", size: "lg" })}><HomeIcon /> Retour à l'accueil</Link>
       </div>
       <div className="flex flex-col items-center gap-1.5 text-center text-sm text-muted-foreground">
         <p>
-          Ça persiste ? <Link href="/retours" className="text-accent-brand underline underline-offset-3">Signalez-le dans Bugs et idées</Link>
+          Ça persiste&#8239;? <Link href="/retours" className="link">Signalez-le dans Bugs et idées</Link>
           {reference && <>, en indiquant la référence ci-dessous</>}.
         </p>
         {reference && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             // Presse-papiers indisponible : la référence reste lisible.
             onClick={() => void copy(reference, { message: "Référence copiée." })}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-xs hover:bg-secondary hover:text-foreground"
+            className="font-normal tabular-nums text-muted-foreground"
             aria-label={copied ? "Référence copiée" : `Copier la référence ${reference}`}
           >
-            Référence : {reference} {copied ? <CheckIcon className="size-3.5" aria-hidden /> : <CopyIcon className="size-3.5" aria-hidden />}
-          </button>
+            Référence&nbsp;: {reference} {copied ? <CheckIcon aria-hidden /> : <CopyIcon aria-hidden />}
+          </Button>
         )}
       </div>
     </div>

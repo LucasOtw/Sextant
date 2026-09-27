@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
 import { themeBySlug, themePageMeta } from "@/lib/themes";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { recover } from "@/lib/log";
 
 interface Props {
@@ -54,9 +54,9 @@ export default async function ThemePage({ params, searchParams }: Props) {
       <header className="mb-6 flex flex-col gap-3">
         {/* Fil d'Ariane : repère de navigation, lien souligné, séparateur non lu, page courante signalée (A11Y-37). */}
         <nav aria-label="Fil d'Ariane">
-          <ol className="flex items-center gap-2 text-[0.9375rem] text-muted-foreground">
+          <ol className="flex items-center gap-2 text-meta text-muted-foreground">
             <li>
-              <Link href="/#themes" className="underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">Thématiques</Link>
+              <Link href="/#themes" className="link-quiet">Thématiques</Link>
             </li>
             <li aria-hidden>/</li>
             <li className="flex items-center gap-2">
@@ -65,8 +65,8 @@ export default async function ThemePage({ params, searchParams }: Props) {
             </li>
           </ol>
         </nav>
-        <h1 className="title-display text-4xl sm:text-5xl">{theme.name}</h1>
-        <p className="max-w-2xl text-lg text-muted-foreground">{theme.description}</p>
+        <h1 className="title-display type-h1">{theme.name}</h1>
+        <p className="lead">{theme.description}</p>
         <SearchBox size="hero" defaultValue={search.q} className="max-w-3xl" />
         <SkipToResults />
         {topics.length > 0 && (
@@ -76,12 +76,15 @@ export default async function ThemePage({ params, searchParams }: Props) {
               const id = shortId(t.id);
               const active = search.topic === id;
               return (
-                <Link key={t.id} href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined}>
-                  <Badge variant={active ? "default" : "secondary"} className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">
-                    {t.display_name}
-                    {active && <span className="sr-only"> (filtre actif, activer pour le retirer)</span>}
-                  </Badge>
-                </Link>
+                <Badge
+                  key={t.id}
+                  variant={active ? "default" : "secondary"}
+                  render={<Link href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined} />}
+                  className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm"
+                >
+                  {t.display_name}
+                  {active && <span className="sr-only"> (filtre actif, activer pour le retirer)</span>}
+                </Badge>
               );
             })}
           </div>

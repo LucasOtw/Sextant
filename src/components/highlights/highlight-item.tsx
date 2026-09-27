@@ -7,7 +7,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { Textarea } from "@/components/ui/textarea";
 import { citationBlock, MAX_NOTE, sourceLabel, type Highlight } from "@/lib/highlights-shared";
 import { excerpt } from "@/lib/labels";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { DATE_SHORT } from "@/lib/dates";
 
 /** Au-delà, le passage est replié : la carte reste lisible dans une barre latérale. */
@@ -82,28 +82,28 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
   }
 
   const source = h.page && onGoToPage ? (
-    <button type="button" onClick={() => onGoToPage(h.page!)} className="underline underline-offset-2 hover:text-foreground">{sourceLabel(h)}</button>
+    <Button variant="link" size="inline" onClick={() => onGoToPage(h.page!)}>{sourceLabel(h)}</Button>
   ) : (
     <span>{sourceLabel(h)}</span>
   );
 
   return (
-    <li className={cn("rounded-xl bg-card ring-1 ring-foreground/10 transition-shadow hover:shadow-sm", compact ? "p-3.5" : "p-4 sm:p-5", deferPaint && "[contain-intrinsic-size:auto_160px] [content-visibility:auto]")}>
-      <blockquote lang={h.source === "manual" ? undefined : lang} className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-[0.9375rem]")}>
-        <QuoteIcon className="absolute left-0 top-[0.35em] size-3.5 text-highlight-foreground" aria-hidden />
+    <li className={cn("surface-card", compact ? "p-3.5" : "p-4 sm:p-5", deferPaint && "[contain-intrinsic-size:auto_160px] [content-visibility:auto]")}>
+      <blockquote lang={h.source === "manual" ? undefined : lang} className={cn("relative pl-6 leading-relaxed", compact ? "text-sm" : "text-meta")}>
+        <QuoteIcon className="absolute left-0 top-[0.35em] size-3.5 text-muted-foreground" aria-hidden />
         {/* Le repli porte sur un bloc ; le trait de surligneur reste sur le texte en ligne, fragment par fragment. */}
         <div id={passageId} className={cn("whitespace-pre-line", long && !expanded && "line-clamp-6")}>
           <span className="hl-text">{h.text}</span>
         </div>
       </blockquote>
       {long && (
-        <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 pl-6 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground" aria-expanded={expanded} aria-controls={passageId}>
+        <Button variant="link" size="inline" onClick={() => setExpanded((e) => !e)} className="mt-1 ml-6 text-xs" aria-expanded={expanded} aria-controls={passageId}>
           {expanded ? "Réduire" : "Lire le passage en entier"}
-        </button>
+        </Button>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 pl-6 text-xs text-muted-foreground">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 pl-6 text-xs text-muted-foreground">
         {source}
-        {h.createdAt && <span>· {DATE_SHORT.format(new Date(h.createdAt))}</span>}
+        {h.createdAt && <span>{h.source === "manual" ? "Ajouté" : "Surligné"} le {DATE_SHORT.format(new Date(h.createdAt))}</span>}
       </div>
       {editing ? (
         <Textarea
@@ -142,15 +142,17 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
           Ajouter une note…
         </button>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1 pl-4">
+      {/* Marge serrée des boutons (px-2.5), rattrapée par -ml-2.5 : l'icône du premier bouton s'aligne sur celle de la
+          citation, et « Copier avec la référence » et « Supprimer » tiennent sur une ligne à 375 px. */}
+      <div className="mt-2.5 -ml-2.5 flex flex-wrap items-center gap-1">
         {h.note && !editing && (
-          <Button ref={noteButtonRef} variant="ghost" size="sm" onClick={startEditing}>
+          <Button ref={noteButtonRef} variant="ghost" size="sm" className="px-2.5" onClick={startEditing}>
             <PenLineIcon /> Modifier la note
           </Button>
         )}
         {/* Le nom commence par le texte visible et suit « Copié » (A11Y-26) ; l'annonce de la copie vient de useCopy. */}
-        <Button variant="ghost" size="sm" onClick={copy} aria-label={copied ? "Copié" : `Copier avec la référence : « ${excerpt(h.text)} »`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
-        <Button variant="ghost" size="sm" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`} className="text-muted-foreground hover:text-destructive"><Trash2Icon /> Supprimer</Button>
+        <Button variant="ghost" size="sm" className="px-2.5" onClick={copy} aria-label={copied ? "Copié" : `Copier avec la référence : « ${excerpt(h.text)} »`}>{copied ? <CheckIcon /> : <CopyIcon />} {copied ? "Copié" : "Copier avec la référence"}</Button>
+        <Button variant="destructive-ghost" size="sm" className="px-2.5" data-focus-key="delete" onClick={() => void onDelete()} aria-label={`Supprimer le passage « ${excerpt(h.text)} »`}><Trash2Icon /> Supprimer</Button>
       </div>
     </li>
   );

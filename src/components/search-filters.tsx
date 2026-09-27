@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DOC_TYPES, LANGUAGES } from "@/lib/search-params";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 const SORTS = [
   { value: "relevance", label: "Pertinence" },
@@ -70,7 +70,8 @@ export function SearchFilters({ className, defaults }: Props) {
   const hasFilters = ["type", "oa", "from", "to", "sort", "lang", "src"].some((k) => params.has(k));
 
   return (
-    <div className={cn("flex flex-col gap-3", pending && "opacity-70", className)} aria-busy={pending}>
+    // Sous sm, écarts resserrés : les filtres empilés ne repoussent pas le premier résultat hors du premier écran.
+    <div className={cn("flex flex-col gap-2 sm:gap-3", pending && "opacity-70", className)} aria-busy={pending}>
       <Field label="Trier par">
         <Select items={SORTS} value={params.get("sort") ?? defaults?.sort ?? "relevance"} onValueChange={(v) => update({ sort: v === "relevance" ? null : String(v) })}>
           <SelectTrigger className="w-full" aria-label="Trier par"><SelectValue /></SelectTrigger>
@@ -164,7 +165,7 @@ export function SearchFilters({ className, defaults }: Props) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5 text-sm font-medium text-muted-foreground">
+    <label className="flex flex-col gap-1 text-meta font-semibold text-muted-foreground sm:gap-1.5">
       {label}
       <span className="text-base font-normal text-foreground">{children}</span>
     </label>

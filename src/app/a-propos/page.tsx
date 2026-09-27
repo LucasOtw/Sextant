@@ -37,7 +37,7 @@ export default function AboutPage() {
       <p>Pour garder un contenu fiable, Sextant applique des filtres stricts :</p>
       <ul>
         <li>seuls les articles, revues de littérature, thèses, livres et chapitres sont servis ; préprints, éditoriaux, lettres, errata, rapports et jeux de données sont écartés ;</li>
-        <li>par défaut, les résultats se limitent aux revues indexées (liste « core » d'OpenAlex, proche de Scopus et Web of Science) ; le filtre « Sources » permet d'élargir ;</li>
+        <li>par défaut, les résultats se limitent aux revues indexées (liste «&nbsp;core&nbsp;» d'OpenAlex, proche de Scopus et Web of Science) ; le filtre «&nbsp;Sources&nbsp;» permet d'élargir ;</li>
         <li>les documents rétractés sont exclus, et signalés si vous y accédez directement.</li>
       </ul>
 
@@ -48,7 +48,7 @@ export default function AboutPage() {
         hébergé en Europe, à partir du seul résumé. Il est indicatif : lisez l'article, pas seulement sa synthèse.
       </p>
 
-      <h2>Pourquoi « Sextant »</h2>
+      <h2>Pourquoi «&nbsp;Sextant&nbsp;»</h2>
       <p>Un sextant sert à faire le point et à tenir son cap. C'est ce qu'on aimerait vous offrir dans la littérature scientifique.</p>
 
       <p>

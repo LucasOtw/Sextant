@@ -19,7 +19,7 @@ import { pageAtTop, parsePickerPage } from "@/lib/pdf-pages";
 import { inertOutside } from "@/lib/focus";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { ExternalLink } from "@/components/external-link";
 
 type PdfLib = typeof import("pdfjs-dist");
@@ -111,7 +111,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
       <div ref={wrapRef} data-full={full ? "" : undefined} className={cn("pdf-fullscreen mt-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6", fallback && "fixed inset-0 z-50 m-0 overflow-y-auto bg-background px-4 py-4 sm:px-6")}>
         {!full && (
           <div className="lg:hidden">
-            <Button variant="outline" className="w-full justify-between bg-card" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
+            <Button variant="outline" className="w-full justify-between" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="lecteur-surlignages">
               Mes surlignages{highlights.length > 0 && ` (${highlights.length})`}
               <ChevronDownIcon className={cn("transition-transform", open && "rotate-180")} />
             </Button>
@@ -122,7 +122,7 @@ export function ReaderLayout({ url, originalUrl, embedUrl, lang }: LayoutProps) 
         </aside>
         <div className={cn("min-w-0 flex-1 lg:order-1", full && "mx-auto w-full max-w-4xl")}>
           <div className="mb-3 flex justify-end">
-            <Button variant="outline" size="sm" className="bg-card" onClick={() => void toggleFullscreen()}>
+            <Button variant="outline" size="sm" onClick={() => void toggleFullscreen()}>
               {full ? <Minimize2Icon /> : <Maximize2Icon />} {full ? "Quitter le plein écran" : "Plein écran"}
             </Button>
           </div>
@@ -540,21 +540,21 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
     })();
     return (
       <div className="flex flex-col gap-4">
-        <div className="rounded-xl border border-dashed p-5 text-[0.9375rem]">
+        <div className="surface-tint rounded-2xl p-5 text-meta">
           <p className="font-medium">Le lecteur Sextant n'a pas pu récupérer ce PDF : {host} n'accepte que les navigateurs.</p>
           <p className="mt-1 text-muted-foreground">
             {embedUrl
               ? "Il s'affiche ci-dessous avec le lecteur de votre navigateur. Le surlignage n'y est pas possible : notez vos citations à la main, elles seront gardées avec l'article."
               : "Ouvrez-le dans un nouvel onglet : le surlignage n'y sera pas possible, notez vos citations à la main, elles seront gardées avec l'article."}{" "}
-            <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrir le PDF dans un nouvel onglet</a>
+            <a href={originalUrl} target="_blank" rel="noreferrer" className="link">Ouvrir le PDF dans un nouvel onglet</a>
           </p>
         </div>
         {/* Repli embarqué seulement pour une adresse vérifiée (https, hôte public) : jamais l'adresse brute d'OpenAlex (SEC-16). */}
         {embedUrl && (
-          <object data={embedUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-foreground/10" aria-label="PDF original">
-            <div className="rounded-xl border border-dashed p-8 text-center">
+          <object data={embedUrl} type="application/pdf" className="h-[80dvh] w-full rounded-lg ring-1 ring-border" aria-label="PDF original">
+            <div className="surface-tint rounded-2xl p-8 text-center">
               <p className="text-base text-muted-foreground">
-                Votre navigateur n'affiche pas ce PDF ici. <a href={embedUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">Ouvrez-le dans un nouvel onglet</a>.
+                Votre navigateur n'affiche pas ce PDF ici. <a href={embedUrl} target="_blank" rel="noreferrer" className="link">Ouvrez-le dans un nouvel onglet</a>.
               </p>
             </div>
           </object>
@@ -581,7 +581,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
             )}
             {progress && progress.total > 8 * 1024 * 1024 && (
               <p className="text-sm text-muted-foreground">
-                Gros fichier : vous pouvez aussi <ExternalLink href={originalUrl} className="text-accent-brand underline underline-offset-3">ouvrir le PDF original</ExternalLink> en attendant.
+                Gros fichier : vous pouvez aussi <ExternalLink href={originalUrl} className="link">ouvrir le PDF original</ExternalLink> en attendant.
               </p>
             )}
           </div>
@@ -597,16 +597,16 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
           */}
           <div ref={barRef} className="sticky top-16 z-10 -mt-3 flex items-center justify-between gap-2 bg-background py-2 in-data-full:top-0">
             <p className="text-sm text-muted-foreground">{doc.numPages} page{doc.numPages > 1 ? "s" : ""}</p>
-            <Button variant="outline" size="sm" className="bg-card" onClick={() => void (enabled ? loadPickerPage(lastPageRef.current) : signInOutOfFullscreen(requestSignIn))}>
+            <Button variant="outline" size="sm" onClick={() => void (enabled ? loadPickerPage(lastPageRef.current) : signInOutOfFullscreen(requestSignIn))}>
               <HighlighterIcon /> Surligner des phrases
             </Button>
           </div>
           {interrupted && (
-            <div role="alert" className="rounded-xl border border-dashed p-4 text-[0.9375rem]">
+            <div role="alert" className="surface-tint rounded-2xl p-4 text-meta">
               <p className="font-medium">Le téléchargement du PDF s'est interrompu : certaines pages peuvent rester vides.</p>
               <p className="mt-1 text-muted-foreground">
                 Rechargez la page pour réessayer, ou{" "}
-                <a href={originalUrl} target="_blank" rel="noreferrer" className="text-accent-brand underline underline-offset-3">ouvrez le PDF original</a> dans un nouvel onglet.
+                <a href={originalUrl} target="_blank" rel="noreferrer" className="link">ouvrez le PDF original</a> dans un nouvel onglet.
               </p>
             </div>
           )}
@@ -635,7 +635,7 @@ function PdfReader({ url, originalUrl, embedUrl, lang, ref }: ReaderProps) {
             setPicker(null);
           }}
           title="Surligner des phrases"
-          description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans « Mes citations », avec leur page."
+          description="Cochez les phrases de la page à garder : elles seront marquées dans le PDF et rangées dans «&nbsp;Mes citations&nbsp;», avec leur page."
           sentences={picker?.sentences ?? null}
           error={picker?.error}
           lang={lang}
@@ -774,11 +774,11 @@ const PdfPage = memo(function PdfPage({ doc, lib, pageNumber, width, defaultAspe
   return (
     // Repère « Page N » pour les lecteurs d'écran, focalisable par « aller à la page ». Le canevas redessine le texte de
     // la couche texte : masqué, pour ne pas être lu comme une image de plus.
-    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative scroll-mt-14 bg-white shadow-sm ring-1 ring-foreground/10 outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
+    <div ref={ref} data-page={pageNumber} role="group" aria-label={`Page ${pageNumber}`} tabIndex={-1} className="pdf-page relative scroll-mt-14 bg-white shadow-sm ring-1 ring-border outline-none" style={{ width, height: rendered ? undefined : width * aspect }}>
       <canvas ref={canvasRef} aria-hidden />
       <div ref={textRef} className="textLayer" />
       {!rendered && visible && (
-        <div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500" aria-live="polite">
+        <div className="absolute inset-0 flex items-center justify-center text-sm text-[#4A5160]" aria-live="polite">
           {failed ? (
             <span className="flex items-center gap-2 px-4 text-center"><AlertTriangleIcon className="size-4 shrink-0" aria-hidden /> Cette page n'a pas pu être affichée.</span>
           ) : (

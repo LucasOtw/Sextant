@@ -100,6 +100,24 @@ describe("thème : Clair / Sombre / Système (A11Y-40)", () => {
     expect(system.listeners.size).toBe(0);
   });
 
+  it("la barre du navigateur (meta theme-color) prend le fond du thème affiché, pas celui du système", () => {
+    fakeSystem(false);
+    const metas = ["(prefers-color-scheme: light)", "(prefers-color-scheme: dark)"].map((media) => {
+      const meta = document.createElement("meta");
+      meta.name = "theme-color";
+      meta.media = media;
+      meta.content = "#FFFFFF";
+      document.head.append(meta);
+      return meta;
+    });
+    const html = document.documentElement;
+    html.style.setProperty("--background", "#0D111A");
+    setThemePreference("dark");
+    expect(metas.map((m) => m.content)).toEqual(["#0D111A", "#0D111A"]);
+    html.style.removeProperty("--background");
+    for (const m of metas) m.remove();
+  });
+
   it("le script d'avant l'affichage lit la même clé", () => {
     expect(PRE_HYDRATION_SCRIPT).toContain(`localStorage.getItem("${THEME_STORAGE_KEY}")`);
   });

@@ -10,6 +10,7 @@ import { useLogout } from "@/components/auth/use-logout";
 import { needsReauth, ReauthDialog } from "@/components/auth/reauth";
 import { purgeStoredFirebaseAuth } from "@/components/auth/google-popup";
 import { useSession } from "@/components/auth/session-provider";
+import { frSpaces } from "@/lib/text";
 
 /** Déconnexion (cet appareil ou tous), et suppression du compte, depuis la page « Mon compte ». */
 export function AccountActions() {
@@ -108,7 +109,8 @@ export function AccountActions() {
       <Button variant="outline" onClick={logout} disabled={pending}>
         {pending ? <Loader2Icon className="animate-spin" /> : <LogOutIcon />} Se déconnecter
       </Button>
-      <Button variant="outline" onClick={() => setConfirmAll(true)}>
+      {/* Libellé long : il passe sur deux lignes plutôt que de déborder à 320 px. */}
+      <Button variant="outline" onClick={() => setConfirmAll(true)} className="h-auto min-h-10 shrink py-2 whitespace-normal">
         <MonitorSmartphoneIcon /> Se déconnecter de tous les appareils
       </Button>
       <Button variant="destructive" onClick={() => setConfirm(true)} disabled={busy}>
@@ -117,8 +119,8 @@ export function AccountActions() {
 
       <Dialog open={confirmAll} onOpenChange={(o) => !busyAll && setConfirmAll(o)}>
         <DialogContent className="sm:max-w-sm">
-          <DialogTitle className="title-display text-2xl">Se déconnecter partout ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces("Se déconnecter partout ?")}</DialogTitle>
+          <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Toutes vos sessions seront fermées, sur cet appareil aussitôt et sur les autres dans les 5 minutes, et vos clés d'assistant IA seront révoquées :
             il faudra en créer de nouvelles. À utiliser si un appareil a été perdu ou si une session vous semble suspecte.
           </DialogDescription>
@@ -127,7 +129,7 @@ export function AccountActions() {
               {errorAll}
             </p>
           )}
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmAll(false)} disabled={busyAll}>Annuler</Button>
             <Button onClick={() => void logoutEverywhere()} disabled={busyAll} aria-describedby={errorAll ? errorAllId : undefined}>
               {busyAll && <Loader2Icon className="animate-spin" />} Tout déconnecter
@@ -138,8 +140,8 @@ export function AccountActions() {
 
       <Dialog open={confirm} onOpenChange={(o) => !busy && setConfirm(o)}>
         <DialogContent className="sm:max-w-sm">
-          <DialogTitle className="title-display text-2xl">Supprimer votre compte ?</DialogTitle>
-          <DialogDescription className="text-[0.9375rem] leading-relaxed text-muted-foreground">
+          <DialogTitle className="title-display">{frSpaces("Supprimer votre compte ?")}</DialogTitle>
+          <DialogDescription className="text-meta leading-relaxed text-muted-foreground">
             Votre compte et toutes les données qui lui sont liées seront effacés immédiatement. Cette action est définitive.
           </DialogDescription>
           {error && (
@@ -147,7 +149,7 @@ export function AccountActions() {
               {error}
             </p>
           )}
-          <div className="mt-2 flex justify-end gap-2">
+          <div className="mt-2 flex flex-wrap justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirm(false)} disabled={busy}>Annuler</Button>
             <Button variant="destructive" onClick={() => void deleteAccount()} disabled={busy} aria-describedby={error ? errorId : undefined}>
               {busy && <Loader2Icon className="animate-spin" />} Supprimer définitivement

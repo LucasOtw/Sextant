@@ -19,8 +19,9 @@ import { announce } from "@/lib/announce";
 import { api, errorMessage } from "@/lib/client/api";
 import { voteLabel } from "@/lib/labels";
 import { REPORT_SECTION, reportHref } from "@/lib/report";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { DATE_SHORT } from "@/lib/dates";
+import { frSpaces } from "@/lib/text";
 
 const SORTS = [
   { value: "votes", label: "Les plus votés" },
@@ -112,20 +113,20 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
               aria-pressed={filter === value}
               onClick={() => setFilter(value)}
               className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-sm transition-colors",
-                filter === value ? "bg-primary text-primary-foreground" : "bg-card ring-1 ring-foreground/10 hover:ring-foreground/25",
+                "inline-flex h-9 items-center gap-1.5 rounded-full border border-transparent px-3.5 text-sm transition-colors",
+                filter === value ? "bg-primary text-primary-foreground" : "border-border bg-card hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
               )}
             >
-              {label} <span className={filter === value ? "text-primary-foreground/75" : "text-muted-foreground"}>{counts[value]}</span>
+              {label} <span className={filter === value ? undefined : "text-muted-foreground"}>{counts[value]}</span>
             </button>
           ))}
         </div>
         <div className="flex gap-2">
           <Select items={SORTS} value={sort} onValueChange={(v) => setSort(String(v))}>
-            <SelectTrigger className="h-10! w-44" aria-label="Trier"><SelectValue /></SelectTrigger>
+            <SelectTrigger className="w-44" aria-label="Trier"><SelectValue /></SelectTrigger>
             <SelectContent>{SORTS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
           </Select>
-          <Button className="h-10" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
+          <Button onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>
         </div>
       </div>
 
@@ -136,12 +137,12 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
       )}
 
       {loadError && items.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
+        <div className="surface-tint rounded-2xl p-10 text-center text-muted-foreground">La liste est momentanément indisponible. Réessayez dans un instant.</div>
       ) : shown.length === 0 ? (
         <EmptyState
           title={items.length === 0 ? "Rien pour l'instant." : "Aucun sujet dans cette catégorie."}
           hint="Un bug repéré, une idée qui vous manque ? Soyez le premier à la proposer."
-          action={<Button variant="outline" className="mt-5 bg-card" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>}
+          action={<Button variant="outline" className="mt-5" onClick={openComposer}><PlusIcon /> Nouveau sujet</Button>}
         />
       ) : (
         <ul className="flex flex-col gap-3">
@@ -158,9 +159,9 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
         </ul>
       )}
 
-      <p className="text-sm text-muted-foreground">
+      <p className="max-w-measure-text text-sm text-muted-foreground">
         Les sujets sont publics et sans nom d'auteur ; n'y mettez pas d'informations personnelles. Les votes sont anonymes. Un sujet
-        illicite ou hors sujet se signale par son lien « Signaler » (<Link href={REPORT_SECTION} className="underline underline-offset-3 hover:text-foreground">procédure</Link>).
+        illicite ou hors sujet se signale par son lien «&nbsp;Signaler&nbsp;» (<Link href={REPORT_SECTION} className="link-quiet">procédure</Link>).
       </p>
 
       <Composer
@@ -185,7 +186,7 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
   const status = STATUS_LABEL[item.status];
   return (
     // Ancre du sujet : l'adresse exacte d'un signalement (DSA art. 16) mène à lui.
-    <li id={`sujet-${item.id}`} className="flex scroll-mt-24 gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:p-5">
+    <li id={`sujet-${item.id}`} className="surface-card flex scroll-mt-24 gap-4 p-4 sm:p-5">
       <button
         type="button"
         onClick={onVote}
@@ -207,21 +208,21 @@ function FeedbackRow({ item, voted, busy, onVote, reportLink }: { item: Feedback
           <Badge variant="secondary" className={cn("gap-1", item.kind === "bug" ? "text-destructive" : "text-accent-brand")}>
             {item.kind === "bug" ? <BugIcon aria-hidden /> : <LightbulbIcon aria-hidden />} {KIND_LABEL[item.kind]}
           </Badge>
-          {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-accent-brand/15 text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
+          {status && <Badge className={cn(item.status === "done" && "bg-oa text-oa-foreground", item.status === "planned" && "bg-tint text-accent-brand", item.status === "declined" && "bg-muted text-muted-foreground")}>{status}</Badge>}
           {item.createdAt && <span className="text-xs text-muted-foreground">{DATE_SHORT.format(new Date(item.createdAt))}</span>}
           {/* Nom accessible qui commence par le texte visible (WCAG 2.5.3) et dit quel sujet est visé. */}
-          <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="ml-auto text-xs text-muted-foreground underline-offset-3 hover:text-foreground hover:underline">
+          <a href={reportLink} aria-label={`Signaler le sujet « ${item.title} »`} className="link-quiet ml-auto text-xs text-muted-foreground">
             Signaler
           </a>
         </div>
-        <h2 className="mt-1.5 text-[1.0625rem] font-semibold leading-snug">{item.title}</h2>
+        <h2 className="title-display mt-1.5 text-lg leading-snug">{item.title}</h2>
         {item.description && (
           <>
-            <p id={descriptionId} className={cn("mt-1 whitespace-pre-line text-[0.9375rem] leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
+            <p id={descriptionId} className={cn("mt-1 max-w-measure-text whitespace-pre-line text-meta leading-relaxed text-muted-foreground", long && !expanded && "line-clamp-3")}>{item.description}</p>
             {long && (
-              <button type="button" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm text-accent-brand underline underline-offset-3" aria-expanded={expanded} aria-controls={descriptionId}>
+              <Button variant="link" size="inline" onClick={() => setExpanded((e) => !e)} className="mt-1 text-sm" aria-expanded={expanded} aria-controls={descriptionId}>
                 {expanded ? "Réduire" : "Lire la suite"}
-              </button>
+              </Button>
             )}
           </>
         )}
@@ -234,8 +235,8 @@ function Composer({ open, onOpenChange, onCreated }: { open: boolean; onOpenChan
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
-        <DialogTitle className="title-display text-2xl">Nouveau sujet</DialogTitle>
-        <DialogDescription className="text-[0.9375rem] text-muted-foreground">
+        <DialogTitle className="title-display">Nouveau sujet</DialogTitle>
+        <DialogDescription className="text-meta text-muted-foreground">
           Un sujet par bug ou par idée. Vérifiez d'abord qu'il n'existe pas déjà : un vote suffit alors.
         </DialogDescription>
         {open && <ComposerForm onClose={() => onOpenChange(false)} onCreated={onCreated} />}
@@ -273,7 +274,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
       const { item } = await api<{ item?: FeedbackItem }>("/api/feedback", { method: "POST", json: { kind, title, description }, fallback: "La publication a échoué." });
       if (!item) throw new Error();
       onCreated(item);
-      toast.success(kind === "bug" ? "Bug signalé, merci !" : "Idée publiée, merci !");
+      toast.success(frSpaces(kind === "bug" ? "Bug signalé, merci !" : "Idée publiée, merci !"));
       onClose();
     } catch (err) {
       toast.error(errorMessage(err, "La publication a échoué."));
@@ -295,7 +296,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             key={value}
             className={cn(
               "relative flex cursor-pointer flex-col items-start gap-0.5 rounded-xl p-3 text-left ring-1 transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2",
-              kind === value ? "bg-accent-brand/8 ring-2 ring-accent-brand" : "ring-foreground/15 hover:ring-foreground/30",
+              kind === value ? "bg-tint ring-2 ring-accent-brand" : "ring-border hover:ring-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
             )}
           >
             <input type="radio" name={kindName} value={value} checked={kind === value} onChange={() => setKind(value)} className="sr-only" />
@@ -316,7 +317,7 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             onChange={(e) => setTitle(e.target.value)}
             maxLength={MAX_FEEDBACK_TITLE}
             placeholder={kind === "bug" ? "Ex. Le PDF ne s'affiche pas sur iPhone" : "Ex. Exporter une liste au format RIS"}
-            className="h-10 text-base md:text-base"
+            className="text-base md:text-base"
           />
         )}
       </Field>
@@ -329,11 +330,11 @@ function ComposerForm({ onClose, onCreated }: { onClose: () => void; onCreated: 
             maxLength={MAX_FEEDBACK_DESCRIPTION}
             rows={4}
             placeholder={kind === "bug" ? "Ce que vous faisiez, ce qui s'est passé, sur quel appareil" : "À quoi ça vous servirait"}
-            className="text-base md:text-[0.9375rem]"
+            className="text-base md:text-meta"
           />
         )}
       </Field>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy}>{busy && <Loader2Icon className="animate-spin" />} Publier</Button>
       </div>

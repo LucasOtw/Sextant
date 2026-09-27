@@ -12,7 +12,9 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
     expect(all).toContain("Thèse");
     expect(all).toContain("Accès ouvert");
     expect(all).toContain("Rétracté");
-    expect(all).toContain("· Écologie");
+    // Sujet en étiquette de la famille des badges, sans point médian (X4).
+    expect(all).toContain('<span class="min-w-0 truncate">Écologie</span>');
+    expect(all).not.toContain("·");
     const bare = html(createElement(ArticleBadges, { type: "article", isOa: false, topic: null }));
     expect(bare).not.toMatch(/Accès ouvert|Rétracté|·/);
   });
@@ -20,14 +22,16 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
   it("titre : lien étiré, niveau demandé, interligne gardé quand on le redonne après la taille", () => {
     /* eslint-disable react/no-children-prop -- createElement typé : `children` est une prop requise d'ArticleTitle. */
     const h2 = html(createElement(ArticleTitle, { href: "/article/W1", as: "h2", className: "text-xl leading-snug", children: "Titre" }));
-    expect(h2).toMatch(/^<h2 class="title-display text-xl leading-snug"><a class="after:absolute after:inset-0 hover:text-accent-brand" href="\/article\/W1">Titre<\/a><\/h2>$/);
+    expect(h2).toMatch(/^<h2 class="title-display text-xl leading-snug"><a class="card-title after:absolute after:inset-0 hover:text-link" href="\/article\/W1">Titre<\/a><\/h2>$/);
     expect(html(createElement(ArticleTitle, { href: "/article/W1", children: "T" }))).toMatch(/^<h3 /);
     /* eslint-enable react/no-children-prop */
   });
 
-  it("métadonnées : « Auteurs · Revue · Année », langue seulement si ce n'est pas l'anglais", () => {
-    const meta = html(createElement(ArticleMeta, { authors: "A et B", venue: "PeerJ", year: 2018, language: "fr" }));
-    expect(meta.replace(/<[^>]+>/g, "")).toBe("A et B · PeerJ · 2018 · fr");
+  it("métadonnées : les auteurs, puis « Revue, Année, en langue » (en mots, seulement si ce n'est pas l'anglais)", () => {
+    const meta = html(createElement(ArticleMeta, { authors: "A et B", venue: "PeerJ", year: 2018, language: "pt" }));
+    expect(meta).toMatch(/<p>A et B<\/p><p><span class="italic">PeerJ<\/span>, 2018, en portugais<\/p>/);
+    expect(meta).not.toContain("·");
+    expect(html(createElement(ArticleMeta, { authors: "A", venue: null, year: 1988, language: "en" })).replace(/<[^>]+>/g, "|")).toBe("||A||1988||");
     expect(html(createElement(ArticleMeta, { authors: "A", venue: null, year: null, language: "en" })).replace(/<[^>]+>/g, "")).toBe("A");
   });
 
@@ -38,10 +42,10 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
 
   it("état vide : titre focalisable sur demande, icône, action, marges ajustables", () => {
     const out = html(createElement(EmptyState, { title: "Rien.", hint: "Explication.", titleRef: createRef<HTMLParagraphElement>(), focusableTitle: true, action: createElement("button", null, "Agir"), className: "p-8" }));
-    expect(out).toContain('class="rounded-xl border border-dashed text-center p-8"');
-    expect(out).toContain('<p tabindex="-1" class="text-lg font-medium outline-none">Rien.</p>');
-    expect(out).toContain('<p class="mt-1 text-base text-muted-foreground">Explication.</p><button>Agir</button>');
+    expect(out).toContain('class="surface-tint rounded-2xl text-center p-8"');
+    expect(out).toContain('<p tabindex="-1" class="title-display text-xl outline-none">Rien.</p>');
+    expect(out).toContain('<p class="mx-auto mt-1 max-w-measure-text text-base text-muted-foreground">Explication.</p><button>Agir</button>');
     const withIcon = html(createElement(EmptyState, { title: "T", icon: createElement("svg") }));
-    expect(withIcon).toContain('<svg></svg><p class="text-lg font-medium mt-3">T</p>');
+    expect(withIcon).toContain('<svg></svg><p class="title-display text-xl mt-3">T</p>');
   });
 });

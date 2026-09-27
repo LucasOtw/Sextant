@@ -8,7 +8,7 @@ import { useFavorites } from "@/components/favorites/favorites-provider";
 import { clearPendingFavorite, writePendingFavorite } from "@/components/favorites/pending-favorite";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { favoriteLabel } from "@/lib/labels";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   snapshot: FavoriteSnapshot;
@@ -71,12 +71,12 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
           aria-label={favoriteLabel(snapshot.title)}
           data-focus-key="favorite"
           title={active ? "Retirer des favoris" : "Enregistrer dans mes favoris"}
-          className={cn("size-10 rounded-full bg-card/80 hover:bg-card sm:size-9", className)}
+          className={cn("bg-card/80 hover:bg-accent sm:size-9", className)}
         >
           {icon}
         </Button>
       ) : (
-        <Button variant={active ? "secondary" : "outline"} size="lg" onClick={onClick} className={cn(!active && "bg-card", className)}>
+        <Button variant={active ? "secondary" : "outline"} size="lg" onClick={onClick} className={className}>
           {icon}
           {active ? "Enregistré" : "Enregistrer"}
         </Button>

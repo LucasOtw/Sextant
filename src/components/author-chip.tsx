@@ -7,7 +7,7 @@ import { BuildingIcon, ExternalLinkIcon, FileTextIcon, SearchIcon } from "lucide
 import { shortId } from "@/lib/ids";
 import type { AuthorProfile } from "@/lib/openalex";
 import { formatCount } from "@/lib/format";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { ExternalLink } from "@/components/external-link";
 
 interface Props {
@@ -109,7 +109,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
             ref={popupRef}
             onBlur={closeIfFocusLeft}
             aria-label={`À propos de ${name}`}
-            className="w-72 max-w-(--available-width) origin-(--transform-origin) rounded-xl bg-popover p-4 text-left text-sm font-normal text-popover-foreground shadow-lg ring-1 ring-foreground/10 outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-open:slide-in-from-top-1 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none"
+            className="w-72 max-w-(--available-width) origin-(--transform-origin) rounded-xl bg-popover p-4 text-left text-sm font-normal text-popover-foreground shadow-float border border-border outline-none duration-150 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-open:slide-in-from-top-1 data-closed:animate-out data-closed:fade-out-0 motion-reduce:animate-none"
           >
             <p className="text-base font-semibold">{name}</p>
             <p className="mt-0.5 flex items-start gap-1.5 text-muted-foreground">
@@ -118,7 +118,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
                 <span className="shimmer inline-block h-3.5 w-40 rounded" />
               ) : profile?.institution ? (
                 profile.institution.homepage ? (
-                  <ExternalLink href={profile.institution.homepage} className="underline underline-offset-2 hover:text-accent-brand">
+                  <ExternalLink href={profile.institution.homepage} className="link-quiet">
                     {profile.institution.name}
                     <ExternalLinkIcon className="ml-1 inline size-3" aria-hidden />
                   </ExternalLink>
@@ -162,7 +162,7 @@ export function AuthorChip({ authorId, name, institution, institutionId }: Props
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <span className="rounded-lg bg-muted px-2 py-1.5">
-      <span className="block text-[0.9375rem] font-semibold">{value}</span>
+      <span className="block text-meta font-semibold">{value}</span>
       <span className="block text-xs text-muted-foreground">{label}</span>
     </span>
   );

@@ -37,7 +37,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           "--normal-bg": "var(--popover)",
           "--normal-text": "var(--popover-foreground)",
           "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--border-radius": "var(--radius-2xl)",
+          // Sonner impose sa pile système : les notifications parlent Nunito, comme le reste du site.
+          fontFamily: "var(--font-sans)",
         } as React.CSSProperties
       }
       // Libellés en français (Sonner les donne en anglais) : bouton de fermeture des toasts « Annuler » (lib/undo-toast.ts).

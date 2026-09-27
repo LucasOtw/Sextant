@@ -40,7 +40,7 @@ export default function LegalNoticePage() {
       <p>
         Sextant héberge des contenus publiés par ses utilisateurs : les sujets de la page <Link href="/retours">Bugs et idées</Link> et
         les listes partagées par lien. Pour signaler un contenu que vous estimez illicite (règlement européen sur les services
-        numériques, art. 16), utilisez le lien « Signaler » placé à côté de ce contenu, ou écrivez à {mail} en indiquant :
+        numériques, art. 16), utilisez le lien «&nbsp;Signaler&nbsp;» placé à côté de ce contenu, ou écrivez à {mail} en indiquant :
       </p>
       <ul>
         <li>l'adresse exacte (URL) du contenu ;</li>
@@ -56,7 +56,8 @@ export default function LegalNoticePage() {
       <h2>Hébergeur</h2>
       <p>
         Le site est hébergé par <strong>{SITE.host.name}</strong>, {SITE.host.address}.<br />
-        Site : <ExternalLink href={SITE.host.url}>{SITE.host.url}</ExternalLink> · Contact : {SITE.host.contact}
+        Site : <ExternalLink href={SITE.host.url}>{SITE.host.url}</ExternalLink><br />
+        Contact : {SITE.host.contact}
       </p>
 
       <h2>Stockage des données des comptes</h2>
@@ -75,7 +76,7 @@ export default function LegalNoticePage() {
 
       <h2>Propriété intellectuelle</h2>
       <p>
-        Le nom « Sextant », son logo, l'interface et les textes du site sont la propriété de l'éditeur. Le code source est consultable
+        Le nom «&nbsp;Sextant&nbsp;», son logo, l'interface et les textes du site sont la propriété de l'éditeur. Le code source est consultable
         sur <ExternalLink href="https://github.com/LucasOtw/Sextant">GitHub</ExternalLink>
         {SITE.codeLicense ? (
           <>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
+import { ChevronLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { HighlightsProvider } from "@/components/highlights/highlights-provider";
 import { SourceUnavailable } from "@/components/source-unavailable";
 import { ReaderLayout } from "@/components/highlights/pdf-reader";
@@ -52,8 +52,8 @@ export default async function ReaderPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
       <div className="flex flex-wrap items-center gap-3">
-        <Link href={`/article/${wid}`} className={buttonVariants({ variant: "outline", size: "sm", className: "bg-card" })}>
-          <ArrowLeftIcon /> Fiche article
+        <Link href={`/article/${wid}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+          <ChevronLeftIcon /> Fiche article
         </Link>
         {/* Sur mobile, le titre passe en entier sous les deux boutons au lieu d'être haché dans une colonne étroite. */}
         <h1 lang={titleLang(work)} className="title-display order-last basis-full wrap-break-word text-xl sm:order-none sm:min-w-0 sm:flex-1 sm:basis-0">{workTitle(work)}</h1>

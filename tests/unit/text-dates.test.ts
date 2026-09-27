@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fold, stripAccents } from "@/lib/text";
+import { fold, frSpaces, stripAccents } from "@/lib/text";
 import { CALENDAR_DATE_LONG, DATE_LONG, DATE_SHORT, DATE_TIME } from "@/lib/dates";
 import { formatCount, formatDate, formatInteger } from "@/lib/format";
 import { fileSlug } from "@/lib/favorites-shared";
@@ -21,6 +21,18 @@ describe("pliage des accents, une seule implémentation (QUAL-30)", () => {
     expect(fileSlug("Écologie & forêts — 2026")).toBe("ecologie-forets-2026");
     expect(fileSlug("  ")).toBe("liste");
     expect(bibKey({ id: "W1", title: "Étude des sols", authorNames: ["Ana Pérez"], year: 2021 })).toBe("perez2021etude");
+  });
+});
+
+describe("espaces insécables françaises (Y14)", () => {
+  it("fine avant ; ! ?, normale avant : et dans les guillemets", () => {
+    expect(frSpaces("Supprimer « Thèse » ? Oui ! Non ; peut-être : bof")).toBe(
+      "Supprimer «\u00A0Thèse\u00A0»\u202F? Oui\u202F! Non\u202F; peut-être\u00A0: bof",
+    );
+  });
+
+  it("ne touche ni aux adresses ni aux signes sans espace", () => {
+    expect(frSpaces("https://sextant.fr?q=a:b, (1:2)")).toBe("https://sextant.fr?q=a:b, (1:2)");
   });
 });
 

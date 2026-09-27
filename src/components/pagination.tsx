@@ -3,7 +3,7 @@ import { ResultsLink } from "@/components/results-status";
 import { buttonVariants } from "@/components/ui/button";
 import { formatInteger } from "@/lib/format";
 import { lastPageOf } from "@/lib/search-params";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   page: number;
@@ -34,7 +34,8 @@ export function Pagination({ page, perPage, total, hrefFor }: Props) {
     );
 
   return (
-    <nav aria-label="Pagination" className="flex items-center justify-between gap-4 pt-4">
+    // flex-wrap : avec l'espacement du texte agrandi (WCAG 1.4.12) à 320 px, « Suivant » passe dessous au lieu de déborder.
+    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-4">
       {link(page - 1, "Précédent", <ChevronLeftIcon />, page <= 1)}
       <span className="text-sm text-muted-foreground">
         Page {page} sur {formatInteger(lastPage)}

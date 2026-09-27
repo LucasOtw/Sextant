@@ -1,7 +1,7 @@
 "use client";
 
 import { focusElement } from "@/lib/focus";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Lien d'évitement : invisible jusqu'à ce qu'il reçoive le focus au clavier, il amène le focus sur la zone visée
@@ -17,9 +17,10 @@ export function SkipLink({ target, children, className }: { target: string; chil
         e.preventDefault();
         focusElement(el);
       }}
-      // Au-dessus de l'en-tête collant (z-40), en haut à gauche, quelle que soit la position de défilement.
+      // Au-dessus de l'en-tête collant (z-40), en haut à gauche, quelle que soit la position de défilement. Pilule, focus
+      // commun du site (un seul contour, pas d'anneau en plus).
       className={cn(
-        "sr-only rounded-md bg-background text-sm font-medium text-foreground ring-2 ring-ring focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:px-3 focus:py-2",
+        "sr-only rounded-full border border-border bg-card text-sm font-semibold text-foreground shadow-float focus:not-sr-only focus:fixed focus:left-4 focus:top-3 focus:z-50 focus:px-4 focus:py-2",
         className,
       )}
     >

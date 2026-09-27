@@ -39,8 +39,8 @@ export default function TermsPage() {
         Le compte est personnel et se crée par connexion Google. Vos favoris, listes, citations et notes vous appartiennent et restent privés.
         Une liste que vous partagez par lien devient visible de quiconque a ce lien, jusqu'à ce que vous le désactiviez : vous restez
         responsable de ce que vous y mettez (nom et description compris). Il en va de même des sujets que vous publiez sur la page
-        « Bugs et idées » : ils sont publics, sans nom d'auteur, et doivent porter sur Sextant.
-        Vous pouvez télécharger vos données ou supprimer votre compte à tout moment depuis « Mon compte », ce qui efface l'ensemble de
+        «&nbsp;Bugs et idées&nbsp;» : ils sont publics, sans nom d'auteur, et doivent porter sur Sextant.
+        Vous pouvez télécharger vos données ou supprimer votre compte à tout moment depuis «&nbsp;Mon compte&nbsp;», ce qui efface l'ensemble de
         vos données (vos sujets publiés restent en ligne, détachés de votre compte).
       </p>
       <p>
@@ -51,8 +51,8 @@ export default function TermsPage() {
 
       <h2>Contenus et exactitude</h2>
       <p>
-        Les métadonnées proviennent d'<ExternalLink href="https://openalex.org">OpenAlex</ExternalLink> et sont fournies « en
-        l'état ». Les condensés par IA et les suggestions « Pour vous » sont indicatifs et peuvent contenir des erreurs. Sextant ne garantit
+        Les métadonnées proviennent d'<ExternalLink href="https://openalex.org">OpenAlex</ExternalLink> et sont fournies «&nbsp;en
+        l'état&nbsp;». Les condensés par IA et les suggestions «&nbsp;Pour vous&nbsp;» sont indicatifs et peuvent contenir des erreurs. Sextant ne garantit
         ni l'exhaustivité, ni l'exactitude, ni la disponibilité continue du service, et ne saurait être tenu responsable de l'usage que vous
         faites des informations consultées. Référez-vous toujours à la publication originale.
       </p>

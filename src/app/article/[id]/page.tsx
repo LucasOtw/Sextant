@@ -49,7 +49,7 @@ import { getSimilarWorks, getWork, OpenAlexError, type Work } from "@/lib/openal
 import { themeByFieldId } from "@/lib/themes";
 import { HTML_LIMITED_BOTS } from "@/lib/html-bots";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { logError, recover } from "@/lib/log";
 import { safeHttpUrl } from "@/lib/text";
 import { ExternalLink } from "@/components/external-link";
@@ -122,6 +122,7 @@ export default async function ArticlePage({ params }: Props) {
   const publisher = publisherUrl(work);
   const doiUrl = safeHttpUrl(work.doi);
   const venue = venueName(work);
+  const publication = publicationLine(work);
   const citation = citationFromWork(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
@@ -156,32 +157,27 @@ export default async function ArticlePage({ params }: Props) {
           </Badge>
           {work.is_retracted && <Badge variant="destructive">Rétracté</Badge>}
           {theme && (
-            <Link href={`/theme/${theme.slug}`} className="ml-1 text-muted-foreground underline decoration-muted-foreground/50 underline-offset-2 hover:text-foreground hover:decoration-foreground">
+            <Link href={`/theme/${theme.slug}`} className="link-quiet ml-1 text-muted-foreground">
               {theme.name}
             </Link>
           )}
         </div>
 
         {/* Titre et résumé dans la langue de l'article : lus avec la bonne voix par les lecteurs d'écran (A11Y-04). */}
-        <h1 lang={titleLang(work)} className="title-display mt-4 text-3xl leading-tight sm:text-[2.6rem] sm:leading-[1.15]">{workTitle(work)}</h1>
+        <h1 lang={titleLang(work)} className="title-display type-h1-article mt-4">{workTitle(work)}</h1>
 
         <Authors work={work} />
 
-        <p className="mt-3 text-[0.9375rem] text-muted-foreground">
+        {/* Une phrase : « *Revue*, 12 mars 1988, vol. 3 (2), p. 12–30 ». La langue est écrite une fois, près du résumé. */}
+        <p className="mt-3 text-meta text-muted-foreground">
           {venue && <span className="italic text-foreground">{venue}</span>}
-          {venue && (work.publication_date || work.publication_year) && " · "}
-          {formatDate(work.publication_date) ?? work.publication_year}
-          {work.biblio?.volume && <>, vol. {work.biblio.volume}</>}
-          {work.biblio?.issue && <> ({work.biblio.issue})</>}
-          {work.biblio?.first_page && (
-            <>, p. {work.biblio.first_page}{work.biblio.last_page ? `–${work.biblio.last_page}` : ""}</>
-          )}
-          {work.language && <> · {work.language.toUpperCase()}</>}
+          {venue && publication && ", "}
+          {publication}
         </p>
 
-        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-[0.9375rem]">
+        <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-meta">
           <Stat icon={<QuoteIcon />} label="Citations">
-            <Link href={`/search?cites=${shortId(work.id)}`} className="underline underline-offset-2 hover:text-accent-brand">
+            <Link href={`/search?cites=${shortId(work.id)}`} className="link-quiet">
               {formatCount(work.cited_by_count)}
             </Link>
           </Stat>
@@ -190,7 +186,7 @@ export default async function ArticlePage({ params }: Props) {
           )}
           {doiUrl && (
             <Stat label="DOI">
-              <ExternalLink href={doiUrl} className="font-mono text-xs underline underline-offset-2 hover:text-accent-brand">
+              <ExternalLink href={doiUrl} className="link-quiet wrap-anywhere tabular-nums">
                 {/* Texte depuis la valeur brute : u.href encoderait les « < > » des DOI SICI. */}
                 {doiPath(work.doi ?? doiUrl)}
               </ExternalLink>
@@ -199,38 +195,38 @@ export default async function ArticlePage({ params }: Props) {
         </dl>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          {oa && inline && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} className="px-3.5" />}
+          {oa && inline && <ReadPdfButton workId={shortId(work.id)} originalUrl={oa.url} />}
           {oa && oa.isPdf && !inline && (
-            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg" })}>
               <FileTextIcon /> Lire le PDF
             </ExternalLink>
           )}
           {oa && !oa.isPdf && (
-            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg", className: "px-3.5" })}>
+            <ExternalLink href={oa.url} className={buttonVariants({ size: "lg" })}>
               <FileTextIcon /> Lire en accès ouvert
             </ExternalLink>
           )}
           {publisher && (
-            <ExternalLink href={publisher} className={buttonVariants({ variant: "outline", size: "lg", className: "bg-card px-3.5" })}>
+            <ExternalLink href={publisher} className={buttonVariants({ variant: "outline", size: "lg" })}>
               {oa ? <ExternalLinkIcon /> : <LockIcon />} {oa ? "Voir chez l'éditeur" : "Éditeur (abonnement)"}
             </ExternalLink>
           )}
-          <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" className="bg-card px-3.5" />
-          <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" className="bg-card px-3.5" />
-          {isAuthEnabled() && <FavoriteButton snapshot={snapshot} variant="button" initialActive={initiallyFavorite} className="px-3.5" />}
-          {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" className="px-3.5" />}
+          <CopyButton text={formatApa(citation, Boolean(work.is_retracted))} label="Citer (APA)" message="Référence APA copiée." size="lg" />
+          <CopyButton text={formatBibtex(citation, Boolean(work.is_retracted))} label="BibTeX" message="Référence BibTeX copiée." size="lg" />
+          {isAuthEnabled() && <FavoriteButton snapshot={snapshot} variant="button" initialActive={initiallyFavorite} />}
+          {isAuthEnabled() && <CollectionPicker snapshot={snapshot} variant="button" />}
         </div>
         {!oa && (
-          <aside className="mt-4 flex flex-col gap-3 rounded-xl border border-dashed p-4 text-[0.9375rem] sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
+          <aside className="surface-tint mt-4 flex flex-col gap-3 rounded-2xl p-4 text-meta sm:flex-row sm:items-start sm:justify-between" aria-label="Accès à l'article">
             <div className="flex items-start gap-2.5">
               <LockIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <p className="text-muted-foreground">
+              <p className="max-w-measure-text text-muted-foreground">
                 <span className="font-medium text-foreground">Texte intégral non accessible ici.</span> Aucune version libre n'est connue : la page de l'éditeur demande en général un abonnement, souvent couvert par votre bibliothèque universitaire. Vous pouvez tout de même l'enregistrer, le citer et noter vos citations à la main.
               </p>
             </div>
             <ExternalLink
               href={`https://scholar.google.com/scholar?q=${encodeURIComponent(work.doi ? doiPath(work.doi) : workTitle(work))}`}
-              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0 bg-card" })}
+              className={buttonVariants({ variant: "outline", size: "sm", className: "shrink-0" })}
             >
               <SearchIcon /> Chercher une version libre
             </ExternalLink>
@@ -240,14 +236,14 @@ export default async function ArticlePage({ params }: Props) {
         <Separator className="my-8" />
 
         <section aria-labelledby="abstract">
-          <h2 id="abstract" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 id="abstract" className="section-title">
             Résumé
             {work.language && work.language !== "fr" && (
-              <span className="ml-2 font-normal normal-case tracking-normal">· en {languageName(work.language)}</span>
+              <span className="ml-2 font-sans text-base font-normal text-muted-foreground">en {languageName(work.language)}</span>
             )}
           </h2>
           {abstract ? (
-            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 text-[1.0625rem] leading-relaxed" />
+            <HighlightableAbstract text={abstract} lang={contentLang(work.language)} className="mt-3 max-w-measure-read text-read" />
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">Résumé non disponible dans OpenAlex — consultez la page de l'éditeur.</p>
           )}
@@ -267,17 +263,18 @@ export default async function ArticlePage({ params }: Props) {
 
         {(work.topics?.length || work.keywords?.length) && (
           <section className="mt-8" aria-labelledby="topics">
-            <h2 id="topics" className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Sujets</h2>
+            <h2 id="topics" className="section-title">Sujets</h2>
             <div className="mt-2 flex flex-wrap gap-1.5">
+              {/* La puce est le lien (C17) : survol propre, focus qui épouse la pilule. */}
               {work.topics?.slice(0, 3).map((t) => (
-                <Link key={t.id} href={`/search?topic=${shortId(t.id)}`}>
-                  <Badge variant="secondary" className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">{t.display_name}</Badge>
-                </Link>
+                <Badge key={t.id} variant="secondary" render={<Link href={`/search?topic=${shortId(t.id)}`} />} className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm">
+                  {t.display_name}
+                </Badge>
               ))}
               {work.keywords?.slice(0, 6).map((k) => (
-                <Link key={k.id} href={`/search?q=${encodeURIComponent(k.display_name)}`}>
-                  <Badge variant="outline" className="h-auto min-h-7 cursor-pointer whitespace-normal px-3 py-1 text-sm">{k.display_name}</Badge>
-                </Link>
+                <Badge key={k.id} variant="outline" render={<Link href={`/search?q=${encodeURIComponent(k.display_name)}`} />} className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm">
+                  {k.display_name}
+                </Badge>
               ))}
             </div>
           </section>
@@ -286,8 +283,8 @@ export default async function ArticlePage({ params }: Props) {
       </article>
 
       <section className="mt-14" aria-labelledby="similar">
-        <h2 id="similar" className="title-display text-3xl sm:text-4xl">Pour aller plus loin</h2>
-        <p className="mt-1.5 text-base text-muted-foreground">Articles proches par le contenu, selon OpenAlex.</p>
+        <h2 id="similar" className="title-display type-h2">Pour aller plus loin</h2>
+        <p className="mt-1.5 max-w-measure-text text-muted-foreground">Articles proches par le contenu, selon OpenAlex.</p>
         <Suspense fallback={<SimilarSkeleton />}>
           <Similar work={work} />
         </Suspense>
@@ -303,7 +300,7 @@ function Authors({ work }: { work: Work }) {
   const rest = list.length - shown.length;
   if (list.length === 0) return null;
   return (
-    <p className="mt-4 text-[0.9375rem] leading-relaxed">
+    <p className="mt-4 text-meta leading-relaxed">
       {shown.map((a, i) => {
         const inst = a.institutions[0]?.display_name;
         return (
@@ -341,8 +338,8 @@ async function Similar({ work }: { work: Work }) {
   if (similar.length === 0) return <p className="mt-4 text-sm text-muted-foreground">Aucune suggestion pour cet article.</p>;
   return (
     <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {similar.slice(0, 9).map((w, i) => (
-        <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+      {similar.slice(0, 9).map((w) => (
+        <li key={w.id}>
           <WorkCard work={w} variant="compact" />
         </li>
       ))}
@@ -356,4 +353,14 @@ function SimilarSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
     </div>
   );
+}
+
+/** « 12 mars 1988, vol. 3 (2), p. 12–30 » : date (ou année), volume, numéro et pages, séparés par des virgules. */
+function publicationLine(work: Work): string {
+  const b = work.biblio;
+  // Date insécable : « 1 janvier 2025 » ne se coupe pas entre le jour et le mois.
+  const when = formatDate(work.publication_date)?.replace(/ /g, "\u00a0") ?? work.publication_year;
+  const volume = [b?.volume && `vol. ${b.volume}`, b?.issue && `(${b.issue})`].filter(Boolean).join(" ");
+  const pages = b?.first_page ? `p. ${b.first_page}${b.last_page ? `–${b.last_page}` : ""}` : null;
+  return [when, volume, pages].filter(Boolean).join(", ");
 }

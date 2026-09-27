@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookmarkIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Lien « Mes favoris » du header, avec le compteur, visible connecté. Avant que la session soit connue (page en cache,
@@ -20,15 +20,16 @@ export function FavoritesLink({ className }: { className?: string }) {
       aria-label={`Mes favoris${count ? `, ${count}` : ""}`}
       aria-current={current ? "page" : undefined}
       className={cn(
-        "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-muted hover:text-foreground",
+        "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground",
         current ? "bg-muted text-foreground" : "text-muted-foreground",
         pending && "hidden [[data-session]_&]:inline-flex",
         className,
       )}
     >
       <BookmarkIcon className="size-4" aria-hidden />
+      {/* Compteur en 12 px (seule exception au plancher de 13 px), Nunito 700 dans une pastille de 18 px. */}
       {count > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-brand px-1 text-[0.625rem] font-semibold text-accent-brand-foreground">
+        <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[0.75rem] leading-none font-bold tabular-nums text-primary-foreground">
           {count > 99 ? "99+" : count}
         </span>
       )}

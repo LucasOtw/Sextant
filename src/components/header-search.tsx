@@ -9,7 +9,7 @@ export function HeaderSearch() {
   if (pathname === "/" || pathname.startsWith("/search") || pathname.startsWith("/theme/")) return null;
   return (
     <div className="hidden w-full max-w-md md:block">
-      <SearchBox size="compact" />
+      <SearchBox size="compact" label="Recherche" />
     </div>
   );
 }

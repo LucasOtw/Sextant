@@ -9,15 +9,18 @@ import { AuthButton } from "@/components/auth/auth-button";
 import { FavoritesLink } from "@/components/favorites/favorites-link";
 import { isAuthEnabled } from "@/lib/auth";
 
-/** En-tête commun, identique pour tous (pages en cache) : le compte s'affiche côté client (AuthButton, PERF-01). */
+/**
+ * En-tête commun, identique pour tous (pages en cache) : le compte s'affiche côté client (AuthButton, PERF-01).
+ * Fond à 85 % au moins : un texte secondaire garde 4,5:1 quand une page blanche (PDF) ou une figure noire passe dessous.
+ */
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-40 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+    <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:gap-6 sm:px-6">
-        <Link href="/" prefetch={false} className="group flex items-center gap-2.5" aria-label="Sextant, accueil">
-          <LogoMark className="size-9 text-foreground transition-transform duration-300 group-hover:-rotate-6" />
+        <Link href="/" prefetch={false} className="flex items-center gap-2.5" aria-label="Sextant, accueil">
+          <LogoMark className="size-9 text-foreground" />
           {/* Le nom s'efface sous sm pour que l'en-tête tienne dans 320 px ; le lien garde son aria-label. */}
-          <span className="hidden text-lg font-semibold tracking-tight sm:inline">Sextant</span>
+          <span className="title-display hidden text-xl sm:inline">Sextant</span>
         </Link>
         <div className="hidden flex-1 justify-center md:flex">
           <HeaderSearch />

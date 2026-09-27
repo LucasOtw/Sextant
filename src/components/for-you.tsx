@@ -2,9 +2,10 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { EyeIcon, EyeOffIcon, SparklesIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { WorkCard } from "@/components/work-card";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { shortId } from "@/lib/ids";
 import { readRecent } from "@/lib/recent";
@@ -100,12 +101,12 @@ export function ForYou() {
   if (state.status === "idle" || state.status === "hidden") return null;
 
   return (
-    <section id="pour-vous" className="py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
+    <section id="pour-vous" className="py-8">
       <div className="mb-5">
-        <h2 ref={headingRef} tabIndex={-1} className="title-display flex items-center gap-2 text-3xl outline-none sm:text-4xl">
-          <SparklesIcon className="size-7 text-accent-brand" aria-hidden /> Pour vous
+        <h2 ref={headingRef} tabIndex={-1} className="title-display type-h2 outline-none">
+          Pour vous
         </h2>
-        <p className="mt-1.5 text-base text-muted-foreground">
+        <p className="mt-1.5 max-w-measure-text text-muted-foreground">
           {state.fromFavorites
             ? "À partir de vos favoris et de ce que vous avez consulté : des articles apparentés, et les plus cités de vos sujets. Rien n'est gardé côté serveur."
             : "À partir de ce que vous avez consulté sur cet appareil : des articles apparentés, et les plus cités de vos sujets. Rien n'est gardé côté serveur."}
@@ -116,29 +117,29 @@ export function ForYou() {
           {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
         </div>
       ) : state.items.length === 0 ? (
-        <p className="text-[0.9375rem] text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
+        <p className="text-meta text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
       ) : (
         <ul ref={listRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {state.items.map((item, i) => {
+          {state.items.map((item) => {
             const { kind, topic, seeds } = item.reason;
             return (
-              <li key={item.work.id} className="flex min-w-0 flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+              <li key={item.work.id} className="flex min-w-0 flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
                   {/* Raison complète (sujet et tous les articles d'origine), jamais tronquée par la hauteur : chaque lien reste visible
                       et focalisable. Seuls les titres très longs sont raccourcis, le titre entier restant dans le nom accessible du lien. */}
                   <p className="min-w-0 wrap-break-word">
                     {seeds.length > 0 ? (
                       <>
-                        {kind === "related" ? "Proche de " : topic ? `Récent et cité sur « ${topic} », comme ` : "Même sujet que "}
+                        {kind === "related" ? "Proche de " : topic ? `Récent et cité sur «\u00A0${topic}\u00A0», comme ` : "Même sujet que "}
                         {seeds.map((seed, j) => (
                           <Fragment key={seed.id}>
                             {j > 0 && (j === seeds.length - 1 ? " et " : ", ")}
                             <Link
                               href={`/article/${seed.id}`}
                               aria-label={`« ${seed.title} »`}
-                              className="underline underline-offset-2 hover:text-foreground"
+                              className="link-quiet"
                             >
-                              « {shortTitle(seed.title)} »
+                              «&nbsp;{shortTitle(seed.title)}&nbsp;»
                             </Link>
                           </Fragment>
                         ))}
@@ -147,9 +148,9 @@ export function ForYou() {
                       reasonText(item.reason)
                     )}
                   </p>
-                  <button type="button" data-focus-key="dismiss" onClick={() => dismiss(item)} className="flex shrink-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary hover:text-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
-                    <EyeOffIcon className="size-3.5" aria-hidden /> Pas intéressé
-                  </button>
+                  <Button variant="ghost" size="xs" data-focus-key="dismiss" onClick={() => dismiss(item)} className="text-muted-foreground" aria-label={`Pas intéressé : ${item.work.display_name ?? "cet article"}`}>
+                    <EyeOffIcon aria-hidden /> Pas intéressé
+                  </Button>
                 </div>
                 <WorkCard work={item.work} variant="compact" />
               </li>
@@ -158,9 +159,9 @@ export function ForYou() {
         </ul>
       )}
       {state.status === "ready" && hiddenCount > 0 && (
-        <button type="button" onClick={showHidden} className="mt-4 inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground">
-          <EyeIcon className="size-4" aria-hidden /> Réafficher les suggestions écartées ({hiddenCount})
-        </button>
+        <Button variant="ghost" size="sm" onClick={showHidden} className="mt-4 text-muted-foreground">
+          <EyeIcon aria-hidden /> Réafficher les suggestions écartées ({hiddenCount})
+        </Button>
       )}
     </section>
   );

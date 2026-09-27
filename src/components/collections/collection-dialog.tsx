@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 import { Loader2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -8,6 +8,8 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { MAX_COLLECTION_DESCRIPTION, MAX_COLLECTION_NAME } from "@/lib/collections-shared";
+
+type DialogContentProps = ComponentProps<typeof DialogContent>;
 
 interface Props {
   open: boolean;
@@ -20,15 +22,17 @@ interface Props {
   description?: string;
   submitLabel: string;
   onSubmit: (name: string, listDescription: string) => Promise<boolean>;
+  /** Élément qui reprend le focus à la fermeture, quand la fenêtre n'est pas ouverte par un Dialog.Trigger. */
+  finalFocus?: DialogContentProps["finalFocus"];
 }
 
 /** Formulaire d'une liste : un nom, c'est tout. */
-export function CollectionDialog({ open, onOpenChange, initialName = "", initialDescription = "", title, description, submitLabel, onSubmit }: Props) {
+export function CollectionDialog({ open, onOpenChange, initialName = "", initialDescription = "", title, description, submitLabel, onSubmit, finalFocus }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogTitle className="title-display text-2xl">{title}</DialogTitle>
-        {description && <DialogDescription className="text-[0.9375rem] text-muted-foreground">{description}</DialogDescription>}
+      <DialogContent className="sm:max-w-sm" finalFocus={finalFocus}>
+        <DialogTitle className="title-display">{title}</DialogTitle>
+        {description && <DialogDescription className="text-meta text-muted-foreground">{description}</DialogDescription>}
         {/* Le contenu est démonté à la fermeture : le formulaire repart du nom initial à chaque ouverture. */}
         <NameForm initialName={initialName} initialDescription={initialDescription} submitLabel={submitLabel} onSubmit={onSubmit} onClose={() => onOpenChange(false)} />
       </DialogContent>
@@ -64,7 +68,7 @@ function NameForm({ initialName, initialDescription, submitLabel, onSubmit, onCl
             onChange={(e) => setName(e.target.value)}
             maxLength={MAX_COLLECTION_NAME}
             placeholder="Ex. Mémoire 2026, Santé, À lire…"
-            className="h-10 text-base md:text-base"
+            className="text-base md:text-base"
           />
         )}
       </Field>
@@ -84,7 +88,7 @@ function NameForm({ initialName, initialDescription, submitLabel, onSubmit, onCl
           />
         )}
       </Field>
-      <div className="flex justify-end gap-2">
+      <div className="flex flex-wrap justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>Annuler</Button>
         <Button type="submit" disabled={busy || !name.trim()}>
           {busy && <Loader2Icon className="animate-spin" />} {submitLabel}

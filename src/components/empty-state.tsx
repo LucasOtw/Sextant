@@ -3,7 +3,8 @@ import Link from "next/link";
 import { RefreshCwIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ResultsLink } from "@/components/results-status";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
+import { frSpaces } from "@/lib/text";
 
 interface Props {
   title: string;
@@ -22,22 +23,22 @@ interface Props {
   className?: string;
 }
 
-/** État vide ou indisponible d'une liste : cadre en pointillés, titre, explication, action éventuelle (QUAL-13). */
+/** État vide ou indisponible d'une liste : zone teintée, titre, explication, action éventuelle (QUAL-13). */
 export function EmptyState({ title, hint, icon, action, retryHref, inResults = false, titleRef, focusableTitle = false, className }: Props) {
   const Retry = inResults ? ResultsLink : Link;
-  const titleClass = cn("text-lg font-medium", Boolean(icon) && "mt-3", focusableTitle && "outline-none");
+  const titleClass = cn("title-display text-xl", Boolean(icon) && "mt-3", focusableTitle && "outline-none");
   return (
-    <div className={cn("rounded-xl border border-dashed p-10 text-center", className)}>
+    <div className={cn("surface-tint rounded-2xl p-10 text-center", className)}>
       {icon}
       {/* Dans une liste de résultats, le message tient la place du titre de la liste (h2) : la page garde sa hiérarchie (A11Y-14). */}
       {inResults ? (
-        <h2 className={titleClass}>{title}</h2>
+        <h2 className={titleClass}>{frSpaces(title)}</h2>
       ) : (
         <p ref={titleRef} tabIndex={focusableTitle ? -1 : undefined} className={titleClass}>
-          {title}
+          {frSpaces(title)}
         </p>
       )}
-      {hint && <p className="mt-1 text-base text-muted-foreground">{hint}</p>}
+      {hint && <p className="mx-auto mt-1 max-w-measure-text text-base text-muted-foreground">{hint}</p>}
       {action}
       {retryHref && (
         <Retry href={retryHref} className={buttonVariants({ variant: "outline", className: "mt-5" })}>
