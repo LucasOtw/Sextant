@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookmarkIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
+import { toggleChip } from "@/components/ui/toggle-chip";
 import { cn } from "@/lib/cn";
 
 /**
@@ -19,12 +20,12 @@ export function FavoritesLink({ className }: { className?: string }) {
       href="/favoris"
       aria-label={`Mes favoris${count ? `, ${count}` : ""}`}
       aria-current={current ? "page" : undefined}
-      className={cn(
-        "relative inline-flex size-9 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground",
-        current ? "bg-muted text-foreground" : "text-muted-foreground",
-        pending && "hidden [[data-session]_&]:inline-flex",
-        className,
-      )}
+      {...toggleChip({
+        active: current,
+        appearance: "ghost",
+        size: "icon",
+        className: cn("relative", pending && "hidden [[data-session]_&]:inline-flex", className),
+      })}
     >
       <BookmarkIcon className="size-4" aria-hidden />
       {/* Compteur en 12 px (seule exception au plancher de 13 px), Nunito 700 dans une pastille de 18 px. */}

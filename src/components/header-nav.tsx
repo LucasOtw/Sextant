@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/cn";
+import { toggleChip } from "@/components/ui/toggle-chip";
 
 export function HeaderNav() {
   const pathname = usePathname();
@@ -13,10 +13,7 @@ export function HeaderNav() {
         href="/search"
         prefetch={false}
         aria-current={active ? "page" : undefined}
-        className={cn(
-          "rounded-full px-3.5 py-1.5 text-meta font-semibold transition-colors duration-200",
-          active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-        )}
+        {...toggleChip({ active, appearance: "ghost", size: "nav" })}
       >
         Recherche
       </Link>

@@ -497,13 +497,25 @@ mark[data-highlight] {
 }
 
 /* Couleurs forcées : l'état sélectionné (liste active, filtre, sujet, vote donné, page courante) ne tenait qu'à son fond
-   bleu, que le système efface. Il reprend la sélection système. Les Button (data-slot) gardent leur propre repère. */
+   et à sa couleur, que le système efface. Il reprend la sélection système. Les Button (data-slot) gardent leur propre repère.
+   Puce active (ToggleChip, data-active) : en plus du fond, une bordure de 2 px en couleur de texte et un libellé souligné,
+   pour qu'un thème où la sélection se confond avec le fond garde un repère. */
 @media (forced-colors: active) {
   :is(button[aria-pressed="true"]:not([data-slot="button"]), a[aria-current="page"], a[aria-current="true"]) {
     forced-color-adjust: none;
     background: SelectedItem;
     color: SelectedItemText;
     border-color: SelectedItem;
+  }
+  /* Même spécificité que la règle précédente, qui la précède : sa bordure de sélection ne recouvre pas celle-ci. */
+  :is(a, button)[data-slot="toggle-chip"][data-active="true"] {
+    forced-color-adjust: none;
+    background: SelectedItem;
+    color: SelectedItemText;
+    border: 2px solid CanvasText;
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
   }
 }
 
