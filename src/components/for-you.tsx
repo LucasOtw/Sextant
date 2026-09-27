@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { EyeIcon, EyeOffIcon, SparklesIcon } from "lucide-react";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { WorkCard } from "@/components/work-card";
 import { Button } from "@/components/ui/button";
@@ -101,10 +101,10 @@ export function ForYou() {
   if (state.status === "idle" || state.status === "hidden") return null;
 
   return (
-    <section id="pour-vous" className="py-8 animate-in fade-in duration-500 motion-reduce:animate-none">
+    <section id="pour-vous" className="py-8">
       <div className="mb-5">
-        <h2 ref={headingRef} tabIndex={-1} className="title-display type-h2 flex items-center gap-2 outline-none">
-          <SparklesIcon className="size-7 text-brand" aria-hidden /> Pour vous
+        <h2 ref={headingRef} tabIndex={-1} className="title-display type-h2 outline-none">
+          Pour vous
         </h2>
         <p className="mt-1.5 max-w-measure-text text-muted-foreground">
           {state.fromFavorites
@@ -120,10 +120,10 @@ export function ForYou() {
         <p className="text-meta text-muted-foreground">Vous avez écarté toutes les suggestions.</p>
       ) : (
         <ul ref={listRef} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {state.items.map((item, i) => {
+          {state.items.map((item) => {
             const { kind, topic, seeds } = item.reason;
             return (
-              <li key={item.work.id} className="flex min-w-0 flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+              <li key={item.work.id} className="flex min-w-0 flex-col gap-1.5">
                 <div className="flex items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
                   {/* Raison complète (sujet et tous les articles d'origine), jamais tronquée par la hauteur : chaque lien reste visible
                       et focalisable. Seuls les titres très longs sont raccourcis, le titre entier restant dans le nom accessible du lien. */}

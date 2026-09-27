@@ -338,8 +338,8 @@ async function Similar({ work }: { work: Work }) {
   if (similar.length === 0) return <p className="mt-4 text-sm text-muted-foreground">Aucune suggestion pour cet article.</p>;
   return (
     <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {similar.slice(0, 9).map((w, i) => (
-        <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+      {similar.slice(0, 9).map((w) => (
+        <li key={w.id}>
           <WorkCard work={w} variant="compact" />
         </li>
       ))}

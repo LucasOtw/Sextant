@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { HeroWave } from "@/components/hero-wave";
 import { SearchBox } from "@/components/search-box";
 import { ThemeGrid } from "@/components/theme-grid";
 import { WorkCard } from "@/components/work-card";
@@ -24,7 +25,7 @@ export const metadata: Metadata = { alternates: { canonical: "/" } };
 export default function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-4 sm:px-6">
-      <section className="flex flex-col items-center gap-6 py-16 text-center sm:py-24">
+      <section className="flex flex-col items-center gap-6 pb-10 pt-16 text-center sm:pb-14 sm:pt-24">
         <h1 className="title-display type-hero max-w-3xl">
           Trouvez votre cap dans la littérature scientifique<span className="text-brand">.</span>
         </h1>
@@ -45,6 +46,7 @@ export default function HomePage() {
             </span>
           ))}
         </p>
+        <HeroWave className="mt-4" />
       </section>
 
       <section id="themes" className="py-8">
@@ -83,8 +85,8 @@ async function Featured() {
   }
   return (
     <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {works.map((w, i) => (
-        <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+      {works.map((w) => (
+        <li key={w.id}>
           <WorkCard work={w} variant="compact" />
         </li>
       ))}

@@ -90,12 +90,8 @@ async function List({ base, sp, params }: Props) {
         {last > 1 && <span className="sr-only">, page {current} sur {formatInteger(last)}</span>}
       </h2>
       <ul className="flex flex-col gap-3">
-        {page.results.map((w, i) => (
-          <li
-            key={w.id}
-            className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none"
-            style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
-          >
+        {page.results.map((w) => (
+          <li key={w.id}>
             <WorkCard work={w} />
           </li>
         ))}

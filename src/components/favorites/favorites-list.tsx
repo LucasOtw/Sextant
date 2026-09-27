@@ -35,8 +35,6 @@ const SORTS = [
   { value: "title", label: "Titre" },
 ];
 
-/** Seules les premières cartes entrent en animation : au-delà, des centaines d'animations partiraient ensemble. */
-const ANIMATED_ROWS = 12;
 const NO_LISTS: Collection[] = [];
 
 function deleteHint(n: number) {
@@ -412,13 +410,8 @@ interface RowProps {
  * sélecteurs de liste (abonnés au contexte), pas le reste de chaque carte (PERF-12).
  */
 const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, manualOrder, titleAs, lists, retracted, onSelect, onMove }: RowProps) {
-  const animated = i < ANIMATED_ROWS;
   return (
-    <li
-      data-id={f.id}
-      className={cn(animated && "animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none")}
-      style={animated ? { animationDelay: `${Math.min(i, 8) * 40}ms` } : undefined}
-    >
+    <li data-id={f.id}>
       <article
         className={cn(
           "surface-card card-link relative flex flex-col gap-2 p-4 [contain-intrinsic-size:auto_180px] [content-visibility:auto] sm:p-5",

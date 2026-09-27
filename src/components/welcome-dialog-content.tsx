@@ -3,6 +3,7 @@
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo";
+import { Constellation, Scene, Sea } from "@/components/scene";
 
 /**
  * Contenu de la fenêtre d'accueil, importé directement par WelcomeDialog : le chargement différé retardait
@@ -36,31 +37,34 @@ export default function WelcomeDialogContent({ onClose }: { onClose: () => void 
 /** Illustration : le sextant vise une constellation d'articles au-dessus d'une mer calme. */
 function WelcomeIllustration() {
   return (
-    <div className="relative flex h-44 items-end justify-center overflow-hidden bg-[oklch(0.94_0.03_250)] dark:bg-[oklch(0.28_0.05_250)]">
-      <svg viewBox="0 0 400 176" className="absolute inset-0 h-full w-full" aria-hidden>
-        {/* étoiles / articles */}
-        <g fill="#E0A52D">
-          <circle cx="70" cy="40" r="3" /><circle cx="130" cy="24" r="2" /><circle cx="330" cy="30" r="3" />
-          <circle cx="290" cy="60" r="2" /><circle cx="360" cy="80" r="2.5" /><circle cx="40" cy="90" r="2" />
-        </g>
-        <g stroke="#E0A52D" strokeOpacity="0.5" strokeWidth="1.2">
-          <path d="M70 40 130 24M130 24 200 46M290 60 330 30M330 30 360 80" />
-        </g>
-        {/* fiches d'articles flottantes */}
-        <g>
-          <rect x="228" y="34" width="52" height="34" rx="5" fill="#fff" stroke="#4F6FD8" strokeWidth="1.5" />
-          <rect x="236" y="43" width="30" height="3" rx="1.5" fill="#4F6FD8" />
-          <rect x="236" y="51" width="36" height="3" rx="1.5" fill="#B8C4EE" />
-          <rect x="236" y="58" width="22" height="3" rx="1.5" fill="#B8C4EE" />
-          <rect x="88" y="62" width="52" height="34" rx="5" fill="#fff" stroke="#4F6FD8" strokeWidth="1.5" transform="rotate(-8 114 79)" />
-          <rect x="96" y="71" width="30" height="3" rx="1.5" fill="#4F6FD8" transform="rotate(-8 114 79)" />
-          <rect x="96" y="79" width="36" height="3" rx="1.5" fill="#B8C4EE" transform="rotate(-8 114 79)" />
-        </g>
-        {/* mer */}
-        <path d="M0 150c40-10 80-10 120 0s80 10 120 0 80-10 120 0 40 6 40 6v20H0z" fill="#4F6FD8" fillOpacity="0.25" />
-        <path d="M0 160c40-8 80-8 120 0s80 8 120 0 80-8 120 0 40 5 40 5v11H0z" fill="#4F6FD8" fillOpacity="0.4" />
-      </svg>
-      <LogoMark className="relative mb-6 size-24 text-[#1D1F2A] drop-shadow-sm dark:text-[#F7F5EF]" />
-    </div>
+    <Scene
+      viewBox="0 0 400 176"
+      className="h-44 items-end"
+      art={
+        <>
+          {/* étoiles / articles */}
+          <Constellation
+            stars={[[70, 40, 3], [130, 24, 2], [200, 46, 2], [330, 30, 3], [290, 60, 2], [360, 80, 2.5], [40, 90, 2]]}
+            links="M70 40 130 24M130 24 200 46M290 60 330 30M330 30 360 80"
+          />
+          {/* fiches d'articles flottantes */}
+          <g>
+            <rect x="228" y="34" width="52" height="34" rx="6" className="fill-card stroke-brand" strokeWidth={1.5} />
+            <rect x="236" y="43" width="30" height="3" rx="1.5" className="fill-brand" />
+            <rect x="236" y="51" width="36" height="3" rx="1.5" className="fill-brand" fillOpacity={0.35} />
+            <rect x="236" y="58" width="22" height="3" rx="1.5" className="fill-brand" fillOpacity={0.35} />
+          </g>
+          <g transform="rotate(-8 114 79)">
+            <rect x="88" y="62" width="52" height="34" rx="6" className="fill-card stroke-brand" strokeWidth={1.5} />
+            <rect x="96" y="71" width="30" height="3" rx="1.5" className="fill-brand" />
+            <rect x="96" y="79" width="36" height="3" rx="1.5" className="fill-brand" fillOpacity={0.35} />
+          </g>
+          {/* mer */}
+          <Sea width={400} height={176} y={152} period={120} amplitude={5} />
+        </>
+      }
+    >
+      <LogoMark className="relative mb-6 size-24 text-foreground" />
+    </Scene>
   );
 }

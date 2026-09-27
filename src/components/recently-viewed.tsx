@@ -44,7 +44,7 @@ export function RecentlyViewed() {
   if (items.length === 0 && !cleared) return null;
 
   return (
-    <section id="recents" className="py-8 pb-16 animate-in fade-in duration-500 motion-reduce:animate-none">
+    <section id="recents" className="py-8 pb-16">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 ref={headingRef} tabIndex={-1} className="title-display type-h2 outline-none">Consultés récemment</h2>
@@ -62,8 +62,8 @@ export function RecentlyViewed() {
         <p className="text-meta text-muted-foreground">Historique effacé. Les prochains articles consultés apparaîtront ici.</p>
       ) : (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {items.slice(0, 6).map((w, i) => (
-            <li key={w.id} className="animate-in fade-in slide-in-from-bottom-2 fill-mode-backwards duration-400 motion-reduce:animate-none" style={{ animationDelay: `${i * 50}ms` }}>
+          {items.slice(0, 6).map((w) => (
+            <li key={w.id}>
               <Link
                 href={`/article/${w.id}`}
                 className="surface-card card-link flex h-full flex-col gap-2 p-4"
