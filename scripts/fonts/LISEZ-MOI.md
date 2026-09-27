@@ -8,4 +8,5 @@ Ce sont les sous-ensembles latins (polices variables, WOFF2) que `next/font/goog
 - `Nunito-latin.woff2` : Nunito 3.602, Copyright 2014 The Nunito Project Authors (https://github.com/googlefonts/nunito).
 
 Les deux sont distribuées sous la SIL Open Font License, version 1.1 (https://openfontlicense.org), qui en autorise la
-redistribution avec leur avis de copyright ; ils figurent aussi dans les métadonnées (table `name`) de chaque fichier.
+redistribution avec leur avis de copyright. Texte de la licence : `OFL.txt` ; les fichiers portent aussi leur copyright
+et l'adresse de la licence dans leurs métadonnées (table `name`).
