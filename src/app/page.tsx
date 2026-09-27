@@ -35,18 +35,22 @@ export default function HomePage() {
         </p>
         {/* Pas d'autofocus : on arrive en haut de page, titre et en-tête compris ; « Aller au contenu » mène ici (A11Y-27). */}
         <SearchBox size="hero" className="max-w-2xl" />
-        <p className="text-sm text-muted-foreground">
-          Essayez :{" "}
-          {EXAMPLES.map((q, i) => (
-            <span key={q}>
-              <Link href={`/search?q=${encodeURIComponent(q)}`} prefetch={false} className="link-quiet">
-                {q}
-              </Link>
-              {i < EXAMPLES.length - 1 && " · "}
-            </span>
-          ))}
-        </p>
-        <HeroWave className="mt-4" />
+        {/* Exemples en pastilles (P5) : une liste nommée par « Essayez : », sans points médians. */}
+        <div className="flex max-w-2xl flex-col items-center gap-2.5">
+          <p id="hero-examples" className="text-sm text-muted-foreground">
+            Essayez&nbsp;:
+          </p>
+          <ul aria-labelledby="hero-examples" className="flex flex-wrap justify-center gap-2">
+            {EXAMPLES.map((q) => (
+              <li key={q}>
+                <Link href={`/search?q=${encodeURIComponent(q)}`} prefetch={false} className="example-chip">
+                  {q}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <HeroWave className="mt-2" />
       </section>
 
       <section id="themes" className="py-8">

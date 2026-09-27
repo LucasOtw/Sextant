@@ -172,8 +172,10 @@
   --elevation-float: 0 12px 32px -12px oklch(0 0 0 / 0.6);
 }
 
-/* Surface bleue (section ou bande forte) : texte, liens et focus passent en clair pour rester lisibles. Prête, pas encore
-   utilisée (section forte à valider). */
+/* Surface bleue (section forte : le pied de page, S3) : texte, liens et focus passent en clair pour rester lisibles.
+   Texte #EEF1FB à 5,88:1 en clair (#3E54B8), 10,30:1 en sombre (#27346F) ; liens et focus blancs à 6,63:1 et 11,62:1.
+   Le bleu de marque des graphismes (alidade et miroir du logo) s'éclaircit : #566ED1 disparaîtrait sur #3E54B8 (1,44:1) ;
+   #A3B2EF ressort à 3,21:1 en clair et 5,63:1 en sombre. */
 .surface-brand {
   background-color: var(--brand-surface);
   color: var(--brand-foreground);
@@ -182,6 +184,15 @@
   --accent-brand: #FFFFFF;
   --ring: #FFFFFF;
   --muted-foreground: var(--brand-foreground);
+  --brand: #A3B2EF;
+}
+/* Couleurs forcées : la surface prend le fond système ; le logo, dont le SVG garde ses couleurs, repasse en couleur de
+   texte système pour ne pas rester clair sur un fond clair. */
+@media (forced-colors: active) {
+  .surface-brand {
+    --brand: CanvasText;
+    --brand-foreground: CanvasText;
+  }
 }
 
 @layer base {
@@ -356,6 +367,48 @@
   }
   .card-link:hover .card-title {
     color: var(--link);
+  }
+  /* Exemple de recherche du hero en pastille (P5) : pilule teintée, texte bleu foncé en 600 (#3E54B8 sur #EAEDF9 à
+     5,68:1 ; sombre #8FA1EA sur #20284A à 5,78:1), soulignement au survol. Sans bordure visible ni gras, pour ne pas se
+     confondre avec la puce active ; la bordure transparente se dessine en couleurs forcées. Hauteur des puces (36 px). */
+  .example-chip {
+    display: inline-flex;
+    max-width: 100%;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.875rem;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    background-color: var(--tint);
+    color: var(--link);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    text-wrap: balance;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    text-decoration-color: transparent;
+    transition: color 150ms, text-decoration-color 150ms;
+  }
+  .example-chip:hover {
+    color: var(--link-hover);
+    text-decoration-color: currentColor;
+  }
+  /* Lien du pied de page bleu : texte clair de la surface, blanc et souligné au survol (le soulignement de 1,5 px est
+     déjà posé, transparent, pour que le texte ne bouge pas). */
+  .footer-link {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    text-decoration-color: transparent;
+    transition: color 150ms, text-decoration-color 150ms;
+  }
+  .footer-link:hover {
+    color: var(--link-hover);
+    text-decoration-color: currentColor;
   }
 }
 

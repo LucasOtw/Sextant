@@ -1,6 +1,13 @@
 import { cn } from "@/lib/cn";
 
 /**
+ * Astre du logo : étoile à quatre branches de 13 unités, centrée en (53, 10,5). Même dessin pour l'étoile du hero, la
+ * seule étoile décorative du site (hero-wave.tsx).
+ */
+export const ASTRE = "M53 4l1.8 4.7L59.5 10.5l-4.7 1.8L53 17l-1.8-4.7L46.5 10.5l4.7-1.8z";
+export const ASTRE_CENTER = [53, 10.5] as const;
+
+/**
  * Logo Sextant, aux couleurs de la DA (M10) : cadre en currentColor (encre en clair, crème en sombre), alidade, miroir
  * et pivot en bleu de marque (--brand : #566ED1, #6F8BE8 en sombre), arc gradué et astre en jaune (--sun #D7A848),
  * graduations en jaune sombre accordé (--sun-deep). Géométrie de référence, reprise par public/icon.svg, les PNG et
@@ -20,7 +27,7 @@ export function LogoMark({ className }: { className?: string }) {
       <path d="M32 14 44.3 47.8" className="stroke-brand" strokeWidth="4" strokeLinecap="round" />
       <circle cx="32" cy="14" r="3.5" className="fill-brand" />
       {/* astre */}
-      <path d="M53 4l1.8 4.7L59.5 10.5l-4.7 1.8L53 17l-1.8-4.7L46.5 10.5l4.7-1.8z" className="fill-sun" />
+      <path d={ASTRE} className="fill-sun" />
     </svg>
   );
 }

@@ -16,8 +16,12 @@ const css = read("src/app/globals.css");
 /** Palette de la DA (docs/handoffs/2026-09-26-da-brief.md) et jaune sombre accordé des graduations (--sun-deep). */
 const PALETTE = ["#F9F8F2", "#0D111A", "#566ED1", "#D7A848", "#7A5C1C", "#EEF1FB"];
 
-/** Tracés du logo (attributs d des path), dans l'ordre : la géométrie de référence est celle de LogoMark. */
+/**
+ * Tracés du logo (attributs d des path), dans l'ordre : la géométrie de référence est celle de LogoMark. L'astre y est
+ * une constante (ASTRE), partagée avec l'étoile du hero : elle est relue à part.
+ */
 const paths = (source: string) => [...source.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+const logoShapes = [...paths(logo), ...[...logo.matchAll(/export const ASTRE = "([^"]+)"/g)].map((m) => m[1])];
 
 function luminance(color: string): number {
   const n = parseInt(color.slice(1), 16);
@@ -53,7 +57,8 @@ describe("logo aux couleurs de la DA (M10)", () => {
     ["scripts/og-image.html", og],
     ["scripts/generate-icons.mjs", generator],
   ])("%s : même géométrie que LogoMark et uniquement des couleurs de la palette", (_, source) => {
-    for (const shape of paths(logo)) expect(paths(source)).toContain(shape);
+    expect(logoShapes).toHaveLength(5);
+    for (const shape of logoShapes) expect(paths(source)).toContain(shape);
     const colors = [...source.matchAll(/#[0-9a-f]{6}\b/gi)].map((m) => m[0].toUpperCase());
     expect(colors.filter((c) => !PALETTE.includes(c))).toEqual([]);
   });
