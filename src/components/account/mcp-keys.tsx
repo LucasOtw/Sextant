@@ -140,8 +140,8 @@ export function McpKeys() {
                 <p className="flex items-center gap-2 font-medium"><KeyRoundIcon className="size-4 text-accent-brand" aria-hidden /> {k.name}</p>
                 <p className="text-xs text-muted-foreground">
                   <span className="tabular-nums">{k.prefix}…</span>
-                  {k.createdAt && <> · créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
-                  {" · "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
+                  {k.createdAt && <>, créée le {DATE_SHORT.format(new Date(k.createdAt))}</>}
+                  {", "}{k.lastUsedAt ? `utilisée le ${DATE_SHORT.format(new Date(k.lastUsedAt))}` : "jamais utilisée"}
                 </p>
               </div>
               <Button
@@ -184,7 +184,7 @@ export function McpKeys() {
       <details className="text-sm">
         <summary className="font-medium">Comment brancher Sextant à mon assistant&#8239;?</summary>
         <div className="mt-3 flex flex-col gap-2 text-muted-foreground">
-          <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages → Connecteurs → Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
+          <p>Créez une clé : une adresse s'affiche, à coller dans Claude (Réglages, puis Connecteurs, puis Ajouter un connecteur personnalisé) ou dans ChatGPT.</p>
           <p>Pour Claude Code ou le fichier de configuration de Claude Desktop, les commandes prêtes à copier sont dans «&nbsp;Autres méthodes&nbsp;».</p>
         </div>
       </details>
@@ -243,7 +243,7 @@ export function McpKeys() {
               </ol>
 
               <p className="rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                Même démarche dans ChatGPT : Réglages → Connecteurs → Créer (mode développeur), sans authentification.
+                Même démarche dans ChatGPT : Réglages, puis Connecteurs, puis Créer (mode développeur), sans authentification.
                 Cette adresse vaut mot de passe : ne la partagez pas. En cas de doute, révoquez la clé et créez-en une autre.
               </p>
 

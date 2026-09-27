@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRightIcon, KeyRoundIcon, SparklesIcon } from "lucide-react";
+import { KeyRoundIcon, SparklesIcon } from "lucide-react";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import { LogoMark } from "@/components/logo";
@@ -28,7 +28,7 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
         onOpenChange={(o) => {
           if (!o) onClose();
         }}
-        intro="Connectez-vous, puis créez une clé dans «&nbsp;Mon compte&nbsp;» → Assistants IA pour brancher Sextant à Claude ou ChatGPT."
+        intro="Connectez-vous, puis créez une clé dans «&nbsp;Mon compte&nbsp;», rubrique Assistants IA, pour brancher Sextant à Claude ou ChatGPT."
       />
     );
   }
@@ -73,11 +73,11 @@ export default function McpAnnouncementContent({ onClose }: { onClose: () => voi
             <Button variant="ghost" onClick={onClose}>Plus tard</Button>
             {enabled ? (
               <Link href="/compte#assistants" onClick={onClose} className={buttonVariants({ size: "lg" })}>
-                Connecter mon assistant <ArrowRightIcon data-icon="inline-end" />
+                Connecter mon assistant
               </Link>
             ) : (
               <Button size="lg" onClick={() => setSignIn(true)}>
-                Se connecter pour l'activer <ArrowRightIcon data-icon="inline-end" />
+                Se connecter pour l'activer
               </Button>
             )}
           </div>

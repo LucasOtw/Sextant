@@ -202,6 +202,8 @@ export function articleMetaDescription(w: Work, abstract: string | null): string
 const LANGUAGE_NAMES: Record<string, string> = {
   en: "anglais", fr: "français", es: "espagnol", de: "allemand", it: "italien", pt: "portugais",
   nl: "néerlandais", ru: "russe", zh: "chinois", ja: "japonais", ko: "coréen", ar: "arabe", tr: "turc", pl: "polonais",
+  ca: "catalan", cs: "tchèque", da: "danois", el: "grec", fa: "persan", fi: "finnois", he: "hébreu", hi: "hindi",
+  hu: "hongrois", id: "indonésien", no: "norvégien", ro: "roumain", sv: "suédois", uk: "ukrainien", vi: "vietnamien",
 };
 
 /** "en" → "anglais" ; code inconnu renvoyé en majuscules. */

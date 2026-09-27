@@ -77,9 +77,10 @@ export function RecentlyViewed() {
                   {w.year && <span>{w.year}</span>}
                 </span>
                 <span className="card-title title-display line-clamp-2 text-lg leading-snug">{w.title}</span>
-                <span className="line-clamp-1 text-meta text-muted-foreground">
-                  {w.authors}
-                  {w.venue && <> · <span className="italic">{w.venue}</span></>}
+                {/* Comme ArticleMeta : les auteurs, puis la revue, chacun sur sa ligne plutôt qu'enchaînés par un point médian. */}
+                <span className="text-meta text-muted-foreground">
+                  <span className="block truncate">{w.authors}</span>
+                  {w.venue && <span className="block truncate italic">{w.venue}</span>}
                 </span>
               </Link>
             </li>

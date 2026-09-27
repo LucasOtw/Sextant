@@ -13,7 +13,7 @@ export default function NotFound() {
     <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
       <ErrorScene variant="lost" code="404" />
       <div className="flex flex-col items-center gap-3 text-center">
-        <p className="text-sm font-semibold uppercase tracking-wide text-accent-brand">Erreur 404</p>
+        <p className="text-sm font-semibold text-accent-brand">Erreur 404</p>
         <h1 className="title-display type-h1">Cette page a pris le large</h1>
         <p className="lead">
           L'adresse ne mène nulle part : la page a été déplacée, l'identifiant est incorrect ou le lien de partage a été désactivé.

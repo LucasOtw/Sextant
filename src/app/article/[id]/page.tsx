@@ -122,6 +122,7 @@ export default async function ArticlePage({ params }: Props) {
   const publisher = publisherUrl(work);
   const doiUrl = safeHttpUrl(work.doi);
   const venue = venueName(work);
+  const publication = publicationLine(work);
   const citation = citationFromWork(work);
   const theme = work.primary_topic?.field ? themeByFieldId(work.primary_topic.field.id) : undefined;
   const provider = activeProvider();
@@ -167,16 +168,11 @@ export default async function ArticlePage({ params }: Props) {
 
         <Authors work={work} />
 
+        {/* Une phrase : « *Revue*, 12 mars 1988, vol. 3 (2), p. 12–30 ». La langue est écrite une fois, près du résumé. */}
         <p className="mt-3 text-meta text-muted-foreground">
           {venue && <span className="italic text-foreground">{venue}</span>}
-          {venue && (work.publication_date || work.publication_year) && " · "}
-          {formatDate(work.publication_date) ?? work.publication_year}
-          {work.biblio?.volume && <>, vol. {work.biblio.volume}</>}
-          {work.biblio?.issue && <> ({work.biblio.issue})</>}
-          {work.biblio?.first_page && (
-            <>, p. {work.biblio.first_page}{work.biblio.last_page ? `–${work.biblio.last_page}` : ""}</>
-          )}
-          {work.language && <> · {work.language.toUpperCase()}</>}
+          {venue && publication && ", "}
+          {publication}
         </p>
 
         <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-meta">
@@ -243,7 +239,7 @@ export default async function ArticlePage({ params }: Props) {
           <h2 id="abstract" className="section-title">
             Résumé
             {work.language && work.language !== "fr" && (
-              <span className="ml-2 font-sans text-base font-normal text-muted-foreground">· en {languageName(work.language)}</span>
+              <span className="ml-2 font-sans text-base font-normal text-muted-foreground">en {languageName(work.language)}</span>
             )}
           </h2>
           {abstract ? (
@@ -357,4 +353,14 @@ function SimilarSkeleton() {
       {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
     </div>
   );
+}
+
+/** « 12 mars 1988, vol. 3 (2), p. 12–30 » : date (ou année), volume, numéro et pages, séparés par des virgules. */
+function publicationLine(work: Work): string {
+  const b = work.biblio;
+  // Date insécable : « 1 janvier 2025 » ne se coupe pas entre le jour et le mois.
+  const when = formatDate(work.publication_date)?.replace(/ /g, "\u00a0") ?? work.publication_year;
+  const volume = [b?.volume && `vol. ${b.volume}`, b?.issue && `(${b.issue})`].filter(Boolean).join(" ");
+  const pages = b?.first_page ? `p. ${b.first_page}${b.last_page ? `–${b.last_page}` : ""}` : null;
+  return [when, volume, pages].filter(Boolean).join(", ");
 }

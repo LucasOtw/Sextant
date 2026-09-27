@@ -56,7 +56,8 @@ export default function LegalNoticePage() {
       <h2>Hébergeur</h2>
       <p>
         Le site est hébergé par <strong>{SITE.host.name}</strong>, {SITE.host.address}.<br />
-        Site : <ExternalLink href={SITE.host.url}>{SITE.host.url}</ExternalLink> · Contact : {SITE.host.contact}
+        Site : <ExternalLink href={SITE.host.url}>{SITE.host.url}</ExternalLink><br />
+        Contact : {SITE.host.contact}
       </p>
 
       <h2>Stockage des données des comptes</h2>

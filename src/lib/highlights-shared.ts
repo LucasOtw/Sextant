@@ -59,7 +59,7 @@ export function sanitizeHighlightInput(input: unknown): HighlightInput | null {
 }
 
 export function sourceLabel(h: Pick<Highlight, "source" | "page">): string {
-  const page = h.page ? ` · p. ${h.page}` : "";
+  const page = h.page ? `, p. ${h.page}` : "";
   if (h.source === "abstract") return "Résumé";
   if (h.source === "pdf") return `PDF${page}`;
   return `Saisi à la main${page}`;

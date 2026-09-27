@@ -103,7 +103,8 @@ function Picker({ sentences, error, lang, isHighlighted, onSave, children, onClo
       ) : (
         <fieldset className="min-w-0">
           <legend className="text-sm font-medium text-muted-foreground">
-            {sentences.length} phrase{sentences.length > 1 ? "s" : ""} · des phrases cochées qui se suivent forment un seul passage
+            {sentences.length} phrase{sentences.length > 1 ? "s" : ""}
+            <span className="block font-normal">Des phrases cochées qui se suivent forment un seul passage.</span>
           </legend>
           <ul className="mt-2 flex flex-col gap-1">
             {sentences.map((s, i) => {

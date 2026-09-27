@@ -106,7 +106,7 @@ describe("sanitizeHighlightInput", () => {
   });
 
   it("libellé de la source et bloc de citation", () => {
-    expect(sourceLabel({ source: "pdf", page: 12 })).toBe("PDF · p. 12");
+    expect(sourceLabel({ source: "pdf", page: 12 })).toBe("PDF, p. 12");
     expect(sourceLabel({ source: "abstract", page: null })).toBe("Résumé");
     expect(sourceLabel({ source: "manual", page: null })).toBe("Saisi à la main");
     const h: Highlight = { ...sanitizeHighlightInput(valid)!, id: "h1", workId: "W4200000001", createdAt: null };

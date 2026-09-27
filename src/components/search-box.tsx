@@ -226,15 +226,14 @@ export function SearchBox({ defaultValue = "", size = "compact", hidden, classNa
                   {item.kind === "theme" && (
                     <>
                       <span className="block font-medium">{item.label}</span>
-                      <span className="block truncate text-sm text-muted-foreground">Thématique · {item.description}</span>
+                      <span className="block truncate text-sm text-muted-foreground">Thématique&nbsp;: {item.description}</span>
                     </>
                   )}
                   {item.kind === "work" && (
                     <>
                       <span className="block truncate">{item.label}</span>
                       <span className="block truncate text-sm text-muted-foreground">
-                        {item.hint}
-                        {item.citations > 0 && <> · {formatCount(item.citations)} citations</>}
+                        {[item.hint, item.citations > 0 && `${formatCount(item.citations)} citations`].filter(Boolean).join(", ")}
                       </span>
                     </>
                   )}

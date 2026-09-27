@@ -83,7 +83,7 @@ export default async function SharedListPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="max-w-4xl">
-        <p className="flex items-center gap-2 text-sm font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
           <FolderIcon className="size-4 text-accent-brand" aria-hidden /> Liste partagée
         </p>
         <h1 className="title-display type-h1 mt-2">{list.name}</h1>

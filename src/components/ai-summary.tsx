@@ -92,7 +92,7 @@ export function AiSummary({ workId, providerLabel, model, isFrench }: Props) {
         <span className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-xs font-medium text-card-foreground" title={model}>
           <span className="size-1.5 rounded-full bg-accent-brand" aria-hidden />
           Par {providerLabel}
-          <span className="hidden font-normal text-muted-foreground sm:inline">· {model}</span>
+          <span className="hidden font-normal text-muted-foreground sm:inline">({model})</span>
         </span>
       </div>
 

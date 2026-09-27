@@ -223,6 +223,7 @@ describe("petits formats", () => {
 
   it("languageName", () => {
     expect(languageName("EN")).toBe("anglais");
+    expect(languageName("sv")).toBe("suédois");
     expect(languageName("xx")).toBe("XX");
   });
 });

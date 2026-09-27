@@ -101,9 +101,9 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
           {expanded ? "Réduire" : "Lire le passage en entier"}
         </Button>
       )}
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-2 pl-6 text-xs text-muted-foreground">
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 pl-6 text-xs text-muted-foreground">
         {source}
-        {h.createdAt && <span>· {DATE_SHORT.format(new Date(h.createdAt))}</span>}
+        {h.createdAt && <span>{h.source === "manual" ? "ajouté" : "surligné"} le {DATE_SHORT.format(new Date(h.createdAt))}</span>}
       </div>
       {editing ? (
         <Textarea

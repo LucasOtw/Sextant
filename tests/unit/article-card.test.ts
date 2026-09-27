@@ -12,7 +12,9 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
     expect(all).toContain("Thèse");
     expect(all).toContain("Accès ouvert");
     expect(all).toContain("Rétracté");
-    expect(all).toContain("· Écologie");
+    // Sujet en étiquette de la famille des badges, sans point médian (X4).
+    expect(all).toContain('<span class="min-w-0 truncate">Écologie</span>');
+    expect(all).not.toContain("·");
     const bare = html(createElement(ArticleBadges, { type: "article", isOa: false, topic: null }));
     expect(bare).not.toMatch(/Accès ouvert|Rétracté|·/);
   });
@@ -25,9 +27,11 @@ describe("blocs communs des cartes d'article (QUAL-13)", () => {
     /* eslint-enable react/no-children-prop */
   });
 
-  it("métadonnées : « Auteurs · Revue · Année », langue seulement si ce n'est pas l'anglais", () => {
-    const meta = html(createElement(ArticleMeta, { authors: "A et B", venue: "PeerJ", year: 2018, language: "fr" }));
-    expect(meta.replace(/<[^>]+>/g, "")).toBe("A et B · PeerJ · 2018 · fr");
+  it("métadonnées : les auteurs, puis « Revue, Année, en langue » (en mots, seulement si ce n'est pas l'anglais)", () => {
+    const meta = html(createElement(ArticleMeta, { authors: "A et B", venue: "PeerJ", year: 2018, language: "pt" }));
+    expect(meta).toMatch(/<p>A et B<\/p><p><span class="italic">PeerJ<\/span>, 2018, en portugais<\/p>/);
+    expect(meta).not.toContain("·");
+    expect(html(createElement(ArticleMeta, { authors: "A", venue: null, year: 1988, language: "en" })).replace(/<[^>]+>/g, "|")).toBe("||A||1988||");
     expect(html(createElement(ArticleMeta, { authors: "A", venue: null, year: null, language: "en" })).replace(/<[^>]+>/g, "")).toBe("A");
   });
 

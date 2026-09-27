@@ -353,7 +353,7 @@ export function FavoritesList({ initial, initialCollections = [], collectionsFre
 
       <p ref={countRef} tabIndex={-1} className="text-meta text-muted-foreground outline-none" aria-live="polite">
         {shown.length} article{shown.length > 1 ? "s" : ""}{q && <> pour «&nbsp;{q}&nbsp;»</>}
-        {manualOrder && shown.length > 1 && <> · les flèches changent l'ordre de la liste</>}
+        {manualOrder && shown.length > 1 && <span className="block">Les flèches changent l'ordre de la liste.</span>}
       </p>
 
       {shown.length === 0 && collection && !q && (
@@ -441,10 +441,9 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
         <ArticleMeta authors={f.authors} venue={f.venue} year={f.year} />
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-sm text-muted-foreground">
           <span className="flex items-center gap-1"><CitationCount count={f.citedByCount} /></span>
-          {f.addedAt && <span>· ajouté le {DATE_SHORT.format(new Date(f.addedAt))}</span>}
+          {f.addedAt && <span>ajouté le {DATE_SHORT.format(new Date(f.addedAt))}</span>}
           {lists.length > 0 && (
             <span className="flex flex-wrap items-center gap-1.5">
-              ·{" "}
               {lists.map((c) => (
                 <button
                   key={c.id}

@@ -68,7 +68,7 @@ export default async function AccountPage() {
             <p className="title-display truncate text-xl">{user.name ?? "Sans nom"}</p>
             {user.email && <p className="truncate text-muted-foreground">{user.email}</p>}
             <p className="mt-1 text-sm text-muted-foreground">
-              Connecté avec Google{since && <> · membre depuis le {since}</>}
+              Connecté avec Google{since && <>, membre depuis le {since}</>}
             </p>
           </div>
         </section>

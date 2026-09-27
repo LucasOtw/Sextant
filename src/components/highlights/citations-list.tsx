@@ -160,7 +160,7 @@ export function CitationsList({ initial, collections, loadError = false, retract
       </div>
 
       <p ref={countRef} tabIndex={-1} className="text-meta text-muted-foreground outline-none" aria-live="polite">
-        {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> · {articleCount} articles</>}{q && <> pour «&nbsp;{q}&nbsp;»</>}
+        {shown.length} citation{shown.length > 1 ? "s" : ""}{articleCount > 1 && <> dans {articleCount} articles</>}{q && <> pour «&nbsp;{q}&nbsp;»</>}
       </p>
 
       <div ref={containerRef} className="flex flex-col gap-8">

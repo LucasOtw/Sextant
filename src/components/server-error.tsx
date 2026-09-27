@@ -27,7 +27,7 @@ export function ServerError({ error, retry }: Props) {
     <div className="mx-auto flex max-w-2xl flex-col gap-8 px-4 py-12 sm:px-6 sm:py-16">
       <ErrorScene variant="storm" />
       <div className="flex flex-col items-center gap-3 text-center" role="alert">
-        <p className="text-sm font-semibold uppercase tracking-wide text-accent-brand">Erreur serveur</p>
+        <p className="text-sm font-semibold text-accent-brand">Erreur serveur</p>
         <h1 className="title-display type-h1">Mer agitée, visibilité réduite</h1>
         <p className="lead">
           Sextant n'a pas pu afficher cette page. Le plus souvent, une source de données comme OpenAlex répond mal ou trop lentement :
