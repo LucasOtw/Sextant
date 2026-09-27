@@ -73,6 +73,18 @@ describe("cœur des favoris en bleu de marque (P2)", () => {
       expect(contrast(hex(theme, "--favorite"), hex(theme, surface))).toBeGreaterThanOrEqual(3);
     }
   });
+
+  it("couleurs forcées : le cœur suit le système (ButtonText), plein quand l'article est enregistré", () => {
+    const button = readFileSync(path.join(src, "components/favorites/favorite-button.tsx"), "utf8");
+    expect(button).toMatch(/"size-\[18px\][^"]*forced-colors:text-\[color:ButtonText\]/);
+    expect(button).toMatch(/active \? "fill-favorite text-favorite forced-colors:fill-\[ButtonText\]"/);
+  });
+
+  it("survol de « Enregistré » (bouton secondary) : mélange sans teinte parasite, donc pas de rose", () => {
+    const ui = readFileSync(path.join(src, "components/ui/button.tsx"), "utf8");
+    expect(ui).toContain("hover:bg-[color-mix(in_oklab,var(--secondary),var(--foreground)_5%)]");
+    expect(ui).not.toMatch(/hover:bg-\[color-mix\(in_oklch,var\(--secondary\)/);
+  });
 });
 
 describe("surligneur (T15)", () => {
