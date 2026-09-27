@@ -65,7 +65,8 @@ export function ArticleHighlights({ compact = false, onGoToPage, hasAbstract = t
   return (
     <section id="mes-surlignages" aria-labelledby="mes-surlignages-titre" className={compact ? "" : "mt-8"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 ref={headingRef} id="mes-surlignages-titre" tabIndex={-1} className="section-title flex items-center gap-2 outline-none">
+        {/* Dans le lecteur, l'intertitre reste sous le titre de la page (h1 en 20 px) : 18 px. */}
+        <h2 ref={headingRef} id="mes-surlignages-titre" tabIndex={-1} className={cn("section-title flex items-center gap-2 outline-none", compact && "text-lg")}>
           <HighlighterIcon className="size-5 text-highlight-foreground" aria-hidden /> Mes surlignages
           {highlights.length > 0 && <span className="rounded-full bg-secondary px-2 py-0.5 font-sans text-xs font-semibold text-secondary-foreground">{highlights.length}</span>}
         </h2>

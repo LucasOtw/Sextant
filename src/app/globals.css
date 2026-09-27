@@ -222,6 +222,8 @@
     font-family: var(--font-heading);
     font-weight: 600;
     letter-spacing: normal;
+    /* L'espace de Fredoka est étroite (0,24 em) : « 2024 VI » se lisait « 2024VI ». */
+    word-spacing: 0.05em;
     text-wrap: balance;
     overflow-wrap: break-word;
   }
@@ -275,6 +277,7 @@
   .section-title {
     font-family: var(--font-heading);
     font-weight: 600;
+    word-spacing: 0.05em;
     font-size: 1.25rem;
     line-height: 1.25;
     color: var(--foreground);
@@ -286,6 +289,7 @@
   .lead {
     font-family: var(--font-heading);
     font-weight: 500;
+    word-spacing: 0.05em;
     font-size: 1.125rem;
     line-height: 1.45;
     color: var(--muted-foreground);
@@ -413,6 +417,7 @@
   margin-top: 2.25rem;
   margin-bottom: 0.75rem;
   font-family: var(--font-heading);
+  word-spacing: 0.05em;
   font-size: 1.3125rem;
   font-weight: 600;
   line-height: 1.25;
