@@ -50,6 +50,7 @@
   --color-brand-surface: var(--brand-surface);
   --color-brand-foreground: var(--brand-foreground);
   --color-sun: var(--sun);
+  --color-sun-deep: var(--sun-deep);
   --color-favorite: var(--favorite);
   --color-overlay: var(--overlay);
   --color-disabled: var(--disabled);
@@ -108,6 +109,8 @@
   --brand-foreground: #EEF1FB;
   /* Jaune : étoile et vague, décoratif uniquement et toujours opaque (2,06:1 : jamais du texte). */
   --sun: #D7A848;
+  /* Jaune sombre accordé (même teinte, 41°) : graduations de l'arc du logo, posées sur le jaune (2,84:1). Jamais du texte. */
+  --sun-deep: #7A5C1C;
   /* Cœur des favoris enregistré, en bleu de marque plutôt qu'en rose (P2) : 6,63:1 carte, 6,24:1 fond, 5,68:1 teinte. */
   --favorite: #3E54B8;
   --overlay: rgb(13 17 26 / 0.3);
