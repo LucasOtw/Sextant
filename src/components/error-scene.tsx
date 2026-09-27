@@ -42,18 +42,18 @@ export function ErrorScene({ variant, code, className }: Props) {
           <>
             {/* constellation, une étoile manque à l'appel */}
             <Constellation
-              stars={[[60, 46, 3], [118, 30, 2.5], [176, 58, 2], [330, 36, 3], [400, 62, 2.5]]}
-              links="M60 46 118 30M118 30 176 58M330 36 400 62"
+              stars={[[84, 46, 3], [118, 30, 2.5], [176, 58, 2], [290, 44, 3], [344, 66, 2.5]]}
+              links="M84 46 118 30M118 30 176 58M290 44 344 66"
             />
             <g className="stroke-brand" fill="none" strokeWidth={1.5} strokeLinecap="round">
-              <path d="M400 62 440 34" strokeOpacity={0.45} strokeDasharray="3 5" />
-              <circle cx="446" cy="30" r="9" strokeDasharray="3 4" />
+              <path d="M344 66 378 52" strokeOpacity={0.45} strokeDasharray="3 5" />
+              <circle cx="386" cy="46" r="9" strokeDasharray="3 4" />
             </g>
-            <text x="446" y="35" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-brand">?</text>
+            <text x="386" y="51" textAnchor="middle" fontSize="12" fontWeight="700" className="fill-brand">?</text>
             {/* bouteille à la mer */}
-            <g transform="rotate(-18 392 172)">
-              <rect x="378" y="165" width="30" height="14" rx="6" className="fill-card stroke-brand" strokeWidth={1.5} />
-              <rect x="406" y="168" width="8" height="8" rx="2" className="fill-brand" />
+            <g transform="rotate(-18 368 172)">
+              <rect x="354" y="165" width="30" height="14" rx="6" className="fill-card stroke-brand" strokeWidth={1.5} />
+              <rect x="382" y="168" width="8" height="8" rx="2" className="fill-brand" />
             </g>
             {/* mer calme */}
             <Sea width={480} height={224} y={178} period={140} amplitude={5} />

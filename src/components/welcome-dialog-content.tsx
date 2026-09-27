@@ -3,7 +3,7 @@
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/logo";
-import { Constellation, Scene, Sea } from "@/components/scene";
+import { Constellation, Scene } from "@/components/scene";
 
 /**
  * Contenu de la fenêtre d'accueil, importé directement par WelcomeDialog : le chargement différé retardait
@@ -13,7 +13,7 @@ export default function WelcomeDialogContent({ onClose }: { onClose: () => void 
   return (
     // Se ferme comme toute boîte de dialogue : le bouton, Échap ou un clic à l'extérieur, qui valent tous « vu » (A11Y-07).
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent showCloseButton={false} className="overflow-hidden p-0 sm:p-0 sm:max-w-md">
+      <DialogContent showCloseButton={false} className="overflow-y-auto p-0 sm:p-0 sm:max-w-md">
         <WelcomeIllustration />
         <div className="flex flex-col gap-3 px-6 pb-6 pt-2">
           <DialogTitle className="title-display">Un compagnon, pas un raccourci</DialogTitle>
@@ -34,7 +34,7 @@ export default function WelcomeDialogContent({ onClose }: { onClose: () => void 
   );
 }
 
-/** Illustration : le sextant vise une constellation d'articles au-dessus d'une mer calme. */
+/** Illustration : le sextant vise une constellation d'articles. */
 function WelcomeIllustration() {
   return (
     <Scene
@@ -59,8 +59,6 @@ function WelcomeIllustration() {
             <rect x="96" y="71" width="30" height="3" rx="1.5" className="fill-brand" />
             <rect x="96" y="79" width="36" height="3" rx="1.5" className="fill-brand" fillOpacity={0.35} />
           </g>
-          {/* mer */}
-          <Sea width={400} height={176} y={152} period={120} amplitude={5} />
         </>
       }
     >
