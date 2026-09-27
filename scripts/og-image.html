@@ -3,7 +3,8 @@
   Source de src/app/opengraph-image.png, l'image des aperçus de partage (og:image et twitter:image) de toutes les
   pages (QUAL-18). Servie comme un fichier statique : aucune fonction, aucun rendu à la demande.
   DA (M10, M11) : fond bleu de marque #566ED1, logo de LogoMark (src/components/logo.tsx) sur une pastille crème, vague
-  jaune du hero. Titres en Fredoka, texte en Nunito, chargés depuis scripts/fonts/ (aucune requête vers Google).
+  jaune du hero. Titres en Fredoka, texte en Nunito, chargés depuis src/app/fonts/ (les fichiers du site, aucune
+  requête vers Google).
   Texte #EEF1FB à 4,09:1 sur le bleu : réservé aux grandes tailles (≥ 24 px), jamais de petit texte ici.
   Pour régénérer l'image après une modification :
 
@@ -20,13 +21,13 @@
         font-family: Fredoka;
         font-weight: 300 700;
         font-display: block;
-        src: url("fonts/Fredoka-latin.woff2") format("woff2");
+        src: url("../src/app/fonts/Fredoka-latin.woff2") format("woff2");
       }
       @font-face {
         font-family: Nunito;
         font-weight: 200 1000;
         font-display: block;
-        src: url("fonts/Nunito-latin.woff2") format("woff2");
+        src: url("../src/app/fonts/Nunito-latin.woff2") format("woff2");
       }
       html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
       body {

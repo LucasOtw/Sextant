@@ -81,9 +81,10 @@ describe("icônes du site", () => {
 describe("image de partage (M11)", () => {
   it("polices locales seulement : aucune adresse externe dans la source", () => {
     expect(og).not.toMatch(/https?:\/\//);
+    // Mêmes fichiers que le site (src/app/fonts/), sans copie à part.
     for (const font of ["Fredoka-latin.woff2", "Nunito-latin.woff2"]) {
-      expect(og).toContain(`url("fonts/${font}")`);
-      expect(existsSync(path.join(root, "scripts/fonts", font)), font).toBe(true);
+      expect(og).toContain(`url("../src/app/fonts/${font}")`);
+      expect(existsSync(path.join(root, "src/app/fonts", font)), font).toBe(true);
     }
   });
 
