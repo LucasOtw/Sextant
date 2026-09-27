@@ -1,6 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/lib/cn"
 
 /*
  * Boutons de la DA : pilule, Nunito 600 (700 pour le bouton plein), 13 à 16 px selon la taille. Le focus est celui de

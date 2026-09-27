@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { cn } from "cn"
+import { cn } from "@/lib/cn"
 
 /** Attributs à poser sur le champ : relié au libellé (id) et à l'indication (aria-describedby). */
 export interface FieldControlProps {

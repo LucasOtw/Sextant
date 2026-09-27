@@ -3,7 +3,7 @@ import Link from "next/link";
 import { RefreshCwIcon } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ResultsLink } from "@/components/results-status";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { frSpaces } from "@/lib/text";
 
 interface Props {

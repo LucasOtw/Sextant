@@ -1,5 +1,5 @@
 import { LogoMark } from "@/components/logo";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   /** `lost` : la page a pris le large (404). `storm` : mer agitée (erreur serveur). */

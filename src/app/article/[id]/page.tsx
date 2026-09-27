@@ -49,7 +49,7 @@ import { getSimilarWorks, getWork, OpenAlexError, type Work } from "@/lib/openal
 import { themeByFieldId } from "@/lib/themes";
 import { HTML_LIMITED_BOTS } from "@/lib/html-bots";
 import { activeProvider, modelFor, providerLabel } from "@/lib/ai";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { logError, recover } from "@/lib/log";
 import { safeHttpUrl } from "@/lib/text";
 import { ExternalLink } from "@/components/external-link";

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { THEMES } from "@/lib/themes";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 export function ThemeGrid({ limit, className }: { limit?: number; className?: string }) {
   const themes = limit ? THEMES.slice(0, limit) : THEMES;

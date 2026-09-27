@@ -1,5 +1,5 @@
 import { HourglassIcon } from "lucide-react";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Refus lisible d'une page rendue côté serveur quand la limite de débit est atteinte (une page ne peut pas répondre 429 :

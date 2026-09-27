@@ -19,7 +19,7 @@ import { announce } from "@/lib/announce";
 import { api, errorMessage } from "@/lib/client/api";
 import { voteLabel } from "@/lib/labels";
 import { REPORT_SECTION, reportHref } from "@/lib/report";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { DATE_SHORT } from "@/lib/dates";
 import { frSpaces } from "@/lib/text";
 

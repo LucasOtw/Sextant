@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookmarkIcon } from "lucide-react";
 import { useFavorites } from "@/components/favorites/favorites-provider";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Lien « Mes favoris » du header, avec le compteur, visible connecté. Avant que la session soit connue (page en cache,

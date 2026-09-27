@@ -7,7 +7,7 @@ import { UserRoundIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { useSession } from "@/components/auth/session-provider";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 // Jamais téléchargé par un anonyme (PERF-03) ; préchargé dès que l'indice de connexion est lu (voir plus bas).
 const loadAccountMenu = () => import("@/components/auth/account-menu");

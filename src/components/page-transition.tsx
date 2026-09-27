@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /** Passe à vrai une fois l'hydratation terminée : tout montage ultérieur est une navigation. */
 let hydrated = false;

@@ -8,7 +8,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { useFavorites } from "@/components/favorites/favorites-provider";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { withArticle } from "@/lib/labels";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 // Menu des listes : rendu côté serveur et préchargé pour un connecté, jamais téléchargé par un anonyme (PERF-03).
 const CollectionMenu = dynamic(() => import("@/components/collections/collection-menu"));

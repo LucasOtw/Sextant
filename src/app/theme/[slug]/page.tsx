@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
 import { themeBySlug, themePageMeta } from "@/lib/themes";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { recover } from "@/lib/log";
 
 interface Props {

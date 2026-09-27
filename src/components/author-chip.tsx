@@ -7,7 +7,7 @@ import { BuildingIcon, ExternalLinkIcon, FileTextIcon, SearchIcon } from "lucide
 import { shortId } from "@/lib/ids";
 import type { AuthorProfile } from "@/lib/openalex";
 import { formatCount } from "@/lib/format";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { ExternalLink } from "@/components/external-link";
 
 interface Props {

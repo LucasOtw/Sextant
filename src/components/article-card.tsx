@@ -3,7 +3,7 @@ import Link from "next/link";
 import { LockOpenIcon, QuoteIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatCount, languageName, typeLabel } from "@/lib/format";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Blocs communs des cartes d'article (QUAL-13) : résultats de recherche (WorkCard), /favoris et page publique d'une

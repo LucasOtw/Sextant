@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { bibtexAll } from "@/lib/citation";
 import type { FavoriteSnapshot } from "@/lib/favorites-shared";
 import { useCopy } from "@/hooks/use-copy";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   articles: FavoriteSnapshot[];

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DOC_TYPES, LANGUAGES } from "@/lib/search-params";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 const SORTS = [
   { value: "relevance", label: "Pertinence" },

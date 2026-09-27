@@ -7,7 +7,7 @@ import { useCopy } from "@/hooks/use-copy";
 import { Textarea } from "@/components/ui/textarea";
 import { citationBlock, MAX_NOTE, sourceLabel, type Highlight } from "@/lib/highlights-shared";
 import { excerpt } from "@/lib/labels";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { DATE_SHORT } from "@/lib/dates";
 
 /** Au-delà, le passage est replié : la carte reste lisible dans une barre latérale. */
@@ -103,7 +103,7 @@ export function HighlightItem({ highlight: h, retracted = false, onNote, onDelet
       )}
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 pl-6 text-xs text-muted-foreground">
         {source}
-        {h.createdAt && <span>{h.source === "manual" ? "ajouté" : "surligné"} le {DATE_SHORT.format(new Date(h.createdAt))}</span>}
+        {h.createdAt && <span>{h.source === "manual" ? "Ajouté" : "Surligné"} le {DATE_SHORT.format(new Date(h.createdAt))}</span>}
       </div>
       {editing ? (
         <Textarea

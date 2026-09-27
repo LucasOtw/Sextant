@@ -19,7 +19,7 @@ import { pageAtTop, parsePickerPage } from "@/lib/pdf-pages";
 import { inertOutside } from "@/lib/focus";
 import { fetchInSlices, isExpectedRange, parseContentRange, RANGE_MIN_TOTAL_BYTES } from "@/lib/pdf-range";
 import { isAlreadyHighlighted, passagesFrom, pdfPageText, splitSentences, type Sentence } from "@/lib/sentences";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 import { ExternalLink } from "@/components/external-link";
 
 type PdfLib = typeof import("pdfjs-dist");

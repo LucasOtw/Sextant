@@ -1,7 +1,7 @@
 "use client";
 
 import { focusElement } from "@/lib/focus";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Lien d'évitement : invisible jusqu'à ce qu'il reçoive le focus au clavier, il amène le focus sur la zone visée

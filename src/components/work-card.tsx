@@ -4,7 +4,7 @@ import { abstractFromInvertedIndex, contentLang, formatAuthors, titleLang, trunc
 import { ArticleBadges, ArticleMeta, ArticleTitle, CitationCount } from "@/components/article-card";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
 import { snapshotFromWork } from "@/lib/favorites-shared";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   work: Work;

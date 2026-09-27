@@ -3,7 +3,7 @@ import { ResultsLink } from "@/components/results-status";
 import { buttonVariants } from "@/components/ui/button";
 import { formatInteger } from "@/lib/format";
 import { lastPageOf } from "@/lib/search-params";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   page: number;

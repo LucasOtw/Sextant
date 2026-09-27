@@ -1,6 +1,6 @@
 import * as React from "react"
 import { Input as InputPrimitive } from "@base-ui/react/input"
-import { cn } from "cn"
+import { cn } from "@/lib/cn"
 
 /** Champ de 40 px (hauteur du bouton par défaut), rayon de 14 px, focus commun du site (outline de globals.css). */
 function Input({ className, type, ...props }: React.ComponentProps<"input">) {

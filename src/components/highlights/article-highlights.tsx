@@ -10,7 +10,7 @@ import { ManualCitationDialog } from "@/components/highlights/manual-citation-di
 import { SentencePickerDialog } from "@/components/highlights/sentence-picker-dialog";
 import { isAlreadyHighlighted, passagesFrom, splitSentences } from "@/lib/sentences";
 import { useFocusRecovery } from "@/hooks/use-focus-recovery";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   /** Barre latérale du lecteur : plus dense, et la page d'un surlignage fait défiler le PDF. */

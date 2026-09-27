@@ -10,7 +10,7 @@ import type { Suggestion } from "@/app/api/suggest/route";
 import { THEMES } from "@/lib/themes";
 import { formatCount } from "@/lib/format";
 import { fold } from "@/lib/text";
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 interface Props {
   defaultValue?: string;

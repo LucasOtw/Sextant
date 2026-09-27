@@ -1,7 +1,7 @@
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "cn"
+import { cn } from "@/lib/cn"
 
 /* Badges en pilule, Nunito 700 en 13 px ; focus commun du site (outline), pas de halo propre. */
 const badgeVariants = cva(

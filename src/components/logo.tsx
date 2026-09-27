@@ -1,4 +1,4 @@
-import { cn } from "cn";
+import { cn } from "@/lib/cn";
 
 /**
  * Logo Sextant, en couleur : cadre encre (currentColor, donc lisible en clair et en sombre),
