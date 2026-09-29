@@ -9,7 +9,7 @@
 Un moteur de recherche et de découverte d'articles scientifiques, simple et soigné.<br/>
 Pour les étudiant·es, les doctorant·es, et toutes les personnes curieuses.
 
-🌐 **[Voir le site en ligne](https://sextant-psi.vercel.app/)** &nbsp;·&nbsp; 🐙 [Code source](https://github.com/LucasOtw/Sextant) &nbsp;·&nbsp; 🗺️ [Feuille de route](#️-feuille-de-route)
+🌐 **[Voir le site en ligne](https://sextant.site/)** &nbsp;·&nbsp; 🐙 [Code source](https://github.com/LucasOtw/Sextant) &nbsp;·&nbsp; 🗺️ [Feuille de route](#️-feuille-de-route)
 
 <img src="docs/screenshots/01-accueil.png" width="880" alt="Page d'accueil de Sextant" />
 
@@ -96,7 +96,7 @@ Sur une fiche, un bouton condense le résumé original en quatre points : **ques
 - **Dans votre navigateur** : l'affichage, l'historique de consultation et les suggestions écartées. Pour « Pour vous », les identifiants de ces articles (et de vos favoris) sont envoyés au serveur, qui ne les enregistre pas.
 - **Services tiers** : OpenAlex reçoit les recherches et les identifiants d'articles ; Mistral reçoit le titre et le résumé public d'un article, uniquement quand vous demandez un condensé.
 
-Détails : [Confidentialité](https://sextant-psi.vercel.app/confidentialite) · [Conditions d'utilisation](https://sextant-psi.vercel.app/conditions) · [Mentions légales](https://sextant-psi.vercel.app/mentions-legales)
+Détails : [Confidentialité](https://sextant.site/confidentialite) · [Conditions d'utilisation](https://sextant.site/conditions) · [Mentions légales](https://sextant.site/mentions-legales)
 
 <br/>
 

@@ -186,7 +186,7 @@ function canonicalSearch(id: string, candidate: string | null = null): string {
   return candidate === null ? `?work=${id}` : `?work=${id}&c=${candidate}`;
 }
 
-const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 Sextant/1.0 (+https://sextant-psi.vercel.app)";
+const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 Sextant/1.0 (+https://sextant.site)";
 
 /**
  * Première adresse qui répond par un vrai PDF (signature `%PDF` vérifiée avant de promettre quoi que ce soit).
