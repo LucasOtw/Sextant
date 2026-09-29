@@ -55,7 +55,7 @@ export function McpKeys() {
   const [created, setCreated] = useState<{ key: string; info: ApiKeyInfo } | null>(null);
   const [reauth, setReauth] = useState(false);
   /** Origine de la page, pour l'adresse du connecteur : celle de production au rendu serveur (QUAL-31). */
-  const origin = useClientValue(() => window.location.origin, "https://sextant-psi.vercel.app");
+  const origin = useClientValue(() => window.location.origin, "https://sextant.site");
   /** Clé dont la révocation attend confirmation (A11Y-24) : une clé révoquée ne se récupère pas. */
   const [revoking, setRevoking] = useState<ApiKeyInfo | null>(null);
   /** Ouverture de la confirmation, à part : le nom de la clé reste affiché pendant l'animation de fermeture. */
