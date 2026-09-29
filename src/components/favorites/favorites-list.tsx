@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleChip } from "@/components/ui/toggle-chip";
 import { CollectionDialog } from "@/components/collections/collection-dialog";
 import { CollectionPicker } from "@/components/collections/collection-picker";
 import { FavoriteButton } from "@/components/favorites/favorite-button";
@@ -464,20 +465,11 @@ const FavoriteRow = memo(function FavoriteRow({ favorite: f, index: i, isLast, m
 
 function Chip({ active, onClick, count, icon = false, shared = false, children }: { active: boolean; onClick: () => void; count: number; icon?: boolean; shared?: boolean; children: string }) {
   return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      title={children}
-      className={cn(
-        "inline-flex h-9 max-w-full items-center gap-1.5 whitespace-nowrap rounded-full border border-transparent px-3 text-sm transition-colors",
-        active ? "bg-primary text-primary-foreground" : "border-border bg-card text-foreground hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
-      )}
-    >
+    <ToggleChip active={active} onClick={onClick} title={children} className="px-3">
       {icon && <FolderIcon className="size-3.5 shrink-0" aria-hidden />}
       <span className="truncate">{children}</span>
       {shared && <Link2Icon className="size-3.5 shrink-0" aria-label="partagée par lien" />}
       <span className={active ? undefined : "text-muted-foreground"}>{count}</span>
-    </button>
+    </ToggleChip>
   );
 }

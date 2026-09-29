@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  /* Nunito pour le texte et l'interface, Fredoka pour les titres et les accroches (app/fonts.ts). Chaque pile finit sans
+  /* Nunito pour le texte et l'interface, Fredoka pour les titres et les accroches (app/fonts/). Chaque pile finit sans
      serif : un glyphe absent (grec, indices) ou une variable manquante ne retombe jamais en Times (Y2, Y4). */
   --font-sans: var(--font-nunito, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-fredoka, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
@@ -50,6 +50,8 @@
   --color-brand-surface: var(--brand-surface);
   --color-brand-foreground: var(--brand-foreground);
   --color-sun: var(--sun);
+  --color-sun-deep: var(--sun-deep);
+  --color-favorite: var(--favorite);
   --color-overlay: var(--overlay);
   --color-disabled: var(--disabled);
   --color-disabled-foreground: var(--disabled-foreground);
@@ -107,6 +109,10 @@
   --brand-foreground: #EEF1FB;
   /* Jaune : étoile et vague, décoratif uniquement et toujours opaque (2,06:1 : jamais du texte). */
   --sun: #D7A848;
+  /* Jaune sombre accordé (même teinte, 41°) : graduations de l'arc du logo, posées sur le jaune (2,84:1). Jamais du texte. */
+  --sun-deep: #7A5C1C;
+  /* Cœur des favoris enregistré, en bleu de marque plutôt qu'en rose (P2) : 6,63:1 carte, 6,24:1 fond, 5,68:1 teinte. */
+  --favorite: #3E54B8;
   --overlay: rgb(13 17 26 / 0.3);
   /* Contrôles désactivés (exemptés de contraste par WCAG) : pas d'opacité, qui salirait le bleu. */
   --disabled: #ECEAE2;
@@ -147,6 +153,8 @@
   /* Un aplat #566ED1 éclairerait trop : surface bleue profonde, texte #EEF1FB à 10,30:1. */
   --brand-surface: #27346F;
   --brand-foreground: #EEF1FB;
+  /* Cœur éclairci : #3E54B8 ne ressortirait qu'à 2,85:1 sur l'encre. 7,60:1 fond, 6,92:1 carte, 5,78:1 teinte. */
+  --favorite: #8FA1EA;
   --overlay: rgb(0 0 0 / 0.6);
   /* Plein désactivé : garde sa forme partout (1,45:1 fond, 1,32:1 carte, 1,24:1 fenêtre) ; libellé à 3,46:1. */
   --disabled: #2A3142;
@@ -164,8 +172,10 @@
   --elevation-float: 0 12px 32px -12px oklch(0 0 0 / 0.6);
 }
 
-/* Surface bleue (section ou bande forte) : texte, liens et focus passent en clair pour rester lisibles. Prête, pas encore
-   utilisée (section forte à valider). */
+/* Surface bleue (section forte : le pied de page, S3) : texte, liens et focus passent en clair pour rester lisibles.
+   Texte #EEF1FB à 5,88:1 en clair (#3E54B8), 10,30:1 en sombre (#27346F) ; liens et focus blancs à 6,63:1 et 11,62:1.
+   Le bleu de marque des graphismes (alidade et miroir du logo) s'éclaircit : #566ED1 disparaîtrait sur #3E54B8 (1,44:1) ;
+   #A3B2EF ressort à 3,21:1 en clair et 5,63:1 en sombre. */
 .surface-brand {
   background-color: var(--brand-surface);
   color: var(--brand-foreground);
@@ -174,6 +184,15 @@
   --accent-brand: #FFFFFF;
   --ring: #FFFFFF;
   --muted-foreground: var(--brand-foreground);
+  --brand: #A3B2EF;
+}
+/* Couleurs forcées : la surface prend le fond système ; le logo, dont le SVG garde ses couleurs, repasse en couleur de
+   texte système pour ne pas rester clair sur un fond clair. */
+@media (forced-colors: active) {
+  .surface-brand {
+    --brand: CanvasText;
+    --brand-foreground: CanvasText;
+  }
 }
 
 @layer base {
@@ -349,6 +368,48 @@
   .card-link:hover .card-title {
     color: var(--link);
   }
+  /* Exemple de recherche du hero en pastille (P5) : pilule teintée, texte bleu foncé en 600 (#3E54B8 sur #EAEDF9 à
+     5,68:1 ; sombre #8FA1EA sur #20284A à 5,78:1), soulignement au survol. Sans bordure visible ni gras, pour ne pas se
+     confondre avec la puce active ; la bordure transparente se dessine en couleurs forcées. Hauteur des puces (36 px). */
+  .example-chip {
+    display: inline-flex;
+    max-width: 100%;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem 0.875rem;
+    border: 1px solid transparent;
+    border-radius: 9999px;
+    background-color: var(--tint);
+    color: var(--link);
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    text-align: center;
+    text-wrap: balance;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    text-decoration-color: transparent;
+    transition: color 150ms, text-decoration-color 150ms;
+  }
+  .example-chip:hover {
+    color: var(--link-hover);
+    text-decoration-color: currentColor;
+  }
+  /* Lien du pied de page bleu : texte clair de la surface, blanc et souligné au survol (le soulignement de 1,5 px est
+     déjà posé, transparent, pour que le texte ne bouge pas). */
+  .footer-link {
+    text-decoration-line: underline;
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 3px;
+    text-decoration-color: transparent;
+    transition: color 150ms, text-decoration-color 150ms;
+  }
+  .footer-link:hover {
+    color: var(--link-hover);
+    text-decoration-color: currentColor;
+  }
 }
 
 /* Notifications (Sonner, feuille injectée hors couche) : ombre flottante, bouton « Annuler » en pilule aux couleurs du
@@ -459,27 +520,30 @@
   }
 }
 
-/* Surlignages : un jaune de fluo discret, lisible sur crème comme sur sombre. */
+/* Surlignages. `--highlight` : fond du passage ; `--highlight-foreground` : trait dessous ; `--highlight-text-line` : trait
+   du passage cité dans une carte (.hl-text), qui n'en a pas en clair. */
 :root {
-  --highlight: oklch(0.92 0.17 96);
+  /* Clair : jaune de fluo discret, voilé à 55 % sur la crème. */
+  --highlight: color-mix(in oklch, oklch(0.92 0.17 96) 55%, transparent);
   --highlight-foreground: oklch(0.6 0.13 80);
-  --highlight-alpha: 55%;
+  --highlight-text-line: transparent;
   /* Page du PDF : le papier reste blanc quel que soit le thème, son surligneur ne change donc pas en sombre. */
   --highlight-paper: oklch(0.92 0.17 96);
   --highlight-paper-line: oklch(0.6 0.13 80);
 }
+/* Sombre (option A de T15) : un voile jaune virait à l'olive sur l'encre. Fond bleu profond opaque (texte #F9F8F2 à
+   10,92:1) et trait jaune --sun opaque (5,30:1 sur ce fond, 8,62:1 sur l'encre, 7,85:1 sur la carte). */
 .dark {
-  --highlight: oklch(0.78 0.16 92);
-  --highlight-foreground: oklch(0.86 0.15 92);
-  /* 30 % : le texte blanc reste au-dessus de 4,5:1 sur le fond sombre. */
-  --highlight-alpha: 30%;
+  --highlight: #27346F;
+  --highlight-foreground: var(--sun);
+  --highlight-text-line: var(--sun);
 }
 @theme inline {
   --color-highlight: var(--highlight);
   --color-highlight-foreground: var(--highlight-foreground);
 }
 mark[data-highlight] {
-  background: color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent);
+  background: var(--highlight);
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
@@ -488,7 +552,7 @@ mark[data-highlight] {
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
 }
-/* Couleurs forcées (Windows) : le surlignage système, opaque, à la place du jaune translucide. */
+/* Couleurs forcées (Windows) : le surlignage système à la place de celui du thème. */
 @media (forced-colors: active) {
   mark[data-highlight] {
     background: Mark;
@@ -497,7 +561,9 @@ mark[data-highlight] {
 }
 
 /* Couleurs forcées : l'état sélectionné (liste active, filtre, sujet, vote donné, page courante) ne tenait qu'à son fond
-   bleu, que le système efface. Il reprend la sélection système. Les Button (data-slot) gardent leur propre repère. */
+   et à sa couleur, que le système efface. Il reprend la sélection système. Les Button (data-slot) gardent leur propre repère.
+   Puce active (ToggleChip, data-active) : en plus du fond, une bordure de 2 px en couleur de texte et un libellé souligné,
+   pour qu'un thème où la sélection se confond avec le fond garde un repère. */
 @media (forced-colors: active) {
   :is(button[aria-pressed="true"]:not([data-slot="button"]), a[aria-current="page"], a[aria-current="true"]) {
     forced-color-adjust: none;
@@ -505,11 +571,23 @@ mark[data-highlight] {
     color: SelectedItemText;
     border-color: SelectedItem;
   }
+  /* Même spécificité que la règle précédente, qui la précède : sa bordure de sélection ne recouvre pas celle-ci. */
+  :is(a, button)[data-slot="toggle-chip"][data-active="true"] {
+    forced-color-adjust: none;
+    background: SelectedItem;
+    color: SelectedItemText;
+    border: 2px solid CanvasText;
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 3px;
+  }
 }
 
 /* Passage cité dans une carte : un trait de surligneur sous la ligne, qui suit les retours à la ligne. */
 .hl-text {
-  background-image: linear-gradient(transparent 52%, color-mix(in oklch, var(--highlight) var(--highlight-alpha), transparent) 52%);
+  background-image: linear-gradient(transparent 52%, var(--highlight) 52%);
+  /* Sombre : trait jaune sous la bande bleue, comme sur le résumé ; transparent en clair. */
+  box-shadow: inset 0 -2px 0 var(--highlight-text-line);
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   /* Marge intérieure seulement : une marge négative serait rognée par le repli du texte (line-clamp). */

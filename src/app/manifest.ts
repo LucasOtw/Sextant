@@ -2,7 +2,8 @@ import type { MetadataRoute } from "next";
 
 /**
  * Manifeste web, prérendu en statique à /manifest.webmanifest : icône nette à l'ajout à l'écran d'accueil.
- * Couleurs = fond clair du thème (--background) et encre de la marque (--foreground). Icônes générées depuis public/icon.svg.
+ * Couleurs = fond clair du thème (--background) et encre de la marque (--foreground). Icônes (SVG, PNG) produites par
+ * scripts/generate-icons.mjs à partir de la géométrie du logo.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {

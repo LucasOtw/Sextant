@@ -2,7 +2,11 @@
 <!--
   Source de src/app/opengraph-image.png, l'image des aperçus de partage (og:image et twitter:image) de toutes les
   pages (QUAL-18). Servie comme un fichier statique : aucune fonction, aucun rendu à la demande.
-  Couleurs de public/icon.svg, police Geist (celle du site). Pour régénérer l'image après une modification :
+  DA (M10, M11) : fond bleu de marque #566ED1, logo de LogoMark (src/components/logo.tsx) sur une pastille crème, vague
+  jaune du hero. Titres en Fredoka, texte en Nunito, chargés depuis src/app/fonts/ (les fichiers du site, aucune
+  requête vers Google).
+  Texte #EEF1FB à 4,09:1 sur le bleu : réservé aux grandes tailles (≥ 24 px), jamais de petit texte ici.
+  Pour régénérer l'image après une modification :
 
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --hide-scrollbars \
       --window-size=1200,630 --screenshot=src/app/opengraph-image.png scripts/og-image.html
@@ -12,40 +16,70 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600&display=block" />
     <style>
+      @font-face {
+        font-family: Fredoka;
+        font-weight: 300 700;
+        font-display: block;
+        src: url("../src/app/fonts/Fredoka-latin.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: Nunito;
+        font-weight: 200 1000;
+        font-display: block;
+        src: url("../src/app/fonts/Nunito-latin.woff2") format("woff2");
+      }
       html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
       body {
+        position: relative;
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        padding: 0 96px;
-        background: #1d1f2a;
-        color: #f7f5ef;
-        font-family: Geist, system-ui, sans-serif;
+        padding: 0 96px 40px;
+        background: #566ed1;
+        color: #eef1fb;
+        font-family: Nunito, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
-      .brand { display: flex; align-items: center; gap: 36px; }
-      .brand svg { width: 168px; height: 168px; }
-      .name { font-size: 132px; font-weight: 600; letter-spacing: -0.035em; line-height: 1; }
-      .tagline { margin: 52px 0 0; font-size: 54px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
-      .tagline span { color: #e0a52d; }
-      .sub { margin: 24px 0 0; font-size: 31px; color: #a9adbd; line-height: 1.3; }
+      .brand { display: flex; align-items: center; gap: 40px; }
+      .badge {
+        display: grid;
+        place-items: center;
+        flex: none;
+        width: 176px;
+        height: 176px;
+        border-radius: 50%;
+        background: #f9f8f2;
+      }
+      /* viewBox recadré sur le dessin (traits compris) : le logo est centré dans la pastille, l'astre à 14 px du bord. */
+      .badge svg { width: 122px; height: auto; }
+      .name { font-family: Fredoka, sans-serif; font-size: 136px; font-weight: 600; letter-spacing: -0.01em; line-height: 1; }
+      .tagline { margin: 48px 0 0; font-family: Fredoka, sans-serif; font-size: 58px; font-weight: 500; line-height: 1.15; }
+      .sub { margin: 20px 0 0; font-size: 34px; font-weight: 600; line-height: 1.3; }
+      .wave { position: absolute; left: 96px; bottom: 44px; width: 320px; height: auto; }
     </style>
   </head>
   <body>
     <div class="brand">
-      <svg viewBox="0 0 64 64" aria-hidden="true">
-        <path d="M13 44A34 34 0 0 0 51 44" stroke="#E0A52D" stroke-width="5" stroke-linecap="round" fill="none" />
-        <path d="M13 44 32 16 51 44" stroke="#F7F5EF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
-        <path d="M32 16 43.5 46.5" stroke="#6F8BE8" stroke-width="4" stroke-linecap="round" />
-        <circle cx="32" cy="16" r="3.5" fill="#6F8BE8" />
-        <path d="M51 6l1.7 4.4 4.4 1.7-4.4 1.7L51 18l-1.7-4.4-4.4-1.7 4.4-1.7z" fill="#E0A52D" />
-      </svg>
+      <div class="badge">
+        <svg viewBox="9.5 4 50 48.6" aria-hidden="true">
+          <path d="M12 44A36 36 0 0 0 52 44" stroke="#D7A848" stroke-width="5" stroke-linecap="round" fill="none" />
+          <path d="M22 49.5v-3.5M32 50v-4M42 49.5v-3.5" stroke="#7A5C1C" stroke-width="2" stroke-linecap="round" fill="none" />
+          <path d="M12 44 32 14 52 44" stroke="#0D111A" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+          <rect x="17" y="30" width="7" height="7" rx="1.5" transform="rotate(-56 20.5 33.5)" fill="#566ED1" />
+          <path d="M32 14 44.3 47.8" stroke="#566ED1" stroke-width="4" stroke-linecap="round" fill="none" />
+          <circle cx="32" cy="14" r="3.5" fill="#566ED1" />
+          <path d="M53 4l1.8 4.7L59.5 10.5l-4.7 1.8L53 17l-1.8-4.7L46.5 10.5l4.7-1.8z" fill="#D7A848" />
+        </svg>
+      </div>
       <div class="name">Sextant</div>
     </div>
-    <p class="tagline">La littérature scientifique, sans détour<span>.</span></p>
+    <p class="tagline">La littérature scientifique, sans détour.</p>
     <p class="sub">Articles évalués par les pairs, thèses et ouvrages universitaires.</p>
+    <!-- Vague du hero (src/components/hero-wave.tsx : wavePath(8, 14, 92, 6, 4)), en jaune. -->
+    <svg class="wave" viewBox="0 0 200 28" aria-hidden="true">
+      <path d="M8 14q23 -12 46 0 t46 0 t46 0 t46 0" fill="none" stroke="#D7A848" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
   </body>
 </html>

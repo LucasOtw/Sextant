@@ -54,7 +54,13 @@ export function FavoriteButton({ snapshot, variant = "icon", initialActive = fal
 
   const icon = (
     <HeartIcon
-      className={cn("size-[18px] transition-transform", active ? "fill-rose-500 text-rose-500" : "text-muted-foreground", pending && "scale-90")}
+      // En couleurs forcées, le SVG garde sa couleur d'auteur : on le rend au système (ButtonText), le remplissage
+      // restant le seul repère de l'état enregistré dans ce mode.
+      className={cn(
+        "size-[18px] transition-transform forced-colors:text-[color:ButtonText]",
+        active ? "fill-favorite text-favorite forced-colors:fill-[ButtonText]" : "text-muted-foreground",
+        pending && "scale-90",
+      )}
       aria-hidden
     />
   );

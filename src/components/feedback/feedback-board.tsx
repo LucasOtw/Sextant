@@ -14,6 +14,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleChip } from "@/components/ui/toggle-chip";
 import { feedbackCounts, feedbackOrder, feedbackTitleHint, feedbackTitleLength, inOrder, KIND_LABEL, MAX_FEEDBACK_DESCRIPTION, MAX_FEEDBACK_TITLE, MIN_FEEDBACK_TITLE, STATUS_LABEL, type FeedbackItem, type FeedbackKind, type FeedbackTotals } from "@/lib/feedback-shared";
 import { announce } from "@/lib/announce";
 import { api, errorMessage } from "@/lib/client/api";
@@ -107,18 +108,9 @@ export function FeedbackBoard({ initial, totals = null, initialVoted, signedIn, 
             ["bug", "Bugs"],
             ["idea", "Idées"],
           ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={filter === value}
-              onClick={() => setFilter(value)}
-              className={cn(
-                "inline-flex h-9 items-center gap-1.5 rounded-full border border-transparent px-3.5 text-sm transition-colors",
-                filter === value ? "bg-primary text-primary-foreground" : "border-border bg-card hover:border-[color-mix(in_oklch,var(--brand)_40%,var(--border))]",
-              )}
-            >
+            <ToggleChip key={value} active={filter === value} onClick={() => setFilter(value)}>
               {label} <span className={filter === value ? undefined : "text-muted-foreground"}>{counts[value]}</span>
-            </button>
+            </ToggleChip>
           ))}
         </div>
         <div className="flex gap-2">

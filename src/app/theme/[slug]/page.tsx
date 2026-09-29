@@ -4,11 +4,10 @@ import { notFound } from "next/navigation";
 import { SearchBox } from "@/components/search-box";
 import { Results, SkipToResults } from "@/components/results";
 import { pagedTitle, parseSearchParams, type RawSearchParams } from "@/lib/search-params";
-import { Badge } from "@/components/ui/badge";
+import { toggleChip } from "@/components/ui/toggle-chip";
 import { shortId } from "@/lib/ids";
 import { getTopicsForField } from "@/lib/openalex";
 import { themeBySlug, themePageMeta } from "@/lib/themes";
-import { cn } from "@/lib/cn";
 import { recover } from "@/lib/log";
 
 interface Props {
@@ -60,7 +59,7 @@ export default async function ThemePage({ params, searchParams }: Props) {
             </li>
             <li aria-hidden>/</li>
             <li className="flex items-center gap-2">
-              <span className={cn("size-2 rounded-full", theme.tone)} aria-hidden />
+              <span className="size-2 rounded-full bg-brand" aria-hidden />
               <span aria-current="page" className="text-foreground">{theme.name}</span>
             </li>
           </ol>
@@ -76,15 +75,15 @@ export default async function ThemePage({ params, searchParams }: Props) {
               const id = shortId(t.id);
               const active = search.topic === id;
               return (
-                <Badge
+                <Link
                   key={t.id}
-                  variant={active ? "default" : "secondary"}
-                  render={<Link href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`} aria-current={active ? "true" : undefined} />}
-                  className="h-auto min-h-7 whitespace-normal px-3 py-1 text-sm"
+                  href={active ? `/theme/${slug}` : `/theme/${slug}?topic=${id}`}
+                  aria-current={active ? "true" : undefined}
+                  {...toggleChip({ active, size: "wrap" })}
                 >
                   {t.display_name}
                   {active && <span className="sr-only"> (filtre actif, activer pour le retirer)</span>}
-                </Badge>
+                </Link>
               );
             })}
           </div>

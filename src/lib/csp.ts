@@ -22,7 +22,8 @@
  *   identitytoolkit et securetoken ; la fenêtre Google elle-même est une fenêtre à part, hors CSP ;
  * - lecteur PDF.js : worker et ressources sous /pdfjs (même origine), `blob:` pour ses workers et images ;
  * - repli `<object data>` du lecteur vers le PDF de l'hébergeur (n'importe quel hôte https) ;
- * - avatars Google (`*.googleusercontent.com`) ; polices servies par Next depuis le site (next/font).
+ * - avatars Google (`*.googleusercontent.com`) ; polices servies par Next depuis le site (next/font/local, fichiers
+ *   de src/app/fonts/).
  */
 /**
  * Pages sans donnée personnelle ni paramètre de requête, prérendues et mises en cache au bord (PERF-01). Exclues du
