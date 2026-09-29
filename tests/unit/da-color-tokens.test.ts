@@ -45,8 +45,9 @@ function contrast(a: string, b: string): number {
 }
 
 describe("pastilles des thématiques (P1)", () => {
-  it("aucune couleur propre à un thème : la pastille est la même partout", () => {
-    for (const t of THEMES) expect(Object.keys(t)).not.toContain("tone");
+  it("chaque thématique a sa couleur de pastille", () => {
+    // Couleur propre à chaque thématique, rétablie à la demande de Lucas (29/09) : repère visuel des 16 disciplines.
+    for (const t of THEMES) expect(t.tone).toMatch(/^bg-[a-z]+-\d{3}$/);
   });
 
   it("plus aucune couleur de la palette Tailwind dans l'interface : tout passe par les tokens", () => {
@@ -54,6 +55,8 @@ describe("pastilles des thématiques (P1)", () => {
       /\b(?:bg|text|fill|stroke|border|ring|from|to|via|outline|decoration|shadow)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/;
     const offenders = (readdirSync(src, { recursive: true }) as string[])
       .filter((f) => /\.(tsx?|css)$/.test(f))
+      // Seule exception : les pastilles des thématiques (lib/themes.ts).
+      .filter((f) => !f.endsWith(path.join("lib", "themes.ts")))
       .filter((f) => palette.test(readFileSync(path.join(src, f), "utf8")));
     expect(offenders).toEqual([]);
   });

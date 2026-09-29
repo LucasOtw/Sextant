@@ -16,7 +16,7 @@ export function ThemeGrid({ limit, className }: { limit?: number; className?: st
             prefetch={false}
             className="surface-tint card-link flex h-full flex-col gap-2 rounded-2xl p-4"
           >
-            <span className="size-3 rounded-full bg-brand" aria-hidden />
+            <span className={cn("size-3 rounded-full", t.tone)} aria-hidden />
             <span className="card-title title-display text-lg leading-tight">{t.name}</span>
             <span className="text-sm leading-snug text-muted-foreground">{t.description}</span>
           </Link>
