@@ -35,7 +35,7 @@ export function missingLegalIdentity(env: Record<string, string | undefined>): s
 
 export const SITE = {
   name: "Sextant",
-  url: "https://sextant-psi.vercel.app",
+  url: "https://sextant.site",
   /** Personne physique qui édite le site et en est directeur de la publication. */
   publisherName: legalPublisherName(process.env.LEGAL_PUBLISHER_NAME),
   /** Adresse de contact affichée sur le site (mentions légales, demandes RGPD). */
