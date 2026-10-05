@@ -41,19 +41,19 @@
     "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^24.13.6",
+    "@types/node": "^24.19.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
     "eslint-plugin-jsx-a11y": "^6.10.2",
-    "firebase-tools": "^15.31.0",
+    "firebase-tools": "^15.32.1",
     "happy-dom": "^20.14.5",
-    "shadcn": "^4.21.0",
+    "shadcn": "^4.21.1",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2"
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   },
   "overrides": {
     "uuid": "^11.1.1"
